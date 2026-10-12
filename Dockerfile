@@ -7,15 +7,11 @@ FROM node:22-bookworm-slim
 
 WORKDIR /app
 
-# Bagimliliklar (frida prebuild ile gelir; kurulum scriptleri paketin kendi akisina birakilir).
-COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
-
-# Kaynak + build (tsc + runtime asset kopyalama).
-COPY tsconfig.json ./
+# Kaynak once kopyalanir: package.json'daki prepare, npm ci sirasinda build kosar.
+COPY package.json package-lock.json tsconfig.json ./
 COPY src ./src
-COPY scripts/copy-assets.mjs ./scripts/copy-assets.mjs
-RUN npm run build && npm prune --omit=dev --no-audit --no-fund
+COPY scripts ./scripts
+RUN npm ci --no-audit --no-fund && npm prune --omit=dev --no-audit --no-fund
 
 COPY server.json ./server.json
 COPY configs ./configs

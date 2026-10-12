@@ -15,7 +15,7 @@
   "scripts": {
     "build": "tsc && node scripts/copy-assets.mjs",
     "cli": "node dist/cli/index.js",
-    "prepare": "npm run build",
+    "prepare": "node scripts/prepare.mjs",
     "start": "node dist/server.js",
     "prepublishOnly": "npm run build",
     "test": "node scripts/run-tests.mjs",
