@@ -1,10 +1,12 @@
 // JEB statik provider iskeleti (WP4a): MCP istemcisini ÇAĞIRAN başlatır.
 // Provider içinde spawn/fetch yok; sadece URL doğrulanır, yönlendirme döner.
 import { existsSync } from "node:fs";
+import { request as httpIstek } from "node:http";
+import { request as httpsIstek } from "node:https";
 import type { Capabilities } from "../../conduit-core/engines/types.js";
 
 // Facade prefix kuralı: rea_ öneki zorunlu.
-export const JEB_TOOLS = ["rea_jeb_ac", "rea_jeb_siniflar"] as const;
+export const JEB_TOOLS = ["rea_jeb_ac", "rea_jeb_siniflar", "rea_jeb_sorgu"] as const;
 
 export interface StatikSaglayici {
   readonly id: string;
@@ -59,4 +61,47 @@ export class JebProvider implements StatikSaglayici {
   async close(oturumId: string): Promise<void> {
     void oturumId;
   }
+}
+
+// Çağıranın MCP ucuna GERÇEK HTTP POST (fetch yok, node:http/https).
+// hazirUrl: çağıranın verdiği tam uç adresi; yontem: MCP yöntem adı;
+// govdeJson: gönderilecek JSON gövde (string). URL yoksa unsupported.
+export function rea_jeb_sorgu(hazirUrl: string, yontem: string, govdeJson = ""): Promise<
+  | { ok: true; arac: "rea_jeb_sorgu"; url: string; yontem: string; durum: number; govde: string }
+  | { ok: false; code: "capability_unsupported"; neden: string }
+> {
+  return new Promise((coz) => {
+    if (!hazirUrl || !hazirUrl.trim()) {
+      coz({ ok: false as const, code: "capability_unsupported" as const, neden: "hazirUrl yok — fallback: REA_JEB_MCP_URL tanımlayıp çağıran MCP ucunu başlatın" });
+      return;
+    }
+    let u: URL;
+    try {
+      u = new URL(hazirUrl);
+      if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("protokol");
+    } catch {
+      coz({ ok: false as const, code: "capability_unsupported" as const, neden: `geçersiz MCP URL: ${hazirUrl}` });
+      return;
+    }
+    if (!yontem || !yontem.trim()) {
+      coz({ ok: false as const, code: "capability_unsupported" as const, neden: "yontem boş" });
+      return;
+    }
+    const govde = govdeJson ?? "";
+    const gonder = u.protocol === "https:" ? httpsIstek : httpIstek;
+    const varsayilanPort = u.protocol === "https:" ? 443 : 80;
+    const istek = gonder(
+      { hostname: u.hostname, port: u.port ? Number(u.port) : varsayilanPort, path: `${u.pathname}${u.search}`, method: "POST", headers: { "content-type": "application/json", "content-length": Buffer.byteLength(govde) }, timeout: 15_000 },
+      (yanit) => {
+        let ham = "";
+        yanit.setEncoding("utf8");
+        yanit.on("data", (parca) => { ham += parca; });
+        yanit.on("end", () => coz({ ok: true as const, arac: "rea_jeb_sorgu" as const, url: hazirUrl, yontem, durum: yanit.statusCode ?? 0, govde: ham.slice(0, 16_000) }));
+      },
+    );
+    istek.on("timeout", () => istek.destroy(new Error("zaman aşımı")));
+    istek.on("error", (e) => coz({ ok: false as const, code: "capability_unsupported" as const, neden: `JEB MCP isteği başarısız: ${e.message}` }));
+    istek.write(govde);
+    istek.end();
+  });
 }

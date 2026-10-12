@@ -7,7 +7,7 @@ npm run typecheck   # tsc --noEmit, hata vermemeli
 npm run build       # tsc -> dist/
 ```
 
-## 2) Testler (tests/, 32 dosya, 220 it)
+## 2) Testler (tests/, 42 dosya, 336 it)
 
 ```powershell
 node --test tests/auth.test.mjs
@@ -41,15 +41,15 @@ node tests/cli.test.mjs
 node tests/e2e.http.mjs
 ```
 
-Tek komut: `node --test tests/` (32 dosya koşar).
-`namespace` + `smoke` + `cli` + `e2e` assert-tipidir (`it` sayılmaz); 28 dosyada 220 `it` vardır.
+Tek komut: `node --test tests/` (42 dosya koşar).
+`namespace` + `smoke` + `cli` + `e2e` assert-tipidir (`it` sayılmaz); 38 dosyada 336 `it` vardır.
 
 ## 3) Beklenen yeşil çıktı
 
 - `namespace`: `OK: health->rea_health disassemble->rea_disassemble`
 - `smoke`: `OK: transfer=0xa9059cbb approve=0x095ea7b3` + `OK: frozen=30 katalog=24`
 - `evm`: `transfer(address,uint256) -> 0xa9059cbb` davası geçer.
-- `node --test`: `pass 220, fail 0` (assert dosyaları ayrıca exit 0).
+- `node --test`: `pass 336, fail 0` (assert dosyaları ayrıca exit 0).
 
 ## 4) Golden satır-sonu notu
 

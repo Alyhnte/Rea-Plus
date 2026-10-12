@@ -6,14 +6,14 @@ One MCP server for live debugging and static reverse engineering, from app behav
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![Node.js >= 20](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#quick-start)
-[![128 live tools](https://img.shields.io/badge/tools-128_live-blue?style=flat-square)](#how-it-works)
+[![162 live tools](https://img.shields.io/badge/tools-162_live-blue?style=flat-square)](#how-it-works)
 [![Catalog 24](https://img.shields.io/badge/catalog-8_conduit_+_16_rea-blue?style=flat-square)](#how-it-works)
-[![Tests passing](https://img.shields.io/badge/tests-220_unit_+_e2e-green?style=flat-square)](#tests)
+[![Tests passing](https://img.shields.io/badge/tests-336_unit_+_e2e-green?style=flat-square)](#tests)
 
 See a feature you like. Understand how it works, from the running process down to the binary level.
 
 rea-plus fuses a frozen live-debug core (conduit) with rea-style static domains behind a single MCP surface:
-30 frozen conduit tools plus 98 rea tools, 128 live and verified end to end over real HTTP.
+30 frozen conduit tools plus 132 rea tools, 162 live and verified end to end over real HTTP.
 Analysis runs locally; findings carry evidence and state their limits.
 
 ## Quick start
@@ -67,7 +67,7 @@ Live-debug operations that mutate target state require `confirm:true`, otherwise
 
 - **Frozen core.** The 30 conduit tool names are immutable, locked by `src/facade/toolNamespace.ts`
   (`FROZEN_CONDUIT_TOOLS.length === 30`). Renaming is forbidden, so conduit clients keep working.
-- **rea domains.** 98 `rea_*` tools register centrally (`src/server/registerReaTools.ts`).
+- **rea domains.** 132 `rea_*` tools register centrally (`src/server/registerReaTools.ts`).
   Missing backends answer `capability_unsupported` with an install hint; nothing fakes a result.
 - **Evidence.** Runs can emit an evidence bundle plus an obligation ledger
   (`advance` / `verify` chain) for auditable investigations.
@@ -92,7 +92,7 @@ node dist/cli/index.js doctor --json
 
 ## Tests
 
-32 files: 220 unit its plus smoke, namespace, CLI, and e2e lanes. `tsc` is clean.
+42 files: 336 unit its plus smoke, namespace, CLI, and e2e lanes. `tsc` is clean.
 
 ```bash
 node --test tests/             # everything (pass 127, fail 0)

@@ -34,6 +34,23 @@ import { rea_go_module, rea_go_version, rea_pwn_elf_layout, rea_pwn_gadgets } fr
 import { rea_firmware_extract, rea_firmware_handoff, rea_firmware_caps } from "../rea-domains/firmware-browser/FirmwareBridge.js";
 import { buildEvidenceBundle, verifyEvidenceBundle } from "../facade/evidenceBundle.js";
 import { build_reconstruction_obligation_ledger, advanceObligation, verifyObligationChain, closeObligationLedger } from "../facade/obligationLedger.js";
+import { rea_flutter_scan, rea_flutter_payload } from "../rea-domains/flutter/Flutter.js";
+import { rea_apple_macho, rea_apple_plist, rea_apple_bundle } from "../rea-domains/apple/Apple.js";
+import { rea_hap_liste, rea_hap_manifest } from "../rea-domains/harmony/Harmony.js";
+import { rea_pe_info, rea_pe_imports, rea_pe_sections } from "../rea-domains/winpe/PeReader.js";
+import { rea_wasm_sections, rea_wasm_imports } from "../rea-domains/wasm-evm/WasmInfo.js";
+import { rea_evm_stats, rea_evm_selectors } from "../rea-domains/wasm-evm/EvmInfo.js";
+import { rea_dos_com, rea_dos_psp } from "../rea-domains/dos/DosCom.js";
+import { rea_managed_compare, rea_managed_verify, rea_managed_import } from "../rea-domains/dotnet/ManagedWorkflow.js";
+import { rea_readiness, rea_coverage } from "../facade/readiness.js";
+import { rea_hopper_istek, rea_hopper_tara } from "../rea-domains/hopper/HopperProvider.js";
+import { rea_ida_idb, rea_ida_flirt } from "../rea-domains/ida/IdaProvider.js";
+import { rea_jeb_sorgu } from "../rea-domains/jeb/JebProvider.js";
+import { rea_crash_kayit_parse, rea_crash_ozet } from "../rea-domains/crash/RecordedCrash.js";
+import { rea_fs_snapshot, rea_fs_diff } from "../rea-domains/process/FsJournal.js";
+import { rea_storage_dump, rea_console_yakala } from "../rea-domains/browser/BrowserDepth.js";
+import { rea_js_require, rea_js_export_shape } from "../rea-domains/javascript/JsDepth.js";
+import { rea_investigate } from "../facade/investigate.js";
 
 const P = z.object({ path: z.string().min(1) });
 const J = z.object({ text: z.string().min(1) });
@@ -194,6 +211,41 @@ const R: Array<[string, string, any, H]> = [
     const p = jsonParse<any>("rea_obligation_close", a.text); if ("err" in p) return p.err;
     return closeObligationLedger(p.v);
   }],
+  ["rea_flutter_scan", "Flutter/Dart izi tarama.", P, (a) => rea_flutter_scan(a.path)],
+  ["rea_flutter_payload", "Flutter payload izleri.", P, (a) => rea_flutter_payload(a.path)],
+  ["rea_apple_macho", "Mach-O sihir + dyld listesi.", P, (a) => rea_apple_macho(a.path)],
+  ["rea_apple_plist", "Info.plist anahtar okuma.", P, (a) => rea_apple_plist(a.path)],
+  ["rea_apple_bundle", "Bundle anatomisi.", P, (a) => rea_apple_bundle(a.path)],
+  ["rea_hap_liste", "HAP dosya listesi.", P, (a) => rea_hap_liste(a.path)],
+  ["rea_hap_manifest", "HAP manifest (bundle/version).", P, (a) => rea_hap_manifest(a.path)],
+  ["rea_pe_info", "PE başlık bilgisi.", P, (a) => rea_pe_info(a.path)],
+  ["rea_pe_imports", "PE import listesi.", P, (a) => rea_pe_imports(a.path)],
+  ["rea_pe_sections", "PE section tablosu.", P, (a) => rea_pe_sections(a.path)],
+  ["rea_wasm_sections", "WASM section tablosu.", B64, (a) => rea_wasm_sections(a.b64)],
+  ["rea_wasm_imports", "WASM import listesi.", B64, (a) => rea_wasm_imports(a.b64)],
+  ["rea_evm_stats", "EVM opcode istatistiği.", z.object({ hex: z.string().min(1) }), (a) => rea_evm_stats(a.hex)],
+  ["rea_evm_selectors", "EVM seçici adayları.", z.object({ hex: z.string().min(1) }), (a) => rea_evm_selectors(a.hex)],
+  ["rea_dos_com", "COM tespiti.", P, (a) => rea_dos_com(a.path)],
+  ["rea_dos_psp", "PSP struct parse.", B64, (a) => rea_dos_psp(a.b64)],
+  ["rea_managed_compare", "Managed üye diff.", z.object({ a: z.string().min(1), b: z.string().min(1) }), (a) => rea_managed_compare(a.a, a.b)],
+  ["rea_managed_verify", "Native bağımlılık doğrulama.", z.object({ path: z.string().min(1), beklenen: z.string().min(1) }), (a) => rea_managed_verify(a.path, a.beklenen)],
+  ["rea_managed_import", "Reconstruction kaydı.", P, (a) => rea_managed_import(a.path)],
+  ["rea_readiness", "Reconstruction hazırlık skoru.", J, (a) => rea_readiness(a.text)],
+  ["rea_coverage", "Kapsama oranı.", z.object({ incelenen: z.number().int().min(0), toplam: z.number().int().min(0) }), (a) => rea_coverage(a.incelenen, a.toplam)],
+  ["rea_hopper_istek", "Hopper istek dosyası üretimi.", z.object({ path: z.string().min(1) }), (a) => rea_hopper_istek(a.path)],
+  ["rea_hopper_tara", "Dosyada string/regex tarama.", z.object({ path: z.string().min(1), desen: z.string().min(1) }), (a) => rea_hopper_tara(a.path, a.desen)],
+  ["rea_ida_idb", "IDB batch üretimi (idat).", z.object({ path: z.string().min(1), out: z.string().min(1) }), (a) => rea_ida_idb(a.path, a.out)],
+  ["rea_ida_flirt", "Derleyici imzası taraması.", P, (a) => rea_ida_flirt(a.path)],
+  ["rea_jeb_sorgu", "JEB MCP sorgusu.", z.object({ url: z.string().min(1), yontem: z.string().min(1), govde: z.string().optional() }), (a) => rea_jeb_sorgu(a.url, a.yontem, a.govde ?? "")],
+  ["rea_crash_kayit_parse", "Crash notu parse.", J, (a) => rea_crash_kayit_parse(a.text)],
+  ["rea_crash_ozet", "Crash özeti.", J, (a) => rea_crash_ozet(a.text)],
+  ["rea_fs_snapshot", "Dizin snapshot.", P, (a) => rea_fs_snapshot(a.path)],
+  ["rea_fs_diff", "Snapshot diff.", z.object({ once: z.string().min(1), sonra: z.string().min(1) }), (a) => rea_fs_diff(a.once, a.sonra)],
+  ["rea_storage_dump", "Cookies + localStorage.", z.object({ url: z.string().min(1) }), (a) => rea_storage_dump(a.url)],
+  ["rea_console_yakala", "Konsol mesajları.", z.object({ url: z.string().min(1) }), (a) => rea_console_yakala(a.url)],
+  ["rea_js_require", "Require/import grafı.", P, (a) => rea_js_require(a.path)],
+  ["rea_js_export_shape", "Export şekli.", P, (a) => rea_js_export_shape(a.path)],
+  ["rea_investigate", "Otomatik soruşturma planı (sniff+skor+yedek).", z.object({ path: z.string().min(1), soru: z.string().optional() }), (a) => rea_investigate(a.path, a.soru ?? "")],
 ];
 
 export function registerReaTools(server: McpServer): void {
