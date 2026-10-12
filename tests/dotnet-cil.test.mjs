@@ -13,8 +13,9 @@ function bulDll() {
   const aday = process.env.REA_CORELIB_DLL ?? "";
   if (aday && existsSync(aday)) return aday;
   const kokler = process.platform === "win32" ? ["C:\\Program Files\\dotnet\\shared"] : ["/usr/share/dotnet/shared", "/usr/lib/dotnet/shared", join(homedir(), ".dotnet", "shared")];
+  let yedek = null;
   try {
-    const yigin = [...kokler]; let yedek = null;
+    const yigin = [...kokler];
     while (yigin.length) {
       const d = yigin.pop();
       for (const ad of readdirSync(d)) {
