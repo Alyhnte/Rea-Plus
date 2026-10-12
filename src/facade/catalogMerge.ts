@@ -14,6 +14,7 @@ const REA_CATALOG: readonly ReaPlusCatalogEntry[] = [
   { id: "hopper", ad: "Hopper", kaynak: "rea", zorunlu: false, url: "https://www.hopperapp.com/", nereye: "REA_HOPPER_PATH veya Applications kurulumu" },
   { id: "ghidra", ad: "Ghidra", kaynak: "rea", zorunlu: false, url: "https://ghidra-sre.org/", nereye: "REA_GHIDRA_DIR, Java 17+" },
   { id: "ida", ad: "IDA", kaynak: "rea", zorunlu: false, url: "https://hex-rays.com/ida-pro/", nereye: "IDA MCP plugin + REA_IDA_URL" },
+  { id: "cutter", ad: "Cutter", kaynak: "rea", zorunlu: false, url: "https://cutter.re/", nereye: "Rizin + Cutter kur (winget: Rizin.Rizin + Rizin.Cutter). Otomasyon rizin CLI üstünden, GUI manuel." },
   { id: "jeb", ad: "JEB", kaynak: "rea", zorunlu: false, url: "https://www.pnfsoftware.com/", nereye: "REA_JEB_MCP_URL ile caller-started client" },
   { id: "jadx", ad: "JADX", kaynak: "rea", zorunlu: false, url: "https://github.com/skylot/jadx", nereye: "headless jadx + full JDK, PATH" },
   { id: "apktool", ad: "Apktool", kaynak: "rea", zorunlu: false, url: "https://apktool.org/", nereye: "apktool launcher, PATH" },

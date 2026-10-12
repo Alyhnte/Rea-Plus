@@ -28,14 +28,14 @@ All notable changes are documented here (Türkçe özet + English detail).
   WAT export taraması da offline, `wabt` yoksa `capability_unsupported`.
 - Tool sayısı: 8 rea aracı → 33+ toplam hedef; bu sürümde runnable server
   30 conduit + 8 rea = 38 live tool sunar (8 -> 33 tool yol haritası kilitli).
-  Birleşik katalog: 8 conduit + 8 rea = 16 girdi (`mergedCatalog()`).
+  Birleşik katalog: 8 conduit + 9 rea = 17 girdi (`mergedCatalog()`, Cutter eklendi).
 - Runnable server: `src/server.ts` → `dist/server.js` (bin: `rea-plus`).
   Transport: stdio (varsayılan) + `POST /mcp` ve `GET /health` (stateless,
   `DBG_BRIDGE_TOKEN` Bearer kapısı conduit ile aynı).
 - Configs: `configs/claude-desktop`, `configs/cursor`, `configs/opencode`
   altında stdio + http JSON'ları (yer tutucu `<REA_PLUS_DIR>` açıklamalı).
 - Tests: `tests/namespace.test.mjs` (prefix + collision kilidi) ve
-  `tests/reaplus.smoke.mjs` (keccak seçiciler + frozen=30 + katalog=16).
+  `tests/reaplus.smoke.mjs` (keccak seçiciler + frozen=30 + katalog=17).
   Çalıştırma: `node tests/namespace.test.mjs`, `node tests/reaplus.smoke.mjs`.
 - Paket hijyeni: `server.json` (io.github.rea-plus), `LICENSE` (MIT 2026),
   `.gitignore`, `.npmrc`, CI workflow.

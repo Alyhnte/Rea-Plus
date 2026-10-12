@@ -1,12 +1,12 @@
 // Ghidra statik provider iskeleti (WP4a): headless import, hedef çalıştırılmaz.
 // Conduit StaticEngine şekline uyar: id + capabilities + open/close.
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { Capabilities } from "../../conduit-core/engines/types.js";
 
 // Facade prefix kuralı: rea_ öneki zorunlu.
-export const GHIDRA_TOOLS = ["rea_ghidra_ac", "rea_ghidra_semboller"] as const;
+export const GHIDRA_TOOLS = ["rea_ghidra_ac", "rea_ghidra_semboller", "rea_ghidra_analyze", "rea_ghidra_funcs", "rea_ghidra_decompile", "rea_ghidra_xrefs", "rea_ghidra_strings", "rea_ghidra_disasm"] as const;
 
 export interface StatikSaglayici {
   readonly id: string;
@@ -21,11 +21,15 @@ export function ghidraDizini(env = process.env): string | null {
   return aday ? aday : null;
 }
 
-// Java 17 zorunlu: Ghidra headless 17 altında açılmaz.
+// Java 17+ zorunlu: Ghidra 11 headless 17 altında açılmaz (21/22/23 olur).
+// Not: `java -version` çıktıyı STDERR yazar; spawnSync ile iki akış da okunur.
 export function java17Tamam(): boolean {
   try {
-    const err = execFileSync("java", ["-version"], { stdio: ["ignore", "pipe", "pipe"] }).toString();
-    return /version "17(\.|")/.test(err) || /openjdk version "17(\.|")/.test(err);
+    const r = spawnSync("java", ["-version"], { encoding: "utf8" });
+    const out = `${r.stdout ?? ""}\n${r.stderr ?? ""}`;
+    const m = out.match(/(?:version|openjdk version) "(\d+)/);
+    const major = m?.[1] ? parseInt(m[1], 10) : 0;
+    return major >= 17;
   } catch {
     return false;
   }

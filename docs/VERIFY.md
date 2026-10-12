@@ -28,7 +28,7 @@ Tek komut: `node --test tests/` (10 dosya koşar).
 ## 3) Beklenen yeşil çıktı
 
 - `namespace`: `OK: health->rea_health disassemble->rea_disassemble`
-- `smoke`: `OK: transfer=0xa9059cbb approve=0x095ea7b3` + `OK: frozen=30 katalog=16`
+- `smoke`: `OK: transfer=0xa9059cbb approve=0x095ea7b3` + `OK: frozen=30 katalog=17`
 - `evm`: `transfer(address,uint256) -> 0xa9059cbb` davası geçer.
 - `node --test`: `pass 51, fail 0` (assert dosyaları ayrıca exit 0).
 

@@ -1,17 +1,19 @@
-# rea-plus: Live Debugging + Static Analysis in One MCP
+<img src="assets/icon.svg" alt="Rea Plus icon" width="72" />
+
+# Rea Plus: Live Debugging + Static Analysis in One MCP
 
 One MCP server for live debugging and static reverse engineering, from app behavior down to native binaries.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![Node.js >= 20](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#quick-start)
-[![60 live tools](https://img.shields.io/badge/tools-60_live-blue?style=flat-square)](#how-it-works)
-[![Catalog 16](https://img.shields.io/badge/catalog-8_conduit_+_8_rea-blue?style=flat-square)](#how-it-works)
-[![Tests passing](https://img.shields.io/badge/tests-51_unit_+_e2e-green?style=flat-square)](#tests)
+[![81 live tools](https://img.shields.io/badge/tools-81_live-blue?style=flat-square)](#how-it-works)
+[![Catalog 17](https://img.shields.io/badge/catalog-8_conduit_+_9_rea-blue?style=flat-square)](#how-it-works)
+[![Tests passing](https://img.shields.io/badge/tests-127_unit_+_e2e-green?style=flat-square)](#tests)
 
 See a feature you like. Understand how it works, from the running process down to the binary level.
 
 rea-plus fuses a frozen live-debug core (conduit) with rea-style static domains behind a single MCP surface:
-30 frozen conduit tools plus 30 rea tools, 60 live and verified end to end over real HTTP.
+30 frozen conduit tools plus 51 rea tools, 81 live and verified end to end over real HTTP.
 Analysis runs locally; findings carry evidence and state their limits.
 
 ## Quick start
@@ -69,7 +71,7 @@ Live-debug operations that mutate target state require `confirm:true`, otherwise
   (`advance` / `verify` chain) for auditable investigations.
 - **Compact schema.** The tool surface stays small and every tool is live: e2e spawns the real
   server and walks `/health` -> `tools/list` over HTTP.
-- **Catalog.** `mergedCatalog()` merges 8 conduit + 8 rea prerequisite entries (16 total);
+- **Catalog.** `mergedCatalog()` merges 8 conduit + 9 rea prerequisite entries (17 total);
   `doctor` reports versions and download links from that single source.
 
 ## CLI
@@ -88,7 +90,7 @@ node dist/cli/index.js doctor --json
 
 ## Tests
 
-12 files: 51 unit its plus smoke, namespace, CLI, and e2e lanes. `tsc` is clean.
+22 files: 127 unit its plus smoke, namespace, CLI, and e2e lanes. `tsc` is clean.
 
 ```bash
 node --test tests/             # everything (pass 51, fail 0)
