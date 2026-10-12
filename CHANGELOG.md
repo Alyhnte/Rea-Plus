@@ -3,6 +3,63 @@
 Tüm önemli değişiklikler bu dosyada tutulur. Format: Keep a Changelog + SemVer.
 All notable changes are documented here (Türkçe özet + English detail).
 
+## [0.7.2] — 2026-10-12
+
+Kapsamlı inceleme düzeltmeleri: kırık giriş/yayın yolları, hata zarfı, enjeksiyon
+yüzeyleri, sahte `ok` sonuçları ve motor sağlamlığı. Ara sürümler (0.2.0–0.7.1)
+için `docs/release-v*.md` dosyalarına bakın.
+
+### Düzeltildi / Fixed
+
+- `npm start` artık gerçek girişi (`dist/server.js`) çalıştırıyor; önceki hedef
+  (`dist/facade/createReaPlusServer.js`) transport'suz bir fabrikaydı, sunucu hiç açılmazdı.
+- `npm test` repo dışına işaret eden eski script yerine `scripts/run-tests.mjs` koşuyor;
+  CI artık gerçekten varsayılan kümeyi çalıştırıyor (43 dosya).
+- Hata zarfı: rea araçlarında `ok:false` sonuçları ve fırlayan hatalar artık MCP'ye
+  `isError: true` ile gidiyor; başarı gibi raporlanma bitti.
+- Build, çalışma zamanı dosyalarını da kopyalıyor (`frida-agent.js`, Ghidra `.py` scriptleri);
+  yayın paketinde Frida motoru artık `engine_unavailable` vermiyor. `prepublishOnly` eklendi.
+- Sürüm tek gerçeğe indi: `package.json`, `server.json`, `server.ts` hepsi 0.7.2.
+- Cutter `decompile` yedeği analizsiz `pdf` koşup boş `ok` dönüyordu; artık `aaa;pdf`
+  koşuyor, boş çıktı `capability_unsupported`.
+- `korpus-kur` kişisel Temp kaynakları yoksa izlenen korpusu koruyor (CI'da çökmez);
+  idempotentlik testi ölçümü ikinci koşuda yapıyor.
+
+### Güvenlik / Security
+
+- Adres girdileri şemada ve köprülerde doğrulanıyor (hex/sayı/sembol); r2/rizin
+  komut enjeksiyonu (`;`, `!` kaçışı) kapatıldı.
+- radare2 cmd.exe yolu meta karakterleri reddediyor; kapatma süreç ağacını öldürüyor
+  (r2 torunu yetim kalmıyor).
+- `rea_jeb_sorgu` varsayılanla yalnız loopback'e POST atabiliyor; uzak hedef
+  `REA_JEB_ALLOW_REMOTE=1` ister, link-local/metadata hostları her durumda engelli.
+- HTTP token'ı tanımsızsa sunucu açılışta yüksek sesle uyarıyor (auth devre dışı).
+
+### Dürüstlük / Honesty
+
+- `rea_dotnet_metadata` yalnız MZ'ye bakıp her PE'yi .NET sayıyordu; artık gerçek
+  CLR dizini (DataDirectory[14]) kontrol ediliyor, dış okuyucu şart değil.
+- `rea_pwn_elf_layout` sahte "kuyrukta" `ok`'su yerine `capability_unsupported` dönüyor.
+- `stdout_sha256_kısa` artık gerçekten SHA-256 (önce FNV-1a'ydı); sahte PTY kanalı ve
+  pipe/PTY karşılaştırması kaldırıldı — kanal dürüstçe `pipe`, compare kapıdan döner.
+- `rea_net_capture` verilen localhost URL'i gerçekten hedefliyor; yem sunucu yalnız
+  `data:` girdisinde kurulup özette belirtiliyor.
+
+### Sağlamlık / Robustness
+
+- Frida ajan RPC'leri (`callAgent`, `describe`) timeout'lu; başarısız inject yarım
+  oturum bırakmıyor (detach + map temizliği).
+- Re-open/re-attach eski hedefin checkpoint'larını temizliyor; rewind yanlış sürece
+  geri yazamıyor.
+- Eşzamanlı re-open yarışında üzerine yazılan oturumun debugger'ı yetim kalmıyor
+  (x64dbg/cdb/frida).
+
+### Testler / Tests
+
+- Yeni: `tests/fixes-regression.test.mjs` (12 test) bu düzeltmeleri kilitliyor.
+- Varsayılan küme: 43 dosya / 321 it yeşil. Canlı enjeksiyon/debug ve yerel Ghidra
+  testleri `npm run test:live` altında (VM/CI), ana makinede toplu koşulmaz.
+
 ## [0.1.0] — 2026-10-12
 
 İlk çalışır paket: conduit donduruldu, rea üzerine eklendi.

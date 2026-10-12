@@ -8,7 +8,7 @@ One MCP server for live debugging and static reverse engineering, from app behav
 [![Node.js >= 20](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#quick-start)
 [![171 live tools](https://img.shields.io/badge/tools-171_live-blue?style=flat-square)](#how-it-works)
 [![Catalog 24](https://img.shields.io/badge/catalog-8_conduit_+_16_rea-blue?style=flat-square)](#how-it-works)
-[![Tests passing](https://img.shields.io/badge/tests-398_unit_+_e2e-green?style=flat-square)](#tests)
+[![Tests passing](https://img.shields.io/badge/tests-371_its_+_e2e-green?style=flat-square)](#tests)
 
 See a feature you like. Understand how it works, from the running process down to the binary level.
 
@@ -22,7 +22,7 @@ Requires Node.js >= 20.
 
 ```bash
 npm ci
-npm run build        # tsc -> dist/
+npm run build        # tsc + runtime assets (frida-agent.js, Ghidra scripts) -> dist/
 node dist/server.js                               # stdio (default)
 node dist/server.js --transport http --port 3848 # HTTP
 curl http://127.0.0.1:3848/health
@@ -30,6 +30,8 @@ curl http://127.0.0.1:3848/health
 
 HTTP exposes `POST /mcp` (stateless, JSON responses) and `GET /health`.
 With a token set, send `Authorization: Bearer $DBG_BRIDGE_TOKEN`.
+Without a token, HTTP auth is disabled and the server prints a loud warning; set a token
+before exposing the port beyond a trusted local setup.
 Conduit defaults to port 3847; rea-plus uses 3848 so they never clash.
 
 ### Register with your agent
@@ -56,7 +58,7 @@ Ready-made configs live in `configs/cursor`, `configs/opencode`, and `configs/cl
 | Firmware | Regions, extraction results, native handoffs | binwalk / unblob, Linux-only |
 | JS / Electron bundles | Modules, source maps, diffs, recon summaries | Static only |
 | Websites | HAR imports, recorded scenarios, network observations | Browser HAR / Playwright 1.64.0 |
-| Process behavior | Run records, output comparisons, capability probes | Process capture (PTY) |
+| Process behavior | Run records (exit code, duration, stdout SHA-256), capability probes | Process capture (pipe; real PTY not implemented) |
 | DOS / MIPS / AOT / Go | MZ checks, MIPS pre-scan, NativeAOT signals, Go build info | Static inspection |
 
 ## How it works
@@ -92,15 +94,19 @@ node dist/cli/index.js doctor --json
 
 ## Tests
 
-49 files: 398 unit its plus smoke, namespace, CLI, and e2e lanes. `tsc` is clean.
+50 files, 371 its. The default lane (`npm test`) runs 43 files / 321 its and excludes the
+live-injection/debugger, packet-capture, browser, e2e, and local-Ghidra suites; those touch
+real processes or machine-specific installs and belong to a VM or dedicated CI job
+(`npm run test:live`). The runner caps every file at 90s and tree-kills on timeout. `tsc` is clean.
 
 ```bash
-node --test tests/             # everything (pass 127, fail 0)
+npm test                        # default lane: 43 files (live suites excluded)
+npm run test:live               # everything, incl. frida/sniff/browser/e2e/ghidra (VM/CI only)
 node --test tests/evm.test.mjs # selectors: transfer / approve
 node --test tests/wasm.test.mjs
 node tests/namespace.test.mjs  # prefix + collision lock
 node tests/reaplus.smoke.mjs   # frozen=30, katalog=24
-node tests/e2e.http.mjs        # spawn -> /health -> tools/list
+npm run test:e2e                # spawn -> /health -> tools/list
 ```
 
 Details: `docs/VERIFY.md`, `docs/PLAN-HEPSI.md`, `docs/MCP-CONTRACTS.md`, `CHANGELOG.md`.
@@ -143,7 +149,7 @@ probe, install reasons, config suggest, telemetry), and the rea-plus CLI
 ## Contributing
 
 Open an issue to report a bug or suggest a feature, or send a pull request for code or docs.
-Run `npm run typecheck` and `node --test tests/` before submitting; keep conduit tool names frozen.
+Run `npm run typecheck` and `npm test` before submitting; keep conduit tool names frozen.
 
 ## License
 
