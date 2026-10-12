@@ -1,4 +1,4 @@
-﻿{
+{
   "$schema": "https://static.modelcontextprotocol.io/schemas/2026-01-09/server.schema.json",
   "name": "io.github.reaplus",
   "title": "Reverse Engine Anything Plus",
@@ -51,4 +51,3 @@
     "node": ">=20"
   }
 }
-
