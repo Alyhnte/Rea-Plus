@@ -3,6 +3,35 @@
 Tüm önemli değişiklikler bu dosyada tutulur. Format: Keep a Changelog + SemVer.
 All notable changes are documented here (Türkçe özet + English detail).
 
+## [0.7.3] — 2026-10-12
+
+CI/taşınabilirlik yaması: varsayılan test kümesi artık yazar makinesi dışında da
+(temiz Ubuntu CI, Node 20+22) yeşil. Aynı genelleme ürün koduna da uygulandı:
+araç keşfi yalnız env + PATH, makineye özel sabit yol kalmadı.
+
+### Düzeltildi / Fixed
+
+- Test fixture'ları kişisel Temp yolları yerine repoda izlenen korpusu
+  (`tests/corpus`, `import.meta.url` göreli) okuyor; `korpus-kur` yenilemeyi yalnız
+  `REA_KORPUS_ELF`/`REA_KORPUS_PE` env'iyle yapıyor.
+- Varlık yoklamaları `spawnSync`'in throw etmediğini hesaba katıyor (`r.error`/status):
+  mitmdump olmayan makinede ürün ve test artık kapıyı doğru görüyor (13 sn'lik
+  sahte proxy bekleyişi de kalktı).
+- Araç yokluğunda testler ilkesel davranıyor: wabt/upx/ilspy/dnfile/Chromium yoksa
+  `capability_unsupported` assert'i veya dürüst skip; UPX sürümü artık 5.2.1'e sabitli değil.
+- Ürün araç keşfi genelleşti: `REA_UPX_BIN`, `REA_WABT_BIN`, `REA_AAPT2_BIN` + PATH;
+  kişisel WinGet/`C:\tools` yolları kaldırıldı. .NET CIL python araması
+  `python`/`python3`/`py` sırasını deniyor (Linux'ta genelde yalnız python3 olur).
+- Ghidra proje dizini kişisel yol yerine `os.tmpdir()` altında; Ghidra testleri
+  varsayılan kurulum yolu varsaymıyor (`REA_GHIDRA_DIR` zorunlu, canlı kulvar).
+- CLI testleri node'u PATH'ten değil `process.execPath` ile çağırıyor.
+- Test koşucusu CI tanısı için hata kuyruğunu daha uzun basıyor.
+
+### Doğrulama / Verification
+
+- Yerel: tam PATH ve araçsız (dar PATH) ortamda 43/43; farklı çalışma dizininden koşu da yeşil.
+- CI: Ubuntu Node 20 + 22 yeşil (`fix/inceleme-duzeltmeleri` dalı ve main).
+
 ## [0.7.2] — 2026-10-12
 
 Kapsamlı inceleme düzeltmeleri: kırık giriş/yayın yolları, hata zarfı, enjeksiyon

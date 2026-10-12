@@ -10,7 +10,7 @@ import { registerTools } from "./conduit-core/tools.js";
 import { registerReaTools } from "./server/registerReaTools.js";
 
 export const REA_PLUS_NAME = "rea-plus";
-export const REA_PLUS_VERSION = "0.7.2";
+export const REA_PLUS_VERSION = "0.7.3";
 
 export function createReaPlusMcpServer(): McpServer {
   const server = new McpServer({ name: REA_PLUS_NAME, version: REA_PLUS_VERSION }, { capabilities: { tools: {} } });

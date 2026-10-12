@@ -1,6 +1,6 @@
 {
   "name": "rea-plus",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "Conduit live-debug core + Rea static domains. 30 frozen tools + prefixed rea domains over stdio/HTTP.",
   "type": "module",
   "license": "MIT",
