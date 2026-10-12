@@ -20,6 +20,10 @@ const REA_CATALOG: readonly ReaPlusCatalogEntry[] = [
   { id: "apktool", ad: "Apktool", kaynak: "rea", zorunlu: false, url: "https://apktool.org/", nereye: "apktool launcher, PATH" },
   { id: "wabt", ad: "WABT", kaynak: "rea", zorunlu: false, url: "https://github.com/WebAssembly/wabt", nereye: "wabt 1.0.42, PATH" },
   { id: "binwalk", ad: "Binwalk/Unblob", kaynak: "rea", zorunlu: false, url: "https://github.com/ReFirmLabs/binwalk", nereye: "Linux, PATH" },
+  { id: "dotnet", ad: ".NET SDK/dnfile", kaynak: "rea", zorunlu: false, url: "https://dotnet.microsoft.com/download", nereye: "dotnet CLI + python dnfile (pip install dnfile)" },
+  { id: "adb", ad: "Android Platform-Tools", kaynak: "rea", zorunlu: false, url: "https://developer.android.com/tools/releases/platform-tools", nereye: "adb PATH'te (winget: Google.PlatformTools)" },
+  { id: "playwright", ad: "Playwright+Chromium", kaynak: "rea", zorunlu: false, url: "https://playwright.dev/", nereye: "npm i playwright + npx playwright install chromium" },
+  { id: "rizin", ad: "Rizin/Cutter", kaynak: "rea", zorunlu: false, url: "https://cutter.re/", nereye: "rizin CLI PATH'te (winget: Rizin.Rizin), Cutter GUI opsiyonel" },
 ];
 
 export function mergedCatalog(): ReaPlusCatalogEntry[] {

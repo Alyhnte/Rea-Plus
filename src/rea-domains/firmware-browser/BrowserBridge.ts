@@ -2,8 +2,9 @@
 // REA_CDP_URL yoksa `npx playwright --version` ile kurulum doğrulanır.
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
+import { chromium } from "playwright";
 export type ReaBrResult =
   | { ok: true; tool: string; summary: string; details?: unknown }
   | { ok: false; code: "capability_unsupported"; reason: string };
@@ -55,4 +56,102 @@ export function rea_browser_caps(): ReaBrResult {
   const pw = playwrightVer();
   if (!cdp && !pw) return { ok: false, code: "capability_unsupported", reason: "tarayıcı sürücüsü yok (REA_CDP_URL/Playwright)" };
   return { ok: true, tool: "rea_browser_caps", summary: cdp ? `cdp + ${pw ?? "pw yok"}` : (pw as string), details: { cdp, playwright: pw } };
+}
+
+// Tüm goto/click işlemleri için üst sınır (30sn); ağ yok, data: URL hızlı döner.
+const BROWSER_ZAMAN_ASIMI = 30_000;
+
+// URL kapısı: yalnızca data/http/https kabul edilir, gerisi unsupported döner.
+function gecerliUrl(url: string): boolean {
+  if (!url || typeof url !== "string") return false;
+  try {
+    const u = new URL(url);
+    return u.protocol === "data:" || u.protocol === "http:" || u.protocol === "https:";
+  } catch { return false; }
+}
+
+// Ekran görüntüsü yolu verildiyse ebeveyn klasörü gerçekten oluşturur.
+function ebeveynHazirla(dosya: string): void {
+  mkdirSync(dirname(dosya), { recursive: true }); // shot yolu yoksa açılır
+}
+
+// Gerçek chromium ile sayfaya gider, başlık+url döndürür, istenirse png yazar.
+// Her çağrıda browser kapatılır (sızıntı yok).
+export async function rea_browser_nav(url: string, ciktiShot?: string): Promise<ReaBrResult> {
+  const gate = needBrowser(); // kapı deseni korunur
+  if (gate) return gate;
+  if (!gecerliUrl(url)) return { ok: false, code: "capability_unsupported", reason: `gecersiz url: ${url}` };
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
+  try {
+    browser = await chromium.launch({ headless: true }); // headless shell kullanılır
+    const page = await browser.newPage();
+    await page.goto(url, { timeout: BROWSER_ZAMAN_ASIMI, waitUntil: "domcontentloaded" }); // 30sn sınır
+    const baslik = await page.title(); // sayfa başlığı gerçekten okunur
+    const oankiUrl = page.url();
+    const icerik = await page.content(); // h1 doğrulaması için gerçek DOM
+    let shot: string | null = null;
+    if (ciktiShot) {
+      ebeveynHazirla(ciktiShot);
+      await page.screenshot({ path: ciktiShot }); // png gerçekten yazılır
+      shot = ciktiShot;
+    }
+    return { ok: true, tool: "rea_browser_nav", summary: `${baslik || "(basliksiz)"} -> ${oankiUrl}${shot ? ` + ${shot}` : ""}`, details: { title: baslik, url: oankiUrl, shot, icerik } };
+  } catch (e) {
+    return { ok: false, code: "capability_unsupported", reason: `nav basarisiz: ${(e as Error).message}` };
+  } finally {
+    if (browser) { try { await browser.close(); } catch { /* kapatma hatası yoksayılır */ } } // sızıntı yok
+  }
+}
+
+// Gerçek chromium ile sayfaya gidip seçiciye tıklar, sonrası başlık/url/shot döndürür.
+// Her çağrıda browser kapatılır (sızıntı yok).
+export async function rea_browser_click(url: string, selector: string, ciktiShot?: string): Promise<ReaBrResult> {
+  const gate = needBrowser(); // kapı deseni korunur
+  if (gate) return gate;
+  if (!gecerliUrl(url)) return { ok: false, code: "capability_unsupported", reason: `gecersiz url: ${url}` };
+  if (!selector || typeof selector !== "string") return { ok: false, code: "capability_unsupported", reason: "bos selector" };
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
+  try {
+    browser = await chromium.launch({ headless: true }); // headless shell kullanılır
+    const page = await browser.newPage();
+    await page.goto(url, { timeout: BROWSER_ZAMAN_ASIMI, waitUntil: "domcontentloaded" }); // önce sayfa açılır
+    await page.click(selector, { timeout: BROWSER_ZAMAN_ASIMI }); // gerçek tıklama (inline JS çalışır)
+    const baslik = await page.title(); // tıklama sonrası başlık
+    const oankiUrl = page.url();
+    const icerik = await page.content(); // sayaç artışı buradan doğrulanır
+    let shot: string | null = null;
+    if (ciktiShot) {
+      ebeveynHazirla(ciktiShot);
+      await page.screenshot({ path: ciktiShot }); // sonrası kare yazılır
+      shot = ciktiShot;
+    }
+    return { ok: true, tool: "rea_browser_click", summary: `click ${selector} -> ${baslik || "(basliksiz)"}${shot ? ` + ${shot}` : ""}`, details: { title: baslik, url: oankiUrl, selector, shot, icerik } };
+  } catch (e) {
+    return { ok: false, code: "capability_unsupported", reason: `click basarisiz: ${(e as Error).message}` };
+  } finally {
+    if (browser) { try { await browser.close(); } catch { /* kapatma hatası yoksayılır */ } } // sızıntı yok
+  }
+}
+
+// Gerçek chromium ile sayfanın tam boy png görüntüsünü dosyaya yazar.
+// Her çağrıda browser kapatılır (sızıntı yok).
+export async function rea_browser_shot(url: string, cikti: string): Promise<ReaBrResult> {
+  const gate = needBrowser(); // kapı deseni korunur
+  if (gate) return gate;
+  if (!gecerliUrl(url)) return { ok: false, code: "capability_unsupported", reason: `gecersiz url: ${url}` };
+  if (!cikti || typeof cikti !== "string") return { ok: false, code: "capability_unsupported", reason: "bos cikti yolu" };
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
+  try {
+    browser = await chromium.launch({ headless: true }); // headless shell kullanılır
+    const page = await browser.newPage();
+    await page.goto(url, { timeout: BROWSER_ZAMAN_ASIMI, waitUntil: "domcontentloaded" }); // 30sn sınır
+    ebeveynHazirla(cikti);
+    await page.screenshot({ path: cikti, fullPage: true }); // tam sayfa png
+    const baslik = await page.title();
+    return { ok: true, tool: "rea_browser_shot", summary: `${cikti} (${baslik || "basliksiz"})`, details: { file: cikti, url: page.url(), title: baslik } };
+  } catch (e) {
+    return { ok: false, code: "capability_unsupported", reason: `shot basarisiz: ${(e as Error).message}` };
+  } finally {
+    if (browser) { try { await browser.close(); } catch { /* kapatma hatası yoksayılır */ } } // sızıntı yok
+  }
 }

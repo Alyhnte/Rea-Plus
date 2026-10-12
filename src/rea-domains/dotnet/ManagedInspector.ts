@@ -36,14 +36,24 @@ export function rea_dotnet_metadata(dllYolu: string) {
   return { ok: true as const, arac: "rea_dotnet_metadata", dosya: dllYolu, okuyucu, not: "Yalnızca başlık/metadata, çalıştırma yok" };
 }
 
-// CIL dökümü: metod gövdeleri okunur, kod yürütülmez.
+// CIL dökümü: dnfile ile gerçek metadata okuma, kod yürütülmez.
 export function rea_dotnet_cil(dllYolu: string, tipFiltre?: string) {
   const meta = rea_dotnet_metadata(dllYolu);
   if (!meta.ok) return meta;
-  const args = meta.okuyucu === "monodis"
-    ? ["--method", dllYolu]
-    : ["--version"]; // dotnet SDK varsa gerçek disas alt araca devredilir
-  void args;
-  void tipFiltre; // filtre bir sonraki aşamada monodis --filter ile uygulanır
-  return { ok: true as const, arac: "rea_dotnet_cil", dosya: dllYolu, filtre: tipFiltre ?? null, not: "CIL salt-okunur, yürütme yok" };
+  // dnfile yoksa kapı: sahte liste dönülmez.
+  try {
+    execFileSync("python", ["-c", "import dnfile"], { stdio: "ignore", timeout: 10000 });
+  } catch {
+    return { ok: false as const, code: "capability_unsupported", neden: "dnfile yok (python dnfile gerekli)" };
+  }
+  // Assembly + metod listesi tek python çağrısında JSON döner.
+  const betik = "import dnfile,json,sys; p=sys.argv[1]; f=sys.argv[2] if len(sys.argv)>2 else ''; pe=dnfile.dnPE(p); asm=str(pe.net.mdtables.Assembly.rows[0].Name); adlar=[str(r.Name) for r in pe.net.mdtables.MethodDef.rows]; top=len(adlar); l=[n for n in adlar if f in n] if f else adlar; print(json.dumps({'assembly':asm,'method_sayisi':top,'methods':l[:100]}))";
+  try {
+    const cikti = execFileSync("python", ["-c", betik, dllYolu, tipFiltre ?? ""], { encoding: "utf8", timeout: 30000, maxBuffer: 8 * 1024 * 1024 });
+    const ham = String(cikti);
+    const veri = JSON.parse(ham.slice(ham.indexOf("{")));
+    return { ok: true as const, arac: "rea_dotnet_cil", dosya: dllYolu, filtre: tipFiltre ?? null, assembly: veri.assembly, method_sayisi: veri.method_sayisi, methods: veri.methods, not: "CIL salt-okunur, yürütme yok" };
+  } catch (e) {
+    return { ok: false as const, code: "capability_unsupported", neden: `CIL okunamadı: ${(e as Error)?.message ?? e}` };
+  }
 }

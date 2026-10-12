@@ -6,14 +6,14 @@ One MCP server for live debugging and static reverse engineering, from app behav
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![Node.js >= 20](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#quick-start)
-[![81 live tools](https://img.shields.io/badge/tools-81_live-blue?style=flat-square)](#how-it-works)
-[![Catalog 17](https://img.shields.io/badge/catalog-8_conduit_+_9_rea-blue?style=flat-square)](#how-it-works)
-[![Tests passing](https://img.shields.io/badge/tests-127_unit_+_e2e-green?style=flat-square)](#tests)
+[![121 live tools](https://img.shields.io/badge/tools-121_live-blue?style=flat-square)](#how-it-works)
+[![Catalog 21](https://img.shields.io/badge/catalog-8_conduit_+_13_rea-blue?style=flat-square)](#how-it-works)
+[![Tests passing](https://img.shields.io/badge/tests-198_unit_+_e2e-green?style=flat-square)](#tests)
 
 See a feature you like. Understand how it works, from the running process down to the binary level.
 
 rea-plus fuses a frozen live-debug core (conduit) with rea-style static domains behind a single MCP surface:
-30 frozen conduit tools plus 51 rea tools, 81 live and verified end to end over real HTTP.
+30 frozen conduit tools plus 91 rea tools, 121 live and verified end to end over real HTTP.
 Analysis runs locally; findings carry evidence and state their limits.
 
 ## Quick start
@@ -67,13 +67,13 @@ Live-debug operations that mutate target state require `confirm:true`, otherwise
 
 - **Frozen core.** The 30 conduit tool names are immutable, locked by `src/facade/toolNamespace.ts`
   (`FROZEN_CONDUIT_TOOLS.length === 30`). Renaming is forbidden, so conduit clients keep working.
-- **rea domains.** 51 `rea_*` tools register centrally (`src/server/registerReaTools.ts`).
+- **rea domains.** 91 `rea_*` tools register centrally (`src/server/registerReaTools.ts`).
   Missing backends answer `capability_unsupported` with an install hint; nothing fakes a result.
 - **Evidence.** Runs can emit an evidence bundle plus an obligation ledger
   (`advance` / `verify` chain) for auditable investigations.
 - **Compact schema.** The tool surface stays small and every tool is live: e2e spawns the real
   server and walks `/health` -> `tools/list` over HTTP.
-- **Catalog.** `mergedCatalog()` merges 8 conduit + 9 rea prerequisite entries (17 total);
+- **Catalog.** `mergedCatalog()` merges 8 conduit + 13 rea prerequisite entries (21 total);
   `doctor` reports versions and download links from that single source.
 
 ## CLI
@@ -92,14 +92,14 @@ node dist/cli/index.js doctor --json
 
 ## Tests
 
-22 files: 127 unit its plus smoke, namespace, CLI, and e2e lanes. `tsc` is clean.
+29 files: 198 unit its plus smoke, namespace, CLI, and e2e lanes. `tsc` is clean.
 
 ```bash
 node --test tests/             # everything (pass 127, fail 0)
 node --test tests/evm.test.mjs # selectors: transfer / approve
 node --test tests/wasm.test.mjs
 node tests/namespace.test.mjs  # prefix + collision lock
-node tests/reaplus.smoke.mjs   # frozen=30, katalog=17
+node tests/reaplus.smoke.mjs   # frozen=30, katalog=21
 node tests/e2e.http.mjs        # spawn -> /health -> tools/list
 ```
 
