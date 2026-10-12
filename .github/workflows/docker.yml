@@ -43,6 +43,16 @@ jobs:
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
             type=ref,event=branch
 
+      - name: Smoke (elle tetiklemede imaji gercekten calistir)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          docker build -t rea-plus:smoke .
+          printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}' > /tmp/init.jsonl
+          timeout 25 docker run --rm -i rea-plus:smoke < /tmp/init.jsonl > /tmp/out.txt 2>/tmp/err.txt || true
+          cat /tmp/out.txt
+          cat /tmp/err.txt
+          grep -q 'rea-plus' /tmp/out.txt
+
       - name: Build (ve kosula gore push)
         uses: docker/build-push-action@v6
         with:

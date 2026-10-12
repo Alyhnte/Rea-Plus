@@ -5,3 +5,10 @@ tests
 docs
 *.md
 .github
+.env
+.env.*
+coverage
+*.log
+*.tgz
+Dockerfile*
+docker-compose*.yml
