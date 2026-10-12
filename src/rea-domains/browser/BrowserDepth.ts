@@ -1,6 +1,14 @@
 // rea-domains/browser: depolama + konsol derinliği (gerçek chromium)
 // data: URL ile offline test edilir; her çağrıda browser kapatılır (sızıntı yok).
-import { chromium } from "playwright";
+// Playwright opsiyonel bağımlılık: paket kurulumunda yoksa sunucu yine açılır,
+// tarayıcı araçları kapıdan döner. Bu yüzden statik import yerine tembel shim.
+type Chromium = (typeof import("playwright"))["chromium"];
+const chromium = {
+  async launch(...args: Parameters<Chromium["launch"]>) {
+    const pw = await import("playwright");
+    return pw.chromium.launch(...args);
+  },
+};
 
 export type ReaBrDerinlikSonuç =
   | { ok: true; tool: string; summary: string; details?: unknown }

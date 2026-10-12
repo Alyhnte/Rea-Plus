@@ -1,0 +1,24 @@
+# Smithery / registry metadata: https://smithery.ai/docs/config#smitheryyaml
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      dbgBridgeToken:
+        type: string
+        description: Optional bearer token for the HTTP transport (DBG_BRIDGE_TOKEN). Not needed for stdio.
+      ghidraDir:
+        type: string
+        description: Optional Ghidra installation directory (REA_GHIDRA_DIR) for provider-backed analysis.
+  exampleConfig:
+    dbgBridgeToken: ""
+    ghidraDir: ""
+  commandFunction: |-
+    (config) => ({
+      command: 'node',
+      args: ['dist/server.js'],
+      env: {
+        DBG_BRIDGE_TOKEN: config.dbgBridgeToken || '',
+        REA_GHIDRA_DIR: config.ghidraDir || ''
+      }
+    })

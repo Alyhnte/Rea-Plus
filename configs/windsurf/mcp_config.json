@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "rea-plus": {
+      "command": "npx",
+      "args": ["-y", "github:Alyhnte/ReaPlus"]
+    }
+  }
+}

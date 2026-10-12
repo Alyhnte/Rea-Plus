@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "rea-plus": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "github:Alyhnte/ReaPlus"]
+    }
+  }
+}

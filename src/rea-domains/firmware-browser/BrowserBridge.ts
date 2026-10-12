@@ -4,7 +4,15 @@ import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
-import { chromium } from "playwright";
+// Playwright opsiyonel bağımlılık: paket kurulumunda yoksa sunucu yine açılır,
+// tarayıcı araçları kapıdan döner. Bu yüzden statik import yerine tembel shim.
+type Chromium = (typeof import("playwright"))["chromium"];
+const chromium = {
+  async launch(...args: Parameters<Chromium["launch"]>) {
+    const pw = await import("playwright");
+    return pw.chromium.launch(...args);
+  },
+};
 export type ReaBrResult =
   | { ok: true; tool: string; summary: string; details?: unknown }
   | { ok: false; code: "capability_unsupported"; reason: string };
