@@ -20,6 +20,7 @@ import { rea_r2_callgraph, rea_r2_esil, rea_r2_debug } from "../rea-domains/r2pl
 import { rea_frida_pause, rea_frida_resume, rea_frida_step, rea_frida_cond, rea_frida_stalker } from "../rea-domains/frida-plus/FridaPlus.js";
 import { rea_frida_api } from "../rea-domains/frida-plus/ApiTracer.js";
 import { rea_upx_info, rea_upx_unpack, rea_ilspy_decompile, rea_unpack_try } from "../rea-domains/unpack/Unpack.js";
+import { rea_unpack_hunt } from "../rea-domains/unpack/UnpackHunt.js";
 import { rea_net_capture } from "../rea-domains/behavior/NetCapture.js";
 import { rea_behavior_timeline } from "../rea-domains/behavior/BehaviorTimeline.js";
 import { rea_browser_scenario, rea_browser_har_import, rea_browser_caps, rea_browser_nav, rea_browser_click, rea_browser_shot } from "../rea-domains/firmware-browser/BrowserBridge.js";
@@ -138,6 +139,7 @@ const R: Array<[string, string, any, H]> = [
   ["rea_upx_unpack", "UPX açma.", z.object({ path: z.string().min(1), out: z.string().min(1) }), (a) => rea_upx_unpack(a.path, a.out)],
   ["rea_ilspy_decompile", ".NET C# decompile.", z.object({ path: z.string().min(1), out: z.string().min(1) }), (a) => rea_ilspy_decompile(a.path, a.out)],
   ["rea_unpack_try", "Otomatik unpack yönlendirme.", P, (a) => rea_unpack_try(a.path)],
+  ["rea_unpack_hunt", "Bilinmeyen packer rehberli akışı.", P, (a) => rea_unpack_hunt(a.path)],
   ["rea_net_capture", "Yerel ağ yakalama (HAR).", z.object({ url: z.string().min(1) }), (a) => rea_net_capture(a.url)],
   ["rea_behavior_timeline", "Olay çizelgesi + özet.", z.object({ olaylar: z.string().min(1) }), (a) => {
     const p = jsonParse<any[]>("rea_behavior_timeline", a.olaylar); if ("err" in p) return p.err;
