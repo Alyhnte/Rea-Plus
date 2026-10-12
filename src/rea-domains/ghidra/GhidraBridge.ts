@@ -15,7 +15,7 @@ for (const ad of ["rea_ghidra_vt", "rea_ghidra_trace"] as const) {
 const ZAMAN_ASIMI = 300_000;
 const MAKS_TAMPON = 16 * 1024 * 1024;
 // Ephemeral proje: her koşuda import edilir, iş bitince silinir.
-const PROJE_DIZIN = "C:\\Users\\kngal\\AppData\\Local\\Temp\\opencode\\ghidra-proj";
+const PROJE_DIZIN = join(tmpdir(), "rea-ghidra-proj");
 const PROJE_ADI = "rea_tmp";
 type Engel = { ok: false; code: "capability_unsupported" | "unsupported"; neden: string };
 // Betik dizini: önce src (dev), sonra dist — tsc .py kopyalamaz.

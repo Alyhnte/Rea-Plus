@@ -1,12 +1,13 @@
 // tests/ghidra-full.test.mjs: Ghidra gerçek headless uçtan-uca testleri (mock YOK).
 // Koş: npm run build sonrası `node tests/ghidra-full.test.mjs` (her test 300sn timeout).
 // Fixture: conduit/examples/target/mini_branch.elf (entry 0x400200, 10 op, HELLO-FIXTURE).
-// Not: REA_GHIDRA_DIR yoksa varsayılan C:\tools\ghidra\ghidra_12.1.4_PUBLIC kullanılır.
+// Not: REA_GHIDRA_DIR zorunludur (makineye özel varsayılan yol yoktur).
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import {
   GHIDRA_TOOLS,
@@ -16,9 +17,9 @@ import {
 } from "../dist/rea-domains/ghidra/GhidraProvider.js";
 
 // Gerçek hedef (yoksa testler fail-safe unsupported yerine açık hata verir).
-const ELF = "C:\\Users\\kngal\\AppData\\Local\\Temp\\opencode\\conduit\\examples\\target\\mini_branch.elf";
+const ELF = join(dirname(fileURLToPath(import.meta.url)), "corpus", "mini_branch.elf");
 // Varsayılan kurulum dizini (env yoksa yedek).
-const VARSAYILAN_DIR = "C:\\tools\\ghidra\\ghidra_12.1.4_PUBLIC";
+const VARSAYILAN_DIR = ""; // varsayılan kurulum yolu yok: REA_GHIDRA_DIR tanımlayın
 // JDK adayları (Ghidra 12 headless JRE ile açılmaz, JDK 21 şart).
 const JDK_ADAYLARI = [
   "C:\\Program Files\\Microsoft\\jdk-21.0.12.101-hotspot",

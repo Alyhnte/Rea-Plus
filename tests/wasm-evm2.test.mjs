@@ -2,10 +2,15 @@
 // Koş: node --test tests/wasm-evm2.test.mjs
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { rea_wasm_validate, rea_evm_disasm } from "../dist/rea-domains/wasm-evm/EvmTools.js";
+
+// wabt (wasm-validate) var mı? Yoksa validate testleri kapı beklentisine düşer.
+// spawnSync bulunamayan komutta throw etmez; r.error/status bakılır.
+const wabtVar = [process.env.REA_WABT_BIN, "wasm-validate"].filter(Boolean).some((b) => { try { const r = spawnSync(b, ["--version"], { stdio: "ignore" }); return !r.error && r.status === 0; } catch { return false; } });
 
 // Geçici dosya yardımcısı: hex dizgiyi gerçek bayta çevirir (Buffer ise aynen yazar).
 function gecici(ad, bayt) {
@@ -19,6 +24,7 @@ describe("rea_wasm_validate (gerçek wabt)", () => {
   // En küçük geçerli WASM başlığı wasm-validate'den geçmeli.
   it("geçerli başlık geçerli döner", () => {
     const yol = gecici("gecerli.wasm", "0061736d01000000");
+    if (!wabtVar) { const k = rea_wasm_validate(yol); assert.equal(k.ok, false); assert.equal(k.code, "capability_unsupported"); return; }
     const r = rea_wasm_validate(yol);
     assert.equal(r.ok, true);
     assert.equal(r.detay.gecerli, true);
@@ -26,6 +32,7 @@ describe("rea_wasm_validate (gerçek wabt)", () => {
   // Bozuk dosya WASM değildir: kal (invalid_wasm) kodu beklenir.
   it("bozuk dosya invalid_wasm verir", () => {
     const yol = gecici("bozuk.wasm", Buffer.from("not a wasm"));
+    if (!wabtVar) { const k = rea_wasm_validate(yol); assert.equal(k.ok, false); assert.equal(k.code, "capability_unsupported"); return; }
     const r = rea_wasm_validate(yol);
     assert.equal(r.ok, false);
     assert.equal(r.code, "invalid_wasm");

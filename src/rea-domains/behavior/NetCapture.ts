@@ -14,8 +14,9 @@ export type ReaNetSonuç =
   | { ok: true; tool: string; summary: string; kayıt: { url: string; har: string; bayt: number } }
   | { ok: false; code: "capability_unsupported"; reason: string };
 // mitmdump PATH'te mi? Yoksa yakalama yapılamaz (stub yok, kapı dön).
+// Not: spawnSync bulunamayan komutta throw etmez; r.error/status bakılır.
 function mitmTamam(): boolean {
-  try { spawnSync("mitmdump", ["--version"], { stdio: "ignore" }); return true; }
+  try { const r = spawnSync("mitmdump", ["--version"], { stdio: "ignore" }); return !r.error && r.status === 0; }
   catch { return false; }
 }
 // Kısa uyku (ms): proxy açılışı ve dosya yazımı payı.

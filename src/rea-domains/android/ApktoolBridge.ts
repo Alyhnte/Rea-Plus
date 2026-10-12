@@ -11,9 +11,9 @@ export const APKTOOL_TOOLS = [
   "rea_apktool_caps",
 ] as const;
 
-// aapt2 konumu: build-tools 34.0.0 sabiti önce, PATH yedeği sonra
+// aapt2 konumu: REA_AAPT2_BIN env'i önce, PATH sonra (makineye özel sabit yol yok)
 // (apktool build yeniden paketlerken aapt2 çağırır).
-const AAPT2_SABIT = "C:\\tools\\android-sdk\\build-tools\\34.0.0\\aapt2.exe";
+const AAPT2_ENV = process.env.REA_AAPT2_BIN ?? "";
 
 // apktool launcher koşusu (gerçek exec, stub yok).
 // Windows'ta apktool bir .bat'tir: doğrudan spawn edilemez (ENOENT/EINVAL),
@@ -85,9 +85,9 @@ export function rea_apktool_info() {
   return { ok: true as const, arac: "rea_apktool_info", surum };
 }
 
-// aapt2 yolu: sabit kurulum önce, PATH yedeği sonra.
+// aapt2 yolu: REA_AAPT2_BIN önce (varsa ve mevcutsa), PATH sonra.
 function aapt2Yolu(): string | null {
-  if (existsSync(AAPT2_SABIT)) return AAPT2_SABIT;
+  if (AAPT2_ENV && existsSync(AAPT2_ENV)) return AAPT2_ENV;
   const r = spawnSync("aapt2", ["version"], {
     encoding: "utf8",
     timeout: 30_000,
@@ -124,7 +124,7 @@ export function rea_apktool_build(projeDir: string, ciktiApk: string) {
   if (!projeDir || !ciktiApk) return { ok: false as const, code: "capability_unsupported", neden: "Proje dizini ve çıktı APK yolu gerekli" };
   const engel = kapi();
   if (engel) return engel;
-  if (!aapt2Tamam()) return { ok: false as const, code: "capability_unsupported", neden: `aapt2 bulunamadı (${AAPT2_SABIT} yok, PATH'te de yok)` };
+  if (!aapt2Tamam()) return { ok: false as const, code: "capability_unsupported", neden: "aapt2 bulunamadı (PATH'e aapt2 kurun veya REA_AAPT2_BIN tanımlayın)" };
   if (!existsSync(projeDir)) return { ok: false as const, code: "capability_unsupported", neden: `Proje dizini yok: ${projeDir}` };
   const { durum, cikti } = apktoolKos(["b", "-o", ciktiApk, projeDir]);
   if (durum !== 0) throw new Error(`apktool build başarısız (kod=${durum}): ${cikti.trim().slice(-500)}`);

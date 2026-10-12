@@ -36,7 +36,7 @@ async function hazirBekle() {
 }
 // Ana akış: spawn et, iki kapıyı yokla, her durumda öldür.
 async function main() {
-  const c = spawn("node", [giris, "--transport", "http", "--port", String(PORT)], {
+  const c = spawn(process.execPath, [giris, "--transport", "http", "--port", String(PORT)], {
     stdio: ["ignore", "pipe", "pipe"],
   });
   c.stdout.on("data", () => {}); // boru dolup kilitlemesin

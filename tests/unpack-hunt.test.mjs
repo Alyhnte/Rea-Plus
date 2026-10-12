@@ -1,9 +1,11 @@
 // unpack-hunt testleri (node:test). Gerçek upx + CoreLib üstünde.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { rea_unpack_hunt } from "../dist/rea-domains/unpack/UnpackHunt.js";
 
-const ELF = "C:/Users/kngal/AppData/Local/Temp/opencode/conduit/examples/target/mini_branch.elf";
+const ELF = join(dirname(fileURLToPath(import.meta.url)), "corpus", "mini_branch.elf");
 
 test("upx sıkışık değilse dotnet/dump yoluna gider", () => {
   const r = rea_unpack_hunt(ELF);

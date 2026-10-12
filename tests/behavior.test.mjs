@@ -10,7 +10,7 @@ import { rea_behavior_timeline } from "../dist/rea-domains/behavior/BehaviorTime
 import { NET_TOOLS, rea_net_capture } from "../dist/rea-domains/behavior/NetCapture.js";
 
 // mitmdump var mı? Yoksa net testi kapı beklentisine düşer (skip yerine gate).
-const mitmVar = (() => { try { spawnSync("mitmdump", ["--version"], { stdio: "ignore" }); return true; } catch { return false; } })();
+const mitmVar = (() => { try { const r = spawnSync("mitmdump", ["--version"], { stdio: "ignore" }); return !r.error && r.status === 0; } catch { return false; } })(); // spawnSync yoksa throw etmez
 // Olay kurucu: kaynak/zaman/detay üçlüsü.
 const olay = (kaynak, zaman, detay) => ({ kaynak, zaman, detay });
 

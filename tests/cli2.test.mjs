@@ -14,8 +14,8 @@ import { fileURLToPath } from "node:url";
 const kok = dirname(dirname(fileURLToPath(import.meta.url)));
 // CLI girişi: derlenmiş index.js (tsc emit sonrası var olmalı).
 const cli = join(kok, "dist", "cli", "index.js");
-// GERÇEK fixture: conduit mini PE (x64, kernel32!ExitProcess).
-const GERCek_PE = "C:\\Users\\kngal\\AppData\\Local\\Temp\\opencode\\conduit\\plugin\\x64dbg\\test\\mini_pe_x64.exe";
+// GERÇEK fixture: repoda izlenen korpus mini PE (x64, kernel32!ExitProcess).
+const GERCek_PE = join(kok, "tests", "corpus", "mini_pe_x64.exe");
 // Sahte Go metni: buildid + pclntab izleri + func sembolleri.
 const SAHTE_GO = "Go buildinf: go1.22.1\nruntime.gopclntab\nruntime.pclnametab\nmain.main.func1\nmain.a.go:10\nmain.b.go:20\n";
 // Geçici dosya yolları: test başında doldurulur.
@@ -29,7 +29,7 @@ let MINIMAL_WASM = "";
 // CLI'yi çalıştır, stdout + exit kodunu birlikte döndür.
 function kos(args) {
   try {
-    const out = execFileSync("node", [cli, ...args], { encoding: "utf8" });
+    const out = execFileSync(process.execPath, [cli, ...args], { encoding: "utf8" }); // PATH'e değil, çalışan node'a güven
     return { out, kod: 0 };
   } catch (h) {
     return { out: `${h.stdout ?? ""}${h.stderr ?? ""}`, kod: h.status ?? 1 };

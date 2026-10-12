@@ -3,10 +3,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { rea_investigate } from "../dist/facade/investigate.js";
 
-const ELF = "C:/Users/kngal/AppData/Local/Temp/opencode/conduit/examples/target/mini_branch.elf";
+const ELF = join(dirname(fileURLToPath(import.meta.url)), "corpus", "mini_branch.elf");
 
 test("elf soruşturması radare2 planı kurar", () => {
   const r = rea_investigate(ELF, "ne yapıyor?");

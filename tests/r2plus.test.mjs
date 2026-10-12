@@ -4,10 +4,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { R2PLUS_TOOLS, r2Tamam, r2Json, rea_r2_callgraph, rea_r2_esil, rea_r2_debug } from "../dist/rea-domains/r2plus/R2Plus.js";
 // Gerçek hedef: conduit örneği (entry0=0x400200, 4 blok).
-const ELF = "C:\\Users\\kngal\\AppData\\Local\\Temp\\opencode\\conduit\\examples\\target\\mini_branch.elf";
-const YOK = "C:\\yok\\olmayan-hedef.elf";
+const DIZIN = dirname(fileURLToPath(import.meta.url));
+const ELF = join(DIZIN, "corpus", "mini_branch.elf");
+const YOK = join(DIZIN, "corpus", "olmayan-hedef.elf");
 const BP = "0x400200";
 // Mocksuz gerçek kapı: bu makinedeki radare2 durumu.
 const VAR = r2Tamam();

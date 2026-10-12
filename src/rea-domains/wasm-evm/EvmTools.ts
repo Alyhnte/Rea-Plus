@@ -3,11 +3,11 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 // Sonuç birliği: başarılı analiz ya da kapı/bozuk bilgisi.
 export type EvmSonuc = { ok: true; arac: string; ozet: string; detay?: unknown } | { ok: false; code: string; neden: string };
-// wasm-validate adayları: env öncelikli, sonra bilinen kurulum yolu.
+// wasm-validate adayları: env (REA_WABT_BIN) öncelikli, sonra PATH. Makineye özel sabit yol yok.
 function adaylar(): string[] {
   const e = process.env.REA_WABT_BIN;
-  const sabit = "C:\\tools\\wabt\\bin\\wasm-validate.exe";
-  return e ? [e, sabit, "wasm-validate"] : [sabit, "wasm-validate"];
+  // (Eski sabit kurulum yolu kaldırıldı; REA_WABT_BIN veya PATH kullanılır.)
+  return e ? [e, "wasm-validate"] : ["wasm-validate"];
 }
 // WASM doğrulama: yoksa kapı, bozuksa invalid_wasm, sağlamsa geçerli.
 export function rea_wasm_validate(yol: string): EvmSonuc {

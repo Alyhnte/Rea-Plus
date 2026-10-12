@@ -81,7 +81,7 @@ for (const f of files) {
     console.log(`PASS ${ad} (${r.ms}ms)`);
   } else {
     fails.push(ad);
-    const tail = r.out.trim().split(/\r?\n/).slice(-5).join(" | ").slice(0, 500);
+    const tail = r.out.trim().split(/\r?\n/).slice(-30).join(" | ").slice(0, 3000);
     console.log(`FAIL(${r.code}) ${ad} (${r.ms}ms) :: ${tail}`);
   }
 }

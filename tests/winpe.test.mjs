@@ -4,11 +4,12 @@ import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { rea_pe_info, rea_pe_imports, rea_pe_sections } from "../dist/rea-domains/winpe/PeReader.js";
 
 // Gerçek fixture: conduit x64dbg mini PE (x64, tek .text, kernel32!ExitProcess).
-const PE = "C:\\Users\\kngal\\AppData\\Local\\Temp\\opencode\\conduit\\plugin\\x64dbg\\test\\mini_pe_x64.exe";
+const PE = join(dirname(fileURLToPath(import.meta.url)), "corpus", "mini_pe_x64.exe");
 let DUZ = "";
 
 before(() => {

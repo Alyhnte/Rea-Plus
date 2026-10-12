@@ -4,10 +4,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { CUTTER_TOOLS, cutterTamam, rea_cutter_caps, rea_cutter_funcs, rea_cutter_disasm, rea_cutter_xrefs, rea_cutter_strings, rea_cutter_decompile } from "../dist/rea-domains/cutter/CutterBridge.js";
 // Gerçek hedef: conduit örneği (yoksa fail-safe assert, skip yok).
-const ELF = "C:\\Users\\kngal\\AppData\\Local\\Temp\\opencode\\conduit\\examples\\target\\mini_branch.elf";
-const YOK = "C:\\yok\\olmayan-hedef.elf";
+const DIZIN = dirname(fileURLToPath(import.meta.url));
+const ELF = join(DIZIN, "corpus", "mini_branch.elf");
+const YOK = join(DIZIN, "corpus", "olmayan-hedef.elf");
 // Mocksuz gerçek kapı: bu makinedeki rizin durumu.
 const VAR = cutterTamam();
 // Fail-safe: dosya yoksa skip değil, capability_unsupported assert edilir.

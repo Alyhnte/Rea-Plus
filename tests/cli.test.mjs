@@ -17,7 +17,7 @@ function assert(kosul, mesaj) {
 // CLI'yi çalıştır, stdout + exit kodunu birlikte döndür.
 function kos(args) {
   try {
-    const out = execFileSync("node", [cli, ...args], { encoding: "utf8" });
+    const out = execFileSync(process.execPath, [cli, ...args], { encoding: "utf8" }); // PATH'e değil, çalışan node'a güven
     return { out, kod: 0 };
   } catch (h) {
     return { out: `${h.stdout ?? ""}${h.stderr ?? ""}`, kod: h.status ?? 1 };

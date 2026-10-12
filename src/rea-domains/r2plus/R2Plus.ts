@@ -25,7 +25,7 @@ type Engel = { ok: false; code: "capability_unsupported"; neden: string };
 function giris(hedef: string): { bin: string } | Engel {
   if (!hedef) return { ok: false, code: "capability_unsupported", neden: "hedef boş" };
   const bin = r2Bin();
-  if (!bin) return { ok: false, code: "capability_unsupported", neden: "radare2 PATH'te yok (C:\\tools\\r2)" };
+  if (!bin) return { ok: false, code: "capability_unsupported", neden: "radare2 PATH'te yok" };
   if (!existsSync(hedef)) return { ok: false, code: "capability_unsupported", neden: `hedef yok: ${hedef}` };
   return { bin };
 }

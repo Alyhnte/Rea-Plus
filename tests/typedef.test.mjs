@@ -4,13 +4,14 @@ import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { rea_pdb_yolu } from "../dist/rea-domains/typedef/PdbReader.js";
 import { rea_dwarf_ozet } from "../dist/rea-domains/typedef/DwarfReader.js";
 import { rea_typedef_oner } from "../dist/rea-domains/typedef/TypeSpread.js";
 
 // Gerçek fixture: debug dizinsiz mini PE (PDB kaydı yok -> bulunamadı notu).
-const PE = "C:\\Users\\kngal\\AppData\\Local\\Temp\\opencode\\conduit\\plugin\\x64dbg\\test\\mini_pe_x64.exe";
+const PE = join(dirname(fileURLToPath(import.meta.url)), "corpus", "mini_pe_x64.exe");
 let DUZ = "", ELF = "", BOS_ELF = "";
 
 // Sahte ELF64 yaz: .shstrtab + .debug_abbrev + .debug_info (tek CU, iki subprogram).

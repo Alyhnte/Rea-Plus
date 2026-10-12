@@ -9,9 +9,10 @@ import { deflateRawSync } from "node:zlib";
 const kok = dirname(dirname(fileURLToPath(import.meta.url)));
 // Korpus dizini yoksa kurulur (recursive: ikinci koşuda zararsız).
 const corpusDir = join(kok, "tests", "corpus");
-// Kaynak ikililer: conduit tarafındaki gerçek dosyalar, aynen kopyalanır.
-const KAYNAK_ELF = "C:\\Users\\kngal\\AppData\\Local\\Temp\\opencode\\conduit\\examples\\target\\mini_branch.elf";
-const KAYNAK_PE = "C:\\Users\\kngal\\AppData\\Local\\Temp\\opencode\\conduit\\plugin\\x64dbg\\test\\mini_pe_x64.exe";
+// Kaynak ikililer: yalnız env ile verilirse kopyalanır (REA_KORPUS_ELF / REA_KORPUS_PE);
+// tanımlı değilse repoda izlenen korpus dosyaları kanoniktir, dokunulmaz.
+const KAYNAK_ELF = process.env.REA_KORPUS_ELF ?? "";
+const KAYNAK_PE = process.env.REA_KORPUS_PE ?? "";
 // Hedef yollar: korpusun kanonik 5 dosyası.
 const HEDEF_ELF = join(corpusDir, "mini_branch.elf");
 const HEDEF_PE = join(corpusDir, "mini_pe_x64.exe");
@@ -120,8 +121,8 @@ module.exports = { selamla, VARSAYILAN, fs };
 mkdirSync(corpusDir, { recursive: true });
 // Gerçek ikililer kaynak varsa aynen kopyalanır. Kaynaklar yazar makinesine özel
 // yollardır; yoklarsa repoda izlenen korpus dosyaları korunur (CI'da kopya hatası düşürmez).
-if (existsSync(KAYNAK_ELF)) copyFileSync(KAYNAK_ELF, HEDEF_ELF); else console.log("ATLANDI: kaynak yok, izlenen korpus korundu mini_branch.elf");
-if (existsSync(KAYNAK_PE)) copyFileSync(KAYNAK_PE, HEDEF_PE); else console.log("ATLANDI: kaynak yok, izlenen korpus korundu mini_pe_x64.exe");
+if (KAYNAK_ELF && existsSync(KAYNAK_ELF)) copyFileSync(KAYNAK_ELF, HEDEF_ELF); else console.log("ATLANDI: REA_KORPUS_ELF yok, izlenen korpus korundu mini_branch.elf");
+if (KAYNAK_PE && existsSync(KAYNAK_PE)) copyFileSync(KAYNAK_PE, HEDEF_PE); else console.log("ATLANDI: REA_KORPUS_PE yok, izlenen korpus korundu mini_pe_x64.exe");
 // Türetilenler her koşuda aynı baytlarla yeniden yazılır.
 writeFileSync(HEDEF_APK, apkBaytlariniUret());
 writeFileSync(HEDEF_WASM, wasmBaytlariniUret());

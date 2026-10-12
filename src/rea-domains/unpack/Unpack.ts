@@ -8,10 +8,10 @@ const ZAMAN = 120_000; // ilspy CoreLib ~20sn sürer, pay bırak.
 const TAMPON = 16 * 1024 * 1024;
 type Engel = { ok: false; code: "capability_unsupported"; neden: string };
 function engel(neden: string): Engel { return { ok: false, code: "capability_unsupported", neden }; }
-// UPX adayı: PATH + WinGet konumu (5.2.1 winget, PATH'te yoksa buradan bulunur).
+const UPX_YOK = "upx yok (PATH'e upx kurun veya REA_UPX_BIN tanımlayın)";
+// UPX adayı: env (REA_UPX_BIN) öncelikli, sonra PATH. Makineye özel sabit yol yok.
 function upxBin(): string | null {
-  const sabit = "C:\\Users\\kngal\\AppData\\Local\\Microsoft\\WinGet\\Packages\\UPX.UPX_Microsoft.Winget.Source_8wekyb3d8bbwe\\upx-5.2.1-win64\\upx.exe";
-  const aday = process.env.REA_UPX_BIN ? [process.env.REA_UPX_BIN, "upx", sabit] : ["upx", sabit];
+  const aday = process.env.REA_UPX_BIN ? [process.env.REA_UPX_BIN, "upx"] : ["upx"];
   for (const b of aday) { try { execFileSync(b, ["--version"], { stdio: "ignore" }); return b; } catch { /* sıradaki */ } }
   return null;
 }
@@ -20,7 +20,7 @@ export function upxTamam(): boolean { return upxBin() !== null; }
 // UPX liste: sıkışık mı? (`upx -l`, NotPacked => sıkışık değil bilgisi).
 export function rea_upx_info(yol: string) {
   if (!yol) return engel("yol boş");
-  const bin = upxBin(); if (!bin) return engel("upx yok (winget: UPX.UPX 5.2.1)");
+  const bin = upxBin(); if (!bin) return engel(UPX_YOK);
   if (!existsSync(yol)) return engel(`dosya yok: ${yol}`);
   try { const ham = String(execFileSync(bin, ["-l", yol], { encoding: "utf8", timeout: ZAMAN, maxBuffer: TAMPON })); return { ok: true as const, arac: "rea_upx_info", dosya: yol, sikisik: true, cikti: ham.slice(0, 2000) }; }
   catch (e) { const m = String((e as Error)?.message ?? e) + String((e as { stderr?: unknown }).stderr ?? ""); if (m.toLowerCase().includes("not packed")) return { ok: true as const, arac: "rea_upx_info", dosya: yol, sikisik: false, not: "UPX ile sıkışık değil" }; return engel(`upx -l hatası: ${m.slice(0, 500)}`); }
@@ -28,7 +28,7 @@ export function rea_upx_info(yol: string) {
 // UPX aç: sıkışık değilse sessiz kapı (`upx -d -o`, fussuz unsupported).
 export function rea_upx_unpack(yol: string, cikti: string) {
   if (!yol || !cikti) return engel("yol/cikti boş");
-  const bin = upxBin(); if (!bin) return engel("upx yok (winget: UPX.UPX 5.2.1)");
+  const bin = upxBin(); if (!bin) return engel(UPX_YOK);
   if (!existsSync(yol)) return engel(`dosya yok: ${yol}`);
   try { const ham = String(execFileSync(bin, ["-d", "-o", cikti, yol], { encoding: "utf8", timeout: ZAMAN, maxBuffer: TAMPON })); return { ok: true as const, arac: "rea_upx_unpack", dosya: yol, cikti, log: ham.slice(0, 1000) }; }
   catch (e) { return engel(`açılamadı (sıkışık değil olabilir): ${String((e as Error)?.message ?? e).slice(0, 500)}`); }
@@ -40,7 +40,7 @@ export function rea_ilspy_decompile(dllYolu: string, ciktiDir: string) {
   if (!dllYolu || !ciktiDir) return engel("dllYolu/ciktiDir boş");
   if (!existsSync(dllYolu)) return engel(`dosya yok: ${dllYolu}`);
   try { execFileSync("ilspycmd", ["--version"], { stdio: "ignore", timeout: 15000 }); }
-  catch { return engel("ilspycmd yok (dotnet tool, 11.1.0 gerekli)"); }
+  catch { return engel("ilspycmd yok (dotnet tool: dotnet tool install -g ilspycmd)"); }
   try { mkdirSync(ciktiDir, { recursive: true }); execFileSync("ilspycmd", ["-o", ciktiDir, "-p", dllYolu], { encoding: "utf8", timeout: ZAMAN, maxBuffer: TAMPON }); const n = csSay(ciktiDir); return { ok: true as const, arac: "rea_ilspy_decompile", dosya: dllYolu, ciktiDir, cs_sayisi: n, not: "C# salt-okunur, yürütme yok" }; }
   catch (e) { return engel(`ilspy hatası: ${String((e as Error)?.message ?? e).slice(0, 500)}`); }
 }

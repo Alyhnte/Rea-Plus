@@ -48,20 +48,25 @@ export function rea_dotnet_metadata(dllYolu: string) {
   return { ok: true as const, arac: "rea_dotnet_metadata", dosya: dllYolu, clr: true as const, okuyucu, not: "CLR dizini doğrulandı; yalnızca başlık/metadata, çalıştırma yok" };
 }
 
+// dnfile'lı python bul: adaylar sırayla denenir (Linux'ta genelde yalnız python3 olur).
+function pyBul(): string | null {
+  for (const b of ["python", "python3", "py"]) {
+    try { execFileSync(b, ["-c", "import dnfile"], { stdio: "ignore", timeout: 10000 }); return b; } catch { /* sıradaki */ }
+  }
+  return null;
+}
+
 // CIL dökümü: dnfile ile gerçek metadata okuma, kod yürütülmez.
 export function rea_dotnet_cil(dllYolu: string, tipFiltre?: string) {
   const meta = rea_dotnet_metadata(dllYolu);
   if (!meta.ok) return meta;
   // dnfile yoksa kapı: sahte liste dönülmez.
-  try {
-    execFileSync("python", ["-c", "import dnfile"], { stdio: "ignore", timeout: 10000 });
-  } catch {
-    return { ok: false as const, code: "capability_unsupported", neden: "dnfile yok (python dnfile gerekli)" };
-  }
+  const py = pyBul();
+  if (!py) return { ok: false as const, code: "capability_unsupported", neden: "dnfile yok (python dnfile gerekli)" };
   // Assembly + metod listesi tek python çağrısında JSON döner.
   const betik = "import dnfile,json,sys; p=sys.argv[1]; f=sys.argv[2] if len(sys.argv)>2 else ''; pe=dnfile.dnPE(p); asm=str(pe.net.mdtables.Assembly.rows[0].Name); adlar=[str(r.Name) for r in pe.net.mdtables.MethodDef.rows]; top=len(adlar); l=[n for n in adlar if f in n] if f else adlar; print(json.dumps({'assembly':asm,'method_sayisi':top,'methods':l[:100]}))";
   try {
-    const cikti = execFileSync("python", ["-c", betik, dllYolu, tipFiltre ?? ""], { encoding: "utf8", timeout: 30000, maxBuffer: 8 * 1024 * 1024 });
+    const cikti = execFileSync(py, ["-c", betik, dllYolu, tipFiltre ?? ""], { encoding: "utf8", timeout: 30000, maxBuffer: 8 * 1024 * 1024 });
     const ham = String(cikti);
     const veri = JSON.parse(ham.slice(ham.indexOf("{")));
     return { ok: true as const, arac: "rea_dotnet_cil", dosya: dllYolu, filtre: tipFiltre ?? null, assembly: veri.assembly, method_sayisi: veri.method_sayisi, methods: veri.methods, not: "CIL salt-okunur, yürütme yok" };

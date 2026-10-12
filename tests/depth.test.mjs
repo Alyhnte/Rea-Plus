@@ -7,6 +7,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { rea_fs_diff, rea_fs_snapshot } from "../dist/rea-domains/process/FsJournal.js";
 import { rea_console_yakala, rea_storage_dump } from "../dist/rea-domains/browser/BrowserDepth.js";
+import { chromium } from "playwright";
+
+// Chromium indirilmiş mi? Yoksa browser testleri kapı beklentisine düşer
+// (CI'da playwright browser'ları ayrıca indirilmez).
+// Ürün headless shell ile açar; kapı da aynı yoldan yoklar (executablePath tam build'e bakar, yanıltır).
+const tarayiciVar = await (async () => { try { const b = await chromium.launch({ headless: true }); await b.close(); return true; } catch { return false; } })();
 import { rea_js_export_shape, rea_js_require } from "../dist/rea-domains/javascript/JsDepth.js";
 
 // Taze tmp dizini üretir (repo kirlenmez).
@@ -154,6 +160,7 @@ describe("rea_storage_dump (gerçek chromium)", () => {
   it("data URL deposunu okur (çerez+localStorage şekli)", async () => {
     const url = dataUrl("<html><head><title>Depo</title></head><body><p>selam</p></body></html>");
     const r = await rea_storage_dump(url);
+    if (!tarayiciVar) { assert.equal(r.ok, false); assert.equal(r.code, "capability_unsupported"); return; }
     assert.equal(r.ok, true);
     assert.equal(r.tool, "rea_storage_dump");
     assert.ok(Array.isArray(r.details.cookies), "cookies dizi olmalı");
@@ -176,6 +183,7 @@ describe("rea_console_yakala (gerçek chromium)", () => {
   it("console.log iletisini yakalar", async () => {
     const url = dataUrl("<html><body><script>console.log('merhaba-konsol');console.warn('dikkat-konsol');</script></body></html>");
     const r = await rea_console_yakala(url, 800);
+    if (!tarayiciVar) { assert.equal(r.ok, false); assert.equal(r.code, "capability_unsupported"); return; }
     assert.equal(r.ok, true);
     assert.equal(r.tool, "rea_console_yakala");
     const metinler = r.details.mesajlar.map((m) => m.metin);
