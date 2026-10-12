@@ -51,6 +51,12 @@ import { rea_fs_snapshot, rea_fs_diff } from "../rea-domains/process/FsJournal.j
 import { rea_storage_dump, rea_console_yakala } from "../rea-domains/browser/BrowserDepth.js";
 import { rea_js_require, rea_js_export_shape } from "../rea-domains/javascript/JsDepth.js";
 import { rea_investigate } from "../facade/investigate.js";
+import { rea_dosya_izi, rea_registry_izi } from "../rea-domains/behavior/FileRegProfiles.js";
+import { rea_behavior_full } from "../rea-domains/behavior/BehaviorFull.js";
+import { rea_pdb_yolu } from "../rea-domains/typedef/PdbReader.js";
+import { rea_dwarf_ozet } from "../rea-domains/typedef/DwarfReader.js";
+import { rea_typedef_oner } from "../rea-domains/typedef/TypeSpread.js";
+import { rea_scan_repo } from "../rea-domains/reposcan/RepoScan.js";
 
 const P = z.object({ path: z.string().min(1) });
 const J = z.object({ text: z.string().min(1) });
@@ -246,6 +252,24 @@ const R: Array<[string, string, any, H]> = [
   ["rea_js_require", "Require/import grafı.", P, (a) => rea_js_require(a.path)],
   ["rea_js_export_shape", "Export şekli.", P, (a) => rea_js_export_shape(a.path)],
   ["rea_investigate", "Otomatik soruşturma planı (sniff+skor+yedek).", z.object({ path: z.string().min(1), soru: z.string().optional() }), (a) => rea_investigate(a.path, a.soru ?? "")],
+  ["rea_dosya_izi", "API olaylarından dosya yazma/okuma.", J, (a) => {
+    const p = jsonParse<any[]>("rea_dosya_izi", a.text); if ("err" in p) return p.err;
+    return rea_dosya_izi(p.v);
+  }],
+  ["rea_registry_izi", "API olaylarından registry yazma.", J, (a) => {
+    const p = jsonParse<any[]>("rea_registry_izi", a.text); if ("err" in p) return p.err;
+    return rea_registry_izi(p.v);
+  }],
+  ["rea_behavior_full", "Tek çağrıda davranış raporu.", z.object({ api: z.string().min(1), net: z.string().optional() }), (a) => {
+    const pa = jsonParse<any[]>("rea_behavior_full", a.api); if ("err" in pa) return pa.err;
+    const pn = a.net ? jsonParse<any[]>("rea_behavior_full", a.net) : null;
+    if (pn && "err" in pn) return pn.err;
+    return rea_behavior_full(pa.v, pn ? pn.v : undefined);
+  }],
+  ["rea_pdb_yolu", "PE debug dizininden PDB yolu.", P, (a) => rea_pdb_yolu(a.path)],
+  ["rea_dwarf_ozet", "ELF DWARF özeti.", P, (a) => rea_dwarf_ozet(a.path)],
+  ["rea_typedef_oner", "Argüman adı önerisi + yayılım.", J, (a) => rea_typedef_oner(a.text)],
+  ["rea_scan_repo", "Repo taraması (tip+plan).", P, (a) => rea_scan_repo(a.path)],
 ];
 
 export function registerReaTools(server: McpServer): void {

@@ -5,7 +5,7 @@ import { mergedCatalog } from "./catalogMerge.js";
 import { FROZEN_CONDUIT_TOOLS } from "./toolNamespace.js";
 
 export const REA_PLUS_NAME = "rea-plus";
-export const REA_PLUS_VERSION = "0.5.0";
+export const REA_PLUS_VERSION = "0.6.0";
 export const REA_PLUS_PROTOCOL = PROTOCOL_VERSION;
 
 export function createReaPlusServer() {

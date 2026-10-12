@@ -1,0 +1,20 @@
+# rea-plus .npmignore — yayin disi birakilacaklar.
+# NOT: derleme ciktisi yayina GIRER, bu yuzden burada dislanmaz.
+node_modules/
+src/
+tests/
+.git/
+.github/
+coverage/
+.env
+*.log
+*.tsbuildinfo
+__pycache__/
+*.pyc
+.DS_Store
+*.local.md
+local-tools/
+tools-local/
+C-tools-notes/
+.vscode/
+.idea/

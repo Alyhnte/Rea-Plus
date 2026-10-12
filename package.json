@@ -1,1 +1,68 @@
-{"author":"","bin":{"rea-plus":"./dist/server.js","rea-plus-cli":"./dist/cli/index.js"},"dependencies":{"@modelcontextprotocol/node":"^2.0.0","@modelcontextprotocol/server":"^2.0.0","frida":"^17.18.0","js-sha3":"^0.13.0","zod":"^4.1.12"},"description":"Conduit live-debug core + Rea static domains. 30 frozen tools + prefixed rea domains over stdio/HTTP.","devDependencies":{"@types/node":"^24.5.2","playwright":"^1.64.0","typescript":"^5.9.2"},"engines":{"node":">=20"},"license":"MIT","name":"rea-plus","scripts":{"build":"tsc","cli":"node dist/cli/index.js","start":"node dist/facade/createReaPlusServer.js","test":"node ../conduit/tests/run_golden.mjs","test:e2e":"node tests/e2e.http.mjs","typecheck":"tsc --noEmit"},"type":"module","version":"0.5.0"}
+{
+  "name": "rea-plus",
+  "version": "0.6.0",
+  "description": "Conduit live-debug core + Rea static domains. 30 frozen tools + prefixed rea domains over stdio/HTTP.",
+  "type": "module",
+  "license": "MIT",
+  "author": "",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "rea-plus": "./dist/server.js",
+    "rea-plus-cli": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "cli": "node dist/cli/index.js",
+    "start": "node dist/facade/createReaPlusServer.js",
+    "test": "node ../conduit/tests/run_golden.mjs",
+    "test:e2e": "node tests/e2e.http.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/node": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "frida": "^17.18.0",
+    "js-sha3": "^0.13.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "playwright": "^1.64.0",
+    "typescript": "^5.9.2"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE",
+    "server.json",
+    "configs/"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "ghidra",
+    "cutter",
+    "jadx",
+    "apktool",
+    "wasm",
+    "evm",
+    "firmware",
+    "playwright",
+    "mcp",
+    "mcp-server",
+    "reverse-engineering",
+    "frida",
+    "debugger"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Alyhnte/ReaPlus"
+  },
+  "homepage": "https://github.com/Alyhnte/ReaPlus",
+  "bugs": {
+    "url": "https://github.com/Alyhnte/ReaPlus/issues"
+  }
+}

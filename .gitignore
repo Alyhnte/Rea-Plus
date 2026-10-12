@@ -7,3 +7,6 @@ coverage/
 .DS_Store
 # Derleme artığı (tsc incremental açık değil ama yine de dışarıda tutulur).
 *.tsbuildinfo
+# Python artığı (Ghidra scriptleri yanında üretilir).
+__pycache__/
+*.pyc

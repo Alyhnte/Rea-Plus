@@ -7,7 +7,7 @@ npm run typecheck   # tsc --noEmit, hata vermemeli
 npm run build       # tsc -> dist/
 ```
 
-## 2) Testler (tests/, 43 dosya, 339 it)
+## 2) Testler (tests/, 48 dosya, 395 it)
 
 ```powershell
 node --test tests/auth.test.mjs
@@ -39,17 +39,36 @@ node --test tests/fridaplus.test.mjs
 node --test tests/browser2.test.mjs
 node tests/cli.test.mjs
 node tests/e2e.http.mjs
+node --test tests/behavior.test.mjs
+node --test tests/behavior-full.test.mjs
+node --test tests/typedef.test.mjs
+node --test tests/reposcan.test.mjs
+node --test tests/corpus.test.mjs
+node --test tests/publish.test.mjs
+node --test tests/investigate.test.mjs
+node --test tests/apple.test.mjs
+node --test tests/cli2.test.mjs
+node --test tests/depth.test.mjs
+node --test tests/flutter.test.mjs
+node --test tests/frida-api.test.mjs
+node --test tests/go-wasm-evm-dos.test.mjs
+node --test tests/harmony.test.mjs
+node --test tests/managed-workflow.test.mjs
+node --test tests/provider-crash.test.mjs
+node --test tests/readiness.test.mjs
+node --test tests/unpack.test.mjs
+node --test tests/winpe.test.mjs
 ```
 
-Tek komut: `node --test tests/` (43 dosya koşar).
-`namespace` + `smoke` + `cli` + `e2e` assert-tipidir (`it` sayılmaz); 39 dosyada 339 `it` vardır.
+Tek komut: `node --test tests/` (48 dosya koşar).
+`namespace` + `smoke` + `cli` + `e2e` assert-tipidir (`it` sayılmaz); 44 dosyada 395 `it` vardır.
 
 ## 3) Beklenen yeşil çıktı
 
 - `namespace`: `OK: health->rea_health disassemble->rea_disassemble`
 - `smoke`: `OK: transfer=0xa9059cbb approve=0x095ea7b3` + `OK: frozen=30 katalog=24`
 - `evm`: `transfer(address,uint256) -> 0xa9059cbb` davası geçer.
-- `node --test`: `pass 339, fail 0` (assert dosyaları ayrıca exit 0).
+- `node --test`: `pass 395, fail 0` (assert dosyaları ayrıca exit 0).
 
 ## 4) Golden satır-sonu notu
 
