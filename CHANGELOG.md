@@ -3,6 +3,29 @@
 Tüm önemli değişiklikler bu dosyada tutulur. Format: Keep a Changelog + SemVer.
 All notable changes are documented here (Türkçe özet + English detail).
 
+## [0.7.4] — 2026-10-13
+
+Dağıtım yaması: başkalarının kurulumu kolaylaştı; tüketiciyi kilitleyen bir paket
+hatası düzeltildi. README baştan yazıldı (tek-tık kurulumlar, mimari diyagramı,
+istemci matrisi), tam yol haritası `docs/ROADMAP.md`'de.
+
+### Düzeltildi / Fixed
+
+- Playwright artık opsiyonel ve tembel yükleniyor. Önceden `devDependencies`'teyken
+  ürün kodu onu statik import ediyordu: paketi kuran herkes açılışta
+  `ERR_MODULE_NOT_FOUND` alıyordu. Sunucu Playwright'sız açılır, tarayıcı araçları
+  `capability_unsupported` döner. Tarayıcı için: `npm i playwright && npx playwright install chromium`.
+
+### Eklendi / Added
+
+- `prepare` scripti: git kurulumları (`npx -y github:Alyhnte/ReaPlus`) dist'i otomatik derler.
+- Tek-tık kurulum bağlantıları (Cursor, VS Code) + istemci config örnekleri:
+  Claude Desktop/Code, Cursor, VS Code, Windsurf, Codex, opencode (`configs/`).
+- `Dockerfile` + GHCR workflow'u: release'lerde `ghcr.io/alyhnte/reaplus` imajı basılır.
+- `smithery.yaml` registry metadata'sı; config örneklerindeki kişisel yollar temizlendi.
+- Görsel README (rozetler, Mermaid mimari, env tablosu, güvenlik modeli) ve
+  `docs/ROADMAP.md` (9 temalı, önceliklendirilmiş tam tablo).
+
 ## [0.7.3] — 2026-10-12
 
 CI/taşınabilirlik yaması: varsayılan test kümesi artık yazar makinesi dışında da

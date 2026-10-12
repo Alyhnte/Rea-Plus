@@ -1,9 +1,9 @@
-{
+﻿{
   "$schema": "https://static.modelcontextprotocol.io/schemas/2026-01-09/server.schema.json",
   "name": "io.github.reaplus",
   "title": "Reverse Engine Anything Plus",
   "description": "Conduit live-debug core (30 frozen tools) + Rea static domains over MCP. Stdio first, optional streamable HTTP. Run with npx: npx -y rea-plus",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -25,7 +25,7 @@
     {
       "registryType": "npm",
       "identifier": "rea-plus",
-      "version": "0.7.3",
+      "version": "0.7.4",
       "transport": {
         "type": "stdio"
       }
@@ -51,3 +51,4 @@
     "node": ">=20"
   }
 }
+
