@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// rea-plus çalışır MCP sunucusu: conduit 30 + 98 rea tool (stdio/HTTP).
+// rea-plus çalışır MCP sunucusu: conduit 30 + 141 rea tool = 171 (stdio/HTTP).
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import { localhostHostValidation, localhostOriginValidation, toNodeHandler } from "@modelcontextprotocol/node";
@@ -10,12 +10,12 @@ import { registerTools } from "./conduit-core/tools.js";
 import { registerReaTools } from "./server/registerReaTools.js";
 
 export const REA_PLUS_NAME = "rea-plus";
-export const REA_PLUS_VERSION = "0.7.0";
+export const REA_PLUS_VERSION = "0.7.2";
 
 export function createReaPlusMcpServer(): McpServer {
   const server = new McpServer({ name: REA_PLUS_NAME, version: REA_PLUS_VERSION }, { capabilities: { tools: {} } });
   registerTools(server); // conduit 30 araç (isimler dondurulmuş)
-  registerReaTools(server); // 98 rea aracı (merkezi gerçek kayıt)
+  registerReaTools(server); // 141 rea aracı (merkezi gerçek kayıt)
   return server;
 }
 
@@ -28,6 +28,9 @@ function authed(auth: string | undefined, want: string): boolean {
 }
 // HTTP: conduit mantığı (/health + /mcp), fabrika rea-plus.
 export function startHttp(o: Opts): void {
+  if (o.token === undefined) {
+    console.error("[rea-plus] UYARI: DBG_BRIDGE_TOKEN tanımsız; HTTP kimlik doğrulaması DEVRE DIŞI. Bu yüzey süreç çalıştırma/debug araçları içerir — token tanımlayın veya yalnız güvenilir yerel kullanımda tutun.");
+  }
   const h = createMcpHandler(() => createReaPlusMcpServer(), { legacy: "stateless", responseMode: "json" });
   const nh = toNodeHandler(h);
   const vh = localhostHostValidation(); const vo = localhostOriginValidation();

@@ -28,12 +28,12 @@ export function rea_go_version(binHead: string): ReaGpResult {
   return { ok: true, tool: "rea_go_version", summary: m[0], details: { version: m[0] } };
 }
 
-// ELF layout girişi (iskelet, gerçek pwntools çağrısı WP4d'de).
+// ELF layout: gerçek pwntools çağrısı henüz uygulanmadı; sahte "kuyrukta" ok'su yerine dürüst kapı.
 export function rea_pwn_elf_layout(elfPath: string): ReaGpResult {
   const gate = needPython();
   if (gate) return gate;
   if (!elfPath) return { ok: false, code: "capability_unsupported", reason: "elf yolu boş" };
-  return { ok: true, tool: "rea_pwn_elf_layout", summary: `${elfPath} pwntools kuyruğunda` };
+  return { ok: false, code: "capability_unsupported", reason: "pwntools ELF layout henüz uygulanmadı (iskelet); sahte özet dönülmez" };
 }
 
 // ROP adayı iskeleti: metin içinde "gadget:" satırlarını sayar.

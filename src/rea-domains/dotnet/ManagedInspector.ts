@@ -16,24 +16,36 @@ function okuyucuBul(): string | null {
   return null;
 }
 
-// PE imzası + CLR bayrağı hızlı kontrolü (ilk 2 bayt MZ olmalı).
-function peMi(yol: string): boolean {
+// Gerçek .NET tespiti: PE optional header'daki CLR dizini (DataDirectory[14]) dolu mu?
+// Yalnız MZ bakmak her native PE'yi .NET sanır; karar bu kontrole dayanır.
+function clrDurumu(yol: string): "dotnet" | "native" | "pe-degil" {
   try {
     const buf = readFileSync(yol);
-    return buf.length > 2 && buf[0] === 0x4d && buf[1] === 0x5a;
+    if (buf.length < 0x40 || buf[0] !== 0x4d || buf[1] !== 0x5a) return "pe-degil"; // MZ yok
+    const peOff = buf.readUInt32LE(0x3c);
+    if (peOff + 24 > buf.length || buf.toString("latin1", peOff, peOff + 4) !== "PE\0\0") return "pe-degil";
+    const optBoyu = buf.readUInt16LE(peOff + 20);
+    const opt = peOff + 24;
+    if (optBoyu < 2 || opt + optBoyu > buf.length) return "native";
+    const magic = buf.readUInt16LE(opt);
+    const dizinBas = magic === 0x20b ? opt + 112 : magic === 0x10b ? opt + 96 : -1; // PE32+ / PE32
+    if (dizinBas < 0) return "native";
+    if (buf.readUInt32LE(dizinBas - 4) < 15) return "native"; // CLR girdisi (14) yok
+    return buf.readUInt32LE(dizinBas + 14 * 8) !== 0 ? "dotnet" : "native";
   } catch {
-    return false;
+    return "pe-degil";
   }
 }
 
 // Assembly metadata: hedef çalıştırılmadan başlık okuma.
 export function rea_dotnet_metadata(dllYolu: string) {
-  const okuyucu = okuyucuBul();
-  if (!okuyucu) return { ok: false as const, code: "capability_unsupported", neden: "dotnet/monodis/ikdasm yok (metadata okuyucu gerekli)" };
+  const okuyucu = okuyucuBul(); // bilgi amaçlı; karar CLR kontrolünde, şart değil
+  const durum = existsSync(dllYolu) ? clrDurumu(dllYolu) : "pe-degil";
   if (!existsSync(dllYolu)) return { ok: false as const, code: "capability_unsupported", neden: `Dosya yok: ${dllYolu}` };
-  if (!peMi(dllYolu)) return { ok: false as const, code: "capability_unsupported", neden: "PE imzası yok (MZ bulunamadı)" };
+  if (durum === "pe-degil") return { ok: false as const, code: "capability_unsupported", neden: "PE imzası yok (MZ/PE bulunamadı)" };
+  if (durum === "native") return { ok: false as const, code: "capability_unsupported", neden: "CLR başlığı yok (native PE, .NET değil)" };
   // Not: burada sadece bilgi okunur, assembly yüklenip çalıştırılmaz.
-  return { ok: true as const, arac: "rea_dotnet_metadata", dosya: dllYolu, okuyucu, not: "Yalnızca başlık/metadata, çalıştırma yok" };
+  return { ok: true as const, arac: "rea_dotnet_metadata", dosya: dllYolu, clr: true as const, okuyucu, not: "CLR dizini doğrulandı; yalnızca başlık/metadata, çalıştırma yok" };
 }
 
 // CIL dökümü: dnfile ile gerçek metadata okuma, kod yürütülmez.

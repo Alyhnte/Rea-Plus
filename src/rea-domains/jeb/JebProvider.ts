@@ -83,6 +83,15 @@ export function rea_jeb_sorgu(hazirUrl: string, yontem: string, govdeJson = ""):
       coz({ ok: false as const, code: "capability_unsupported" as const, neden: `geçersiz MCP URL: ${hazirUrl}` });
       return;
     }
+    // SSRF kapısı: çağıran kontrollü URL varsayılanla yalnız loopback'e gidebilir;
+    // uzak hedef işletmecinin açık opt-in'i (REA_JEB_ALLOW_REMOTE=1) ister, link-local/metadata her durumda engelli.
+    const host = u.hostname.toLowerCase();
+    const yerel = host === "localhost" || host === "::1" || host.startsWith("127.");
+    const linkLocal = host.startsWith("169.254.") || host === "metadata.google.internal";
+    if (linkLocal || (!yerel && process.env.REA_JEB_ALLOW_REMOTE !== "1")) {
+      coz({ ok: false as const, code: "capability_unsupported" as const, neden: `hedef host engelli (yalnız loopback; uzak için REA_JEB_ALLOW_REMOTE=1): ${host}` });
+      return;
+    }
     if (!yontem || !yontem.trim()) {
       coz({ ok: false as const, code: "capability_unsupported" as const, neden: "yontem boş" });
       return;

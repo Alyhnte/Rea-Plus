@@ -36,14 +36,16 @@ function proxyGet(pport: number, hedef: string, ms: number): Promise<number> {
 }
 // Eklenti: her yanıtta HAR'ı hemen yazar (kapanış beklenmez). Repo dışına, geçici dizine yazılır.
 const EKLENTİ = `import os\nfrom mitmproxy.addons.savehar import SaveHar\n_k=SaveHar()\n_a=[]\ndef response(flow):\n    y=os.environ.get("REA_HAR_YOL","")\n    if not y or getattr(flow,"websocket",None) is not None:\n        return\n    _a.append(flow)\n    _k.export_har(_a,y)\n`;
-// Yakalama: yerel yem sunucu + mitmdump; HAR dosyasını assert eder.
+// Yakalama: verilen localhost URL mitmdump üstünden gerçekten çağrılır;
+// yem sunucu yalnız data: girdisinde (çağrılabilir URL yokken) kurulur ve özette belirtilir.
 export async function rea_net_capture(url: string, sure_sn = 15, ciktiHar = "net.har"): Promise<ReaNetSonuç> {
   if (!url || typeof url !== "string" || !yerelMi(url)) return { ok: false, code: "capability_unsupported", reason: `desteklenmeyen hedef (yalnız data:/localhost): ${url}` };
   if (!mitmTamam()) return { ok: false, code: "capability_unsupported", reason: "mitmdump PATH'te yok (mitmproxy 12.x gerekli)" };
-  const srv = createServer((_req, res) => { res.writeHead(200, { "content-type": "text/plain" }); res.end("rea-ok"); }); // Dış ağ yok: yem yerelde.
-  await new Promise<void>((ok) => srv.listen(0, "127.0.0.1", () => ok()));
-  const adres = srv.address();
-  const hedef = `http://127.0.0.1:${typeof adres === "object" && adres ? adres.port : 80}/`;
+  const yemGerek = url.startsWith("data:");
+  const srv = yemGerek ? createServer((_req, res) => { res.writeHead(200, { "content-type": "text/plain" }); res.end("rea-ok"); }) : null;
+  if (srv) await new Promise<void>((ok) => srv.listen(0, "127.0.0.1", () => ok()));
+  const adres = srv?.address();
+  const hedef = yemGerek ? `http://127.0.0.1:${typeof adres === "object" && adres ? adres.port : 80}/` : url;
   const eklenti = join(tmpdir(), `rea-har-${process.pid}.py`);
   writeFileSync(eklenti, EKLENTİ, "utf8");
   const pport = 18080 + Math.floor(Math.random() * 200); // Port çakışmasına karşı rastgele proxy portu.
@@ -53,13 +55,13 @@ export async function rea_net_capture(url: string, sure_sn = 15, ciktiHar = "net
   const bütçe = Math.min(Math.max(sure_sn, 3), 15) * 1000;
   let kod = 0, hata = açık ? "" : "proxy açılmadı";
   for (let i = 0; i < 3 && açık && !kod; i++) { try { kod = await proxyGet(pport, hedef, bütçe); } catch (e) { hata = (e as Error).message; } }
-  await uyu(1500); izle.kill(); srv.close(); // HAR zaten yazıldı; süreçleri kapat.
+  await uyu(1500); izle.kill(); srv?.close(); // HAR zaten yazıldı; süreçleri kapat.
   try { rmSync(eklenti, { force: true }); } catch { /* geçici eklenti temizliği */ }
   if (!kod) return { ok: false, code: "capability_unsupported", reason: `proxy isteği başarısız: ${hata}` };
   try {
     const ham = readFileSync(ciktiHar, "utf8"); // HAR üretildi mi?
     const bayt = statSync(ciktiHar).size;
     if (bayt === 0 || !ham.includes("\"log\"")) return { ok: false, code: "capability_unsupported", reason: "HAR üretilemedi (eklenti yazmadı)" };
-    return { ok: true, tool: "rea_net_capture", summary: `${hedef} -> ${ciktiHar} (${bayt} bayt, HTTP ${kod})`, kayıt: { url: hedef, har: ciktiHar, bayt } };
+    return { ok: true, tool: "rea_net_capture", summary: `${hedef} -> ${ciktiHar} (${bayt} bayt, HTTP ${kod})${yemGerek ? " [data: girdisi; trafik yerel yeme]" : ""}`, kayıt: { url: hedef, har: ciktiHar, bayt } };
   } catch { return { ok: false, code: "capability_unsupported", reason: "HAR dosyası okunamadı" }; }
 }

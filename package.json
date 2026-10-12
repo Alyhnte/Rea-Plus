@@ -1,6 +1,6 @@
 {
   "name": "rea-plus",
-  "version": "0.6.0",
+  "version": "0.7.2",
   "description": "Conduit live-debug core + Rea static domains. 30 frozen tools + prefixed rea domains over stdio/HTTP.",
   "type": "module",
   "license": "MIT",
@@ -13,10 +13,13 @@
     "rea-plus-cli": "./dist/cli/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/copy-assets.mjs",
     "cli": "node dist/cli/index.js",
-    "start": "node dist/facade/createReaPlusServer.js",
-    "test": "node ../conduit/tests/run_golden.mjs",
+    "start": "node dist/server.js",
+    "prepublishOnly": "npm run build",
+    "test": "node scripts/run-tests.mjs",
+    "test:live": "node scripts/run-tests.mjs --live",
+    "test:golden": "node ../conduit/tests/run_golden.mjs",
     "test:e2e": "node tests/e2e.http.mjs",
     "typecheck": "tsc --noEmit"
   },

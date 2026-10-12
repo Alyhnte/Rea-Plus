@@ -1,12 +1,14 @@
-// rea-domains/firmware-browser: PTY süreç yakalama (process capture)
-// Koşu çıktısı boru (pipe) ile PTY yan yana karşılaştırılır; fark kanıta işlenir.
+// rea-domains/firmware-browser: süreç yakalama (process capture)
+// Koşu çıktısı boru (pipe) ile alınır. Gerçek PTY uygulanmadı; PTY etiketiyle
+// sahte fark raporlanmaz — kanal her zaman "pipe", karşılaştırma kapıdan döner.
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 
 export type ReaProcSonuç =
   | { ok: true; tool: string; summary: string; kayıt: ProcKaydı }
   | { ok: false; code: "capability_unsupported"; reason: string };
 
-// Tek koşu kaydı: komut + süre + çıkış + kullanılan kanal (pty/pipe).
+// Tek koşu kaydı: komut + süre + çıkış + kullanılan kanal (şimdilik yalnız pipe).
 export interface ProcKaydı {
   komut: string;
   args: string[];
@@ -16,27 +18,23 @@ export interface ProcKaydı {
   stdout_sha256_kısa: string;
 }
 
-// Koşu seçenekleri: pty varsayılan kapalı, zaman aşımı 15sn ile sınırlı.
+// Koşu seçenekleri: pty bayrağı ileride gerçek PTY gelirse diye durur (bugün etkisiz), zaman aşımı 15sn.
 export interface ProcKoşuSeçenek {
   args?: string[];
   pty?: boolean;
   zaman_aşımı_ms?: number;
 }
 
-// Kısa özet hash'i: çıktının tamamı değil ilk 16 hanesi kanıta girer.
+// Kısa özet hash'i: gerçek SHA-256'nın ilk 16 hanesi kanıta girer (alan adı bunu vaat eder).
 function kısaHash(text: string): string {
-  // Bağımlılıksız FNV-1a; kanıt karşılaştırmasına yetecek kadar ayırt edicidir.
-  let h = 0x811c9dc5;
-  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193); }
-  return (h >>> 0).toString(16).padStart(8, "0") + text.length.toString(16);
+  return createHash("sha256").update(text).digest("hex").slice(0, 16);
 }
 
-// PTY koşusu: pty bayrağı yalnız Linux'ta anlamlıdır, diğer hostta pipe'a düşer.
+// Süreç koşusu: spawnSync boru kanalı tek destektir; pty istense bile kanal pipe raporlanır.
 export function rea_process_run(komut: string, opts: ProcKoşuSeçenek = {}): ReaProcSonuç {
   if (!komut) return { ok: false, code: "capability_unsupported", reason: "komut boş" };
   const args = opts.args ?? [];
-  // Windows/macOS'ta PTY taklidi yok; boru kanalı tek destektir.
-  const kanal: "pty" | "pipe" = opts.pty && process.platform === "linux" ? "pty" : "pipe";
+  const kanal: "pty" | "pipe" = "pipe";
   const baş = Date.now();
   const r = spawnSync(komut, args, { timeout: opts.zaman_aşımı_ms ?? 15000, encoding: "utf8", shell: false });
   const kayıt: ProcKaydı = {
@@ -46,22 +44,14 @@ export function rea_process_run(komut: string, opts: ProcKoşuSeçenek = {}): Re
   return { ok: true, tool: "rea_process_run", summary: `${komut} [${kanal}] kod=${r.status}`, kayıt };
 }
 
-// Karşılaştırma: aynı komut pipe + pty ile koşturulur, özet hash'ler yan yana konur.
+// Karşılaştırma: gerçek PTY (node-pty vb.) yokken pipe'ı iki kez koşup fark uydurulmaz.
 export function rea_process_compare(komut: string, args: string[] = []): ReaProcSonuç {
-  // Linux dışı hostta karşılaştırma anlamsızdır; handoff önerilir.
-  if (process.platform !== "linux") {
-    return { ok: false, code: "capability_unsupported", reason: `pty karşılaştırma yalnız Linux (platform=${process.platform})` };
-  }
-  const a = rea_process_run(komut, { args, pty: false });
-  const b = rea_process_run(komut, { args, pty: true });
-  if (!a.ok || !b.ok) return { ok: false, code: "capability_unsupported", reason: "koşu başarısız" };
-  const aynı = a.kayıt.stdout_sha256_kısa === b.kayıt.stdout_sha256_kısa;
-  const kayıt: ProcKaydı = { ...b.kayıt, komut: `${komut} (pipe=${a.kayıt.stdout_sha256_kısa} pty=${b.kayıt.stdout_sha256_kısa})` };
-  return { ok: true, tool: "rea_process_compare", summary: aynı ? "çıktılar aynı" : "çıktılar FARKLI", kayıt };
+  void komut; void args;
+  return { ok: false, code: "capability_unsupported", reason: `gerçek PTY uygulanmadı; pipe/pty karşılaştırması yapılamaz (platform=${process.platform})` };
 }
 
-// Yetenek sorgusu: pty desteği platforma göre tek satırda raporlanır.
+// Yetenek sorgusu: yalnız pipe desteği tek satırda raporlanır.
 export function rea_process_caps(): ReaProcSonuç {
   const kayıt: ProcKaydı = { komut: "caps", args: [], kanal: "pipe", süre_ms: 0, çıkış_kodu: 0, stdout_sha256_kısa: kısaHash(process.platform) };
-  return { ok: true, tool: "rea_process_caps", summary: process.platform === "linux" ? "pty+pipe aday" : "yalnız pipe, pty handoff", kayıt };
+  return { ok: true, tool: "rea_process_caps", summary: "yalnız pipe (gerçek PTY uygulanmadı)", kayıt };
 }

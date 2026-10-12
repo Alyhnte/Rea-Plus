@@ -130,6 +130,7 @@ export function registerDebugTools(server: McpServer): void {
         return gate.error;
       }
       try {
+        clearCheckpoints(session_id); // re-open: eski hedefin checkpoint'ları yeniye yazılamaz
         const info = await gate.engine.open(session_id, path, {
           breakOnEntry: break_on_entry,
           autoAnalyze: auto_analyze,
@@ -229,6 +230,7 @@ export function registerDebugTools(server: McpServer): void {
       }
       try {
         const engine = gate.engine;
+        clearCheckpoints(session_id); // re-attach: eski hedefin checkpoint'ları yeniye yazılamaz
         const info = await (async () => {
           if (remote) {
             if (engine.id !== "frida") {

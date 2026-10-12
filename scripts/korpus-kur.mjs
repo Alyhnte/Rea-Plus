@@ -1,6 +1,6 @@
 // scripts/korpus-kur.mjs: golden korpus kurulumu (kopyala + üret, idempotent).
 // Koş: node scripts/korpus-kur.mjs (repo kökünden; ikinci koşu aynı baytları yazar).
-import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { deflateRawSync } from "node:zlib";
@@ -118,9 +118,10 @@ module.exports = { selamla, VARSAYILAN, fs };
 
 // Kurulum: kopyala + üret; aynı girdiden hep aynı çıktı (idempotent).
 mkdirSync(corpusDir, { recursive: true });
-// Gerçek ikililer aynen kopyalanır (üzerine yazma idempotenttir).
-copyFileSync(KAYNAK_ELF, HEDEF_ELF);
-copyFileSync(KAYNAK_PE, HEDEF_PE);
+// Gerçek ikililer kaynak varsa aynen kopyalanır. Kaynaklar yazar makinesine özel
+// yollardır; yoklarsa repoda izlenen korpus dosyaları korunur (CI'da kopya hatası düşürmez).
+if (existsSync(KAYNAK_ELF)) copyFileSync(KAYNAK_ELF, HEDEF_ELF); else console.log("ATLANDI: kaynak yok, izlenen korpus korundu mini_branch.elf");
+if (existsSync(KAYNAK_PE)) copyFileSync(KAYNAK_PE, HEDEF_PE); else console.log("ATLANDI: kaynak yok, izlenen korpus korundu mini_pe_x64.exe");
 // Türetilenler her koşuda aynı baytlarla yeniden yazılır.
 writeFileSync(HEDEF_APK, apkBaytlariniUret());
 writeFileSync(HEDEF_WASM, wasmBaytlariniUret());

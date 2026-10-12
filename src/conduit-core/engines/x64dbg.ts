@@ -1188,7 +1188,12 @@ export class X64dbgEngine implements DebugEngine {
     if (typeof child.unref === "function") {
       child.unref();
     }
+    const onceki = this.sessions.get(sessionId);
     this.sessions.set(sessionId, entry);
+    if (onceki && onceki !== entry) {
+      // Eşzamanlı re-open yarışı: üzerine yazılan girdinin debugger'ı yetim kalmasın.
+      killDebugger(onceki);
+    }
     await waitForBridge(BRIDGE_HOST, port, x64dbgStartTimeoutMs());
     await entry.client.connect();
     return entry;

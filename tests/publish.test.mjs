@@ -43,8 +43,8 @@ describe("publish hazirligi", () => {
     assert.ok(!npmignore.includes("dist"), ".npmignore hicbir yerde dist gecirmemeli");
   });
 
-  it("keywords beklenenleri icerir + version 0.6.0", () => {
-    assert.equal(pkg.version, "0.6.0", "version elleme: 0.6.0");
+  it("keywords beklenenleri icerir + version 0.7.2", () => {
+    assert.equal(pkg.version, "0.7.2", "version: 0.7.2 (v0.7.2 sürümü; server.json/server.ts ile aynı)");
     for (const k of ["ghidra", "cutter", "jadx", "apktool", "wasm", "evm", "firmware", "playwright"]) {
       assert.ok(pkg.keywords?.includes(k), `keywords ${k} icermeli`);
     }

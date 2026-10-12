@@ -35,6 +35,11 @@ function jsonAl<T>(ham: string): T {
   const bas = d === -1 ? o : o === -1 ? d : Math.min(d, o);
   return JSON.parse(ham.slice(bas)) as T;
 }
+// Adres rizin komut dizisine gömülür: yalnız hex/sayı/sembol biçimi geçer (ayırıcı = enjeksiyon).
+const ADRES_RE = /^(0x[0-9a-fA-F]+|[0-9]+|[A-Za-z_][A-Za-z0-9_.:]*)$/;
+function adresKontrol(addr: string): Engel | null {
+  return ADRES_RE.test(addr) ? null : { ok: false, code: "capability_unsupported", neden: `geçersiz adres: ${addr}` };
+}
 // Hata zarfı: rizin/parse hatası capability_unsupported olur.
 function hata(neden: string, e: unknown): Engel {
   return { ok: false, code: "capability_unsupported", neden: `${neden}: ${e instanceof Error ? e.message : String(e)}` };
@@ -49,6 +54,7 @@ export function rea_cutter_funcs(hedef: string) {
 }
 // Disas: pdfj @ addr, ilk len op (varsayılan 50).
 export function rea_cutter_disasm(hedef: string, addr: string, len = 50) {
+  const ak = adresKontrol(addr); if (ak) return ak;
   const g = giris(hedef); if ("neden" in g) return g;
   try {
     const obje = jsonAl<{ ops?: unknown[] }>(calistir(g.bin, hedef, `aaa;pdfj @ ${addr}`));
@@ -57,6 +63,7 @@ export function rea_cutter_disasm(hedef: string, addr: string, len = 50) {
 }
 // Xref listesi: axtj @ addr.
 export function rea_cutter_xrefs(hedef: string, addr: string) {
+  const ak = adresKontrol(addr); if (ak) return ak;
   const g = giris(hedef); if ("neden" in g) return g;
   try {
     const dizi = jsonAl<unknown[]>(calistir(g.bin, hedef, `aaa;axtj @ ${addr}`));
@@ -73,10 +80,11 @@ export function rea_cutter_strings(hedef: string, len = 200) {
 }
 // Decompile: pdc @ addr (r2dec varsa), yoksa pdf metni + not.
 export function rea_cutter_decompile(hedef: string, addr: string) {
+  const ak = adresKontrol(addr); if (ak) return ak;
   const g = giris(hedef); if ("neden" in g) return g;
   try { const ham = calistir(g.bin, hedef, `aaa;pdc @ ${addr}`).trim(); if (ham && !ham.includes("Invalid command")) return { ok: true as const, arac: "rea_cutter_decompile", hedef, addr, kaynak: "pdc", kod: ham }; }
   catch { /* pdf yedeğine düş */ }
-  try { const yedek = calistir(g.bin, hedef, `pdf @ ${addr}`).trim(); return { ok: true as const, arac: "rea_cutter_decompile", hedef, addr, kaynak: "pdf", not: "r2dec yok (pdc boş), pdf metni dönüldü", kod: yedek }; }
+  try { const yedek = calistir(g.bin, hedef, `aaa;pdf @ ${addr}`).trim(); if (!yedek) return { ok: false as const, code: "capability_unsupported" as const, neden: "pdc ve pdf boş çıktı (adres bir fonksiyona çözülememiş olabilir)" }; return { ok: true as const, arac: "rea_cutter_decompile", hedef, addr, kaynak: "pdf", not: "r2dec yok (pdc boş), pdf metni dönüldü", kod: yedek }; }
   catch (e) { return hata("decompile hatası", e); }
 }
 // Yetenek: rizin sürümü + pdc var/yok (malloc hedefiyle yoklanır).

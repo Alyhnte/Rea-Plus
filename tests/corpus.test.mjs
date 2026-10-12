@@ -98,6 +98,7 @@ describe("korpus sihir + içerik", () => {
 describe("korpus-kur idempotent", () => {
   // İkinci koşu aynı baytları üretmeli: 5 dosyanın hash'i değişmemeli.
   it("ikinci koşu aynı hashleri verir", () => {
+    execFileSync(process.execPath, [kurBetik], { cwd: kok, stdio: "pipe" }); // önce kur: idempotentlik ikinci koşuda ölçülür
     const once = TUMU.map(sha256);
     execFileSync(process.execPath, [kurBetik], { cwd: kok, stdio: "pipe" });
     const sonra = TUMU.map(sha256);

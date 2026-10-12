@@ -174,7 +174,7 @@ function agentSource(targetName: string): string {
   const here = dirname(fileURLToPath(import.meta.url));
   const candidates = [
     join(here, "frida-agent.js"),
-    join(here, "..", "..", "src", "engines", "frida-agent.js"),
+    join(here, "..", "..", "..", "src", "conduit-core", "engines", "frida-agent.js"),
   ];
   for (const path of candidates) {
     try {
@@ -184,7 +184,7 @@ function agentSource(targetName: string): string {
       // Try the next location (dist vs src).
     }
   }
-  throw new FridaError("engine_unavailable", "frida agent script is missing (src/engines/frida-agent.js)");
+  throw new FridaError("engine_unavailable", "frida agent script is missing (frida-agent.js must sit next to dist/conduit-core/engines/frida.js; run npm run build)");
 }
 
 function normalizeAddress(value: string | number): string {
@@ -764,7 +764,13 @@ export class FridaEngine implements DebugEngine {
       pushes: [],
       remoteAddress,
     };
+    const onceki = this.sessions.get(sessionId);
     this.sessions.set(sessionId, held);
+    if (onceki && onceki !== held) {
+      // Concurrent re-open race: do not orphan the overwritten session.
+      void onceki.session.detach().catch(() => {});
+    }
+    try {
     fridaSession.detached.connect((reason) => {
       this.onDetached(held, reason);
     });
@@ -776,7 +782,12 @@ export class FridaEngine implements DebugEngine {
     await script.load();
     let info: AgentInfo;
     try {
-      info = await exportsOf(script).describe();
+      info = await Promise.race([
+        exportsOf(script).describe(),
+        new Promise<never>((_resolve, reject) => {
+          setTimeout(() => reject(new FridaError("engine_timeout", `frida agent describe timed out after ${fridaTimeoutMs()}ms`, { pid })), fridaTimeoutMs());
+        }),
+      ]);
     } catch (error) {
       throw mapAgentError(error);
     }
@@ -789,6 +800,13 @@ export class FridaEngine implements DebugEngine {
     held.moduleEntry = info.entry;
     if (info.path !== "") {
       held.target = info.path;
+    }
+    } catch (error) {
+      // Half-open session must not survive a failed inject (attach path had no cleanup).
+      if (this.sessions.get(sessionId) === held) this.sessions.delete(sessionId);
+      try { await held.script?.unload(); } catch { /* already gone */ }
+      try { await fridaSession.detach(); } catch { /* already detached */ }
+      throw error;
     }
     return held;
   }
@@ -883,7 +901,12 @@ export class FridaEngine implements DebugEngine {
       throw new FridaError("capability_unsupported", `frida agent has no ${method}`);
     }
     try {
-      return await fn(...args);
+      return await Promise.race([
+        fn(...args),
+        new Promise<never>((_resolve, reject) => {
+          setTimeout(() => reject(new FridaError("engine_timeout", `frida agent ${method} timed out after ${fridaTimeoutMs()}ms`, { pid: session.pid })), fridaTimeoutMs());
+        }),
+      ]);
     } catch (error) {
       throw mapAgentError(error);
     }

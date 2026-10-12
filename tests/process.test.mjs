@@ -1,4 +1,4 @@
-// process.test.mjs: süreç koşusu (echo/hello) + caps + Linux-dışı compare kapısı.
+// process.test.mjs: süreç koşusu (echo/hello) + caps + compare kapısı (gerçek PTY yok).
 // Koş: node --test tests/process.test.mjs (alternatif: node tests/process.test.mjs)
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -46,16 +46,11 @@ describe("caps ve compare", () => {
     assert.ok(r.summary.length > 0);
   });
 
-  // Linux dışında pipe/pty karşılaştırması anlamsızdır: kapı kodu sabit.
-  it("Linux-dışı compare capability_unsupported verir", () => {
-    if (process.platform !== "linux") {
-      const r = rea_process_compare(process.execPath, ["--version"]);
-      assert.equal(r.ok, false);
-      assert.equal(r.code, "capability_unsupported");
-      assert.ok(r.reason.includes(process.platform));
-    } else {
-      const r = rea_process_compare(process.execPath, ["--version"]);
-      assert.equal(r.ok, true);
-    }
+  // Gerçek PTY uygulanmadı: compare her platformda kapıdan döner (sahte fark yok).
+  it("compare capability_unsupported verir", () => {
+    const r = rea_process_compare(process.execPath, ["--version"]);
+    assert.equal(r.ok, false);
+    assert.equal(r.code, "capability_unsupported");
+    assert.ok(r.reason.includes(process.platform));
   });
 });

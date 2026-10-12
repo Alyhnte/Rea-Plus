@@ -673,6 +673,10 @@ export class CdbEngine implements DebugEngine {
     await this.close(sessionId);
 
     const pipe = CdbPipe.launch(cdbExe, absolute);
+    // Concurrent re-open race (launch->set below is synchronous): shut the
+    // overwritten session's cdb down instead of orphaning it.
+    const oncekiAcilis = this.sessions.get(sessionId);
+    if (oncekiAcilis) void oncekiAcilis.pipe.shutdown(false).catch(() => {});
     const session: CdbSession = {
       pipe,
       target: absolute,
@@ -775,6 +779,10 @@ export class CdbEngine implements DebugEngine {
     await this.close(sessionId);
 
     const pipe = CdbPipe.attachTo(cdbExe, pid);
+    // Concurrent re-attach race (attach->set below is synchronous): detach
+    // the overwritten session's cdb, leaving its target running.
+    const oncekiBaglanti = this.sessions.get(sessionId);
+    if (oncekiBaglanti) void oncekiBaglanti.pipe.shutdown(true).catch(() => {});
     const session: CdbSession = {
       pipe,
       target: exePath,

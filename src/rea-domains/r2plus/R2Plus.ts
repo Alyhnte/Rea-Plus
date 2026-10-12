@@ -7,6 +7,8 @@ export const R2PLUS_TOOLS = ["rea_r2_callgraph", "rea_r2_esil", "rea_r2_debug"] 
 // Üst sınırlar: aaa bitmesi için 60sn, çıktı için 16MB.
 const ZAMAN_ASIMI = 60_000;
 const MAKS_TAMPON = 16 * 1024 * 1024;
+// Adres r2 komut dizisine gömülür: yalnız hex/sayı/sembol biçimi geçer (ayırıcı = enjeksiyon).
+const ADRES_RE = /^(0x[0-9a-fA-F]+|[0-9]+|[A-Za-z_][A-Za-z0-9_.:]*)$/;
 // Binary seçimi: radare2 öncelikli (r2.bat execFileSync'te ENOENT verir).
 function r2Bin(): string | null {
   const aday = process.env.REA_R2_BIN ? [process.env.REA_R2_BIN, "radare2", "r2"] : ["radare2", "r2"];
@@ -57,7 +59,7 @@ export function rea_r2_callgraph(hedef: string) {
 // ESIL: aei;aeip + s addr + aes adım + aerj regs JSON.
 export function rea_r2_esil(hedef: string, addr: string, adim = 20) {
   const g = giris(hedef); if ("neden" in g) return g;
-  if (!addr) return { ok: false as const, code: "capability_unsupported" as const, neden: "addr boş" };
+  if (!addr || !ADRES_RE.test(addr)) return { ok: false as const, code: "capability_unsupported" as const, neden: `geçersiz adres: ${addr}` };
   try {
     const regs = r2Json<Record<string, number>>(hedef, `s ${addr}; aei; aeip; aes ${adim}; aerj`);
     return { ok: true as const, arac: "rea_r2_esil", hedef, addr, adim, regs };
@@ -66,7 +68,7 @@ export function rea_r2_esil(hedef: string, addr: string, adim = 20) {
 // Toplu debug: db+dc+dr+dk; Windows'ta r2 sınırlıysa gerçek çıktı+not dön (unsupported DEĞİL).
 export function rea_r2_debug(hedef: string, bpAddr: string) {
   const g = giris(hedef); if ("neden" in g) return g;
-  if (!bpAddr) return { ok: false as const, code: "capability_unsupported" as const, neden: "bpAddr boş" };
+  if (!bpAddr || !ADRES_RE.test(bpAddr)) return { ok: false as const, code: "capability_unsupported" as const, neden: `geçersiz adres: ${bpAddr}` };
   const not = "Windows'ta r2 -d sınırlı olabilir (ELF Win32 değil); çıktı gerçek r2 çıktısıdır";
   try {
     const cikti = execFileSync(g.bin, ["-d", "-q", "-c", `db ${bpAddr};dc;dr;dk;exit`, hedef], { encoding: "utf8", timeout: ZAMAN_ASIMI, maxBuffer: MAKS_TAMPON, stdio: ["ignore", "pipe", "pipe"] });

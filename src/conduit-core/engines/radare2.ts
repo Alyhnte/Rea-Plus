@@ -1,4 +1,4 @@
-import { execFile, spawn, type ChildProcessByStdio } from "node:child_process";
+import { execFile, spawn, spawnSync, type ChildProcessByStdio } from "node:child_process";
 import { stat } from "node:fs/promises";
 import { delimiter as pathDelimiter, resolve as resolvePath } from "node:path";
 import type { Readable, Writable } from "node:stream";
@@ -153,10 +153,15 @@ function r2MissingError(): R2Error {
 }
 
 function quoteCmdArg(arg: string): string {
-  if (!/[\s"]/.test(arg)) {
+  // cmd.exe metacharacters cannot be neutralized by quoting alone (%VAR% still
+  // expands inside quotes), so reject them outright on the cmd shim path.
+  if (/["%!&|<>^\r\n]/.test(arg)) {
+    throw new R2Error("invalid_argument", `argument cannot be passed safely through cmd.exe: ${arg}`);
+  }
+  if (!/\s/.test(arg)) {
     return arg;
   }
-  return `"${arg.replace(/"/g, '""')}"`;
+  return `"${arg}"`;
 }
 
 interface PendingReply {
@@ -326,7 +331,21 @@ class R2Pipe {
     }
   }
 
+  private killTree(): void {
+    // The child may be a cmd.exe shim; killing only it would orphan r2.exe.
+    try {
+      if (process.platform === "win32" && this.child.pid) {
+        spawnSync("taskkill", ["/pid", String(this.child.pid), "/T", "/F"], { windowsHide: true, timeout: 10_000 });
+      } else {
+        this.child.kill();
+      }
+    } catch {
+      // Already gone.
+    }
+  }
+
   private kill(): Promise<void> {
+    this.killTree();
     this.dead = true;
     try {
       this.child.kill();
@@ -354,6 +373,7 @@ class R2Pipe {
       });
     });
     await graceful;
+    this.killTree();
     try {
       this.child.kill();
     } catch {

@@ -1,4 +1,4 @@
-# rea-plus CI — Node 20 + 22, temiz kurulum, tip denetimi, tüm testler.
+# rea-plus CI — Node 20 + 22, temiz kurulum, tip denetimi, testler (canlı enjeksiyon/debug hariç; onlar ayrı koşulmalı).
 name: ci
 
 on:
@@ -32,7 +32,5 @@ jobs:
       - name: Derle (testler dist ister)
         run: npm run build
 
-      - name: Tüm testler (tests/*.mjs hepsi)
-        run: |
-          node tests/namespace.test.mjs
-          node tests/reaplus.smoke.mjs
+      - name: Testler (varsayılan küme; canlı testler için npm run test:live)
+        run: npm test

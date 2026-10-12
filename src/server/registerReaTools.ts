@@ -2,7 +2,7 @@
 // Conduit 30 ismi donduruldu; rea kökenliler qualifyReaTool ile korunur.
 import type { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import { qualifyReaTool } from "../facade/toolNamespace.js";
+import { assertNoCollision, qualifyReaTool } from "../facade/toolNamespace.js";
 import { sniffBytes } from "../facade/sniff.js";
 import { bestMotor } from "../facade/confidence.js";
 import { resolveChain } from "../facade/fallback.js";
@@ -63,9 +63,24 @@ const P = z.object({ path: z.string().min(1) });
 const J = z.object({ text: z.string().min(1) });
 const O = z.object({});
 const B64 = z.object({ b64: z.string().min(1) });
-const ADDR = z.object({ path: z.string().min(1), addr: z.string().min(1) });
+// Adres: köprü komut dizilerine (r2/rizin) gömülür; ayırıcı/boşluk içeren girdi enjeksiyondur.
+const ADRES = z.string().regex(/^(0x[0-9a-fA-F]+|[0-9]+|[A-Za-z_][A-Za-z0-9_.:]*)$/, "adres hex (0x..), sayı veya sembol adı olmalı");
+const ADDR = z.object({ path: z.string().min(1), addr: ADRES });
 
 type C = { type: "text"; text: string };
+// Sonuç zarfı: hazır MCP zarfı (kapı) aynen geçer; ok:false isError'a çevrilir; başarı ok() ile sarılır.
+function zarf(v: unknown): { content: C[]; isError?: true } {
+  if (v && typeof v === "object" && "content" in (v as Record<string, unknown>)) return v as { content: C[]; isError?: true };
+  if (v && typeof v === "object" && (v as Record<string, unknown>).ok === false) {
+    return { content: [{ type: "text", text: JSON.stringify(v) }], isError: true as const };
+  }
+  return ok(v);
+}
+// Fırlayan handler hatası: protokol hatası yerine isError zarfı (yalnız mesaj, stack yok).
+function hataZarfi(tool: string, e: unknown): { content: C[]; isError: true } {
+  const neden = e instanceof Error ? e.message : String(e);
+  return { content: [{ type: "text", text: JSON.stringify({ ok: false, code: "tool_error", tool, reason: neden }) }], isError: true as const };
+}
 function ok(v: unknown): { content: C[] } {
   return { content: [{ type: "text", text: JSON.stringify(v) }] };
 }
@@ -131,8 +146,8 @@ const R: Array<[string, string, any, H]> = [
   ["rea_r2_debug", "r2 toplu debug (bp+regs).", ADDR, (a) => rea_r2_debug(a.path, a.addr)],
   ["rea_frida_pause", "Hedef süreç duraklatma (NtSuspend).", z.object({ pid: z.number().int().positive() }), (a) => rea_frida_pause(a.pid)],
   ["rea_frida_resume", "Duraklatılmış süreci devam ettirme.", z.object({ pid: z.number().int().positive() }), (a) => rea_frida_resume(a.pid)],
-  ["rea_frida_step", "Sonraki-komut emülasyonu.", z.object({ pid: z.number().int().positive(), adres: z.string().optional() }), (a) => rea_frida_step(a.pid, a.adres)],
-  ["rea_frida_cond", "Koşullu breakpoint.", z.object({ pid: z.number().int().positive(), adres: z.string().min(1), kosul: z.string().min(1) }), (a) => rea_frida_cond(a.pid, a.adres, a.kosul)],
+  ["rea_frida_step", "Sonraki-komut emülasyonu.", z.object({ pid: z.number().int().positive(), adres: ADRES.optional() }), (a) => rea_frida_step(a.pid, a.adres)],
+  ["rea_frida_cond", "Koşullu breakpoint.", z.object({ pid: z.number().int().positive(), adres: ADRES, kosul: z.string().min(1) }), (a) => rea_frida_cond(a.pid, a.adres, a.kosul)],
   ["rea_frida_stalker", "Stalker çağrı izleme.", z.object({ pid: z.number().int().positive(), sure_ms: z.number().int().positive().optional() }), (a) => rea_frida_stalker(a.pid, undefined, a.sure_ms)],
   ["rea_frida_api", "API tracer (isim+args+retval).", z.object({ pid: z.number().int().positive(), desen: z.string().optional() }), (a) => rea_frida_api(a.pid, a.desen)],
   ["rea_upx_info", "UPX sıkışık mı bilgisi.", P, (a) => rea_upx_info(a.path)],
@@ -275,8 +290,11 @@ const R: Array<[string, string, any, H]> = [
 ];
 
 export function registerReaTools(server: McpServer): void {
+  assertNoCollision(R.map(([ad]) => qualifyReaTool(ad)));
   for (const [ad, aciklama, sema, is] of R) {
     const isim = qualifyReaTool(ad);
-    server.registerTool(isim, { description: aciklama, inputSchema: sema }, async (args: unknown) => ok(await is(args as any)));
+    server.registerTool(isim, { description: aciklama, inputSchema: sema }, async (args: unknown) => {
+      try { return zarf(await is(args as any)); } catch (e) { return hataZarfi(isim, e); }
+    });
   }
 }
