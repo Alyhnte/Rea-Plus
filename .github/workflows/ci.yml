@@ -1,0 +1,38 @@
+# rea-plus CI — Node 20 + 22, temiz kurulum, tip denetimi, tüm testler.
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node ${{ matrix.node-version }} kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Temiz kurulum (npm ci)
+        run: npm ci
+
+      - name: Tip denetimi (tsc --noEmit, çıktı üretmez)
+        run: npx tsc --noEmit
+
+      - name: Derle (testler dist ister)
+        run: npm run build
+
+      - name: Tüm testler (tests/*.mjs hepsi)
+        run: |
+          node tests/namespace.test.mjs
+          node tests/reaplus.smoke.mjs

@@ -1,0 +1,9 @@
+# rea-plus .gitignore — derleme çıktıları ve yerel sırlar repoya girmez.
+node_modules/
+dist/
+*.log
+.env
+coverage/
+.DS_Store
+# Derleme artığı (tsc incremental açık değil ama yine de dışarıda tutulur).
+*.tsbuildinfo

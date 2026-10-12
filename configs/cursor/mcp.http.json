@@ -1,0 +1,31 @@
+{
+  "_yorum_tr_1": "rea-plus Cursor HTTP yapılandırması (Streamable HTTP).",
+  "_yorum_tr_2": "Önce sunucuyu HTTP kipinde ayağa kaldırman gerekir.",
+  "_yorum_tr_3": "Örnek başlatma: node <REA_PLUS_DIR>/dist/server.js --transport http --port 3848",
+  "_yorum_tr_4": "Port 3848 rea-plus ayrıldı; conduit 3847 ile çakışmaz.",
+  "_yorum_tr_5": "Uzak makineye bağlanma; yalnızca 127.0.0.1 dinlenir.",
+  "_yorum_tr_6": "Bu dosya tsc derlemesine girmez; saf JSON olarak kalır.",
+  "mcpServers": {
+    "rea-plus": {
+      "_yorum_tr": "Sunucu adı stdio dosyasındaki adla aynı olmalı.",
+      "url": "http://127.0.0.1:3848/mcp",
+      "_not_tr_1": "Sağlık kontrolü ayrı uçtadır: GET http://127.0.0.1:3848/health",
+      "headers": {
+        "_yorum_tr": "Token kapalıysa bu blok boş kalır; varsa Bearer ekle.",
+        "Authorization": ""
+      },
+      "env": {
+        "_yorum_tr": "İstemci tarafı bilgi amaçlıdır; asıl port sunucudadır.",
+        "REA_PLUS_TRANSPORT": "http",
+        "REA_PLUS_PORT": "3848",
+        "REA_PLUS_HOST": "127.0.0.1"
+      },
+      "_not_tr_2": "401 alıyorsan sunucudaki token ile buradaki başlığı eşleştir.",
+      "_not_tr_3": "stdio kipine dönmek için configs/cursor/mcp.stdio.json dosyasını kullan.",
+      "_not_tr_4": "Değişiklikten sonra Cursor MCP panelinden sunucuyu yeniden başlat.",
+      "_not_tr_5": "Sorun çıkarsa dosyayı JSON linter ile doğrula, yorum satırı ekleme."
+    }
+  },
+  "_son_not_tr_1": "Dosya 30-70 satır aralığında tutuldu; anahtar sırası önemli değil.",
+  "_son_not_tr_2": "URL sonundaki /mcp yolunu silme; köprü yalnızca orayı dinler."
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2026-01-09/server.schema.json",
+  "name": "io.github.rea-plus",
+  "title": "Rea Plus",
+  "description": "Conduit live-debug core (30 frozen tools) + Rea static domains over MCP. Stdio first, optional streamable HTTP. Run with npx: npx -y rea-plus",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rea-plus/rea-plus"
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "debugger",
+    "reverse-engineering",
+    "radare2",
+    "x64dbg",
+    "frida",
+    "ghidra",
+    "evm",
+    "wasm"
+  ],
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "rea-plus",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ],
+  "installation": {
+    "command": "npx",
+    "args": ["-y", "rea-plus"]
+  },
+  "transports": {
+    "stdio": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "rea-plus"]
+    },
+    "http": {
+      "type": "streamable-http",
+      "url": "http://127.0.0.1:3848/mcp",
+      "note_tr": "HTTP kipi opsiyoneldir; varsayilan stdio + npx. HTTP icin: npx -y rea-plus --transport http --port 3848"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

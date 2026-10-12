@@ -1,0 +1,33 @@
+{
+  "_yorum_tr_1": "rea-plus opencode stdio yapılandırması.",
+  "_yorum_tr_2": "Conduit opencode.stdio.json kalıbıyla aynıdır; ad rea-plus olur.",
+  "_yorum_tr_3": "<REA_PLUS_DIR> yerine rea-plus klasörünün tam yolunu yaz.",
+  "_yorum_tr_4": "dist/server.js yoksa önce projesinde npm run build çalıştır.",
+  "_yorum_tr_5": "Bu dosya tsc derlemesine girmez; saf JSON olarak kalır.",
+  "mcp": {
+    "rea-plus": {
+      "_yorum_tr": "İstemci bu anahtarla sunucuyu listeler; adı değiştirme.",
+      "type": "local",
+      "command": [
+        "node",
+        "<REA_PLUS_DIR>/dist/server.js"
+      ],
+      "enabled": true,
+      "env": {
+        "_yorum_tr": "Ortam değişkenleri yalnızca bu sunucu sürecine uygulanır.",
+        "REA_PLUS_TRANSPORT": "stdio",
+        "REA_PLUS_PORT": "3848",
+        "REA_PLUS_HOST": "127.0.0.1",
+        "REA_WABT_BIN": "",
+        "REA_GHIDRA_DIR": "",
+        "REA_IDA_URL": "",
+        "REA_JEB_MCP_URL": "",
+        "REA_HOPPER_PATH": ""
+      },
+      "_not_tr_1": "stdio kipinde port dinlenmez; process içi pipe kullanılır.",
+      "_not_tr_2": "HTTP kipine geçmek için opencode.http.json dosyasını kullan.",
+      "_not_tr_3": "Değişiklikten sonra opencode MCP sunucusunu yeniden başlat."
+    }
+  },
+  "_son_not_tr": "Dosya 30-70 satır aralığında tutuldu; anahtar sırası önemli değil."
+}
