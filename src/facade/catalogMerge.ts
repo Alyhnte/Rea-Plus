@@ -24,6 +24,9 @@ const REA_CATALOG: readonly ReaPlusCatalogEntry[] = [
   { id: "adb", ad: "Android Platform-Tools", kaynak: "rea", zorunlu: false, url: "https://developer.android.com/tools/releases/platform-tools", nereye: "adb PATH'te (winget: Google.PlatformTools)" },
   { id: "playwright", ad: "Playwright+Chromium", kaynak: "rea", zorunlu: false, url: "https://playwright.dev/", nereye: "npm i playwright + npx playwright install chromium" },
   { id: "rizin", ad: "Rizin/Cutter", kaynak: "rea", zorunlu: false, url: "https://cutter.re/", nereye: "rizin CLI PATH'te (winget: Rizin.Rizin), Cutter GUI opsiyonel" },
+  { id: "upx", ad: "UPX", kaynak: "rea", zorunlu: false, url: "https://upx.github.io/", nereye: "upx PATH'te (winget: UPX.UPX)" },
+  { id: "ilspy", ad: "ILSpyCmd", kaynak: "rea", zorunlu: false, url: "https://github.com/icsharpcode/ILSpy", nereye: "dotnet tool install -g ilspycmd (SDK gerekir)" },
+  { id: "mitmproxy", ad: "mitmproxy", kaynak: "rea", zorunlu: false, url: "https://mitmproxy.org/", nereye: "pip install mitmproxy" },
 ];
 
 export function mergedCatalog(): ReaPlusCatalogEntry[] {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// rea-plus çalışır MCP sunucusu: conduit 30 + 30 rea tool (stdio/HTTP).
+// rea-plus çalışır MCP sunucusu: conduit 30 + 98 rea tool (stdio/HTTP).
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import { localhostHostValidation, localhostOriginValidation, toNodeHandler } from "@modelcontextprotocol/node";
@@ -10,12 +10,12 @@ import { registerTools } from "./conduit-core/tools.js";
 import { registerReaTools } from "./server/registerReaTools.js";
 
 export const REA_PLUS_NAME = "rea-plus";
-export const REA_PLUS_VERSION = "0.1.0";
+export const REA_PLUS_VERSION = "0.4.0";
 
 export function createReaPlusMcpServer(): McpServer {
   const server = new McpServer({ name: REA_PLUS_NAME, version: REA_PLUS_VERSION }, { capabilities: { tools: {} } });
   registerTools(server); // conduit 30 araç (isimler dondurulmuş)
-  registerReaTools(server); // 30 rea aracı (merkezi stub kayıt)
+  registerReaTools(server); // 98 rea aracı (merkezi gerçek kayıt)
   return server;
 }
 

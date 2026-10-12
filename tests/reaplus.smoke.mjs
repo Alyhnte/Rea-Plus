@@ -33,9 +33,9 @@ try {
   assert(approve.details.selector === "0x095ea7b3", "approve seçici yanlış");
   // Facade: dondurulmuş conduit araç listesi 30 olmalı.
   assert(FROZEN_CONDUIT_TOOLS.length === 30, "frozen liste 30 olmalı");
-  // Katalog: 8 conduit + 13 rea girdisi toplam 21 olmalı.
+  // Katalog: 8 conduit + 16 rea girdisi toplam 24 olmalı.
   const katalog = mergedCatalog();
-  assert(katalog.length === 21, "birleşik katalog 21 olmalı");
+  assert(katalog.length === 24, "birleşik katalog 24 olmalı");
   // Özet satırları başarı kanıtı olarak konsola yazılır.
   console.log("OK: transfer=0xa9059cbb approve=0x095ea7b3");
   console.log(`OK: frozen=${FROZEN_CONDUIT_TOOLS.length} katalog=${katalog.length}`);

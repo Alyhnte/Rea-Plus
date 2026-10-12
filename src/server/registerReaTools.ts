@@ -18,6 +18,10 @@ import { rea_adb_devices, rea_adb_packages, rea_adb_install, rea_adb_logcat, rea
 import { rea_dotnet_metadata, rea_dotnet_cil } from "../rea-domains/dotnet/ManagedInspector.js";
 import { rea_r2_callgraph, rea_r2_esil, rea_r2_debug } from "../rea-domains/r2plus/R2Plus.js";
 import { rea_frida_pause, rea_frida_resume, rea_frida_step, rea_frida_cond, rea_frida_stalker } from "../rea-domains/frida-plus/FridaPlus.js";
+import { rea_frida_api } from "../rea-domains/frida-plus/ApiTracer.js";
+import { rea_upx_info, rea_upx_unpack, rea_ilspy_decompile, rea_unpack_try } from "../rea-domains/unpack/Unpack.js";
+import { rea_net_capture } from "../rea-domains/behavior/NetCapture.js";
+import { rea_behavior_timeline } from "../rea-domains/behavior/BehaviorTimeline.js";
 import { rea_browser_scenario, rea_browser_har_import, rea_browser_caps, rea_browser_nav, rea_browser_click, rea_browser_shot } from "../rea-domains/firmware-browser/BrowserBridge.js";
 import { rea_process_run, rea_process_compare, rea_process_caps } from "../rea-domains/firmware-browser/ProcessCapture.js";
 import { rea_js_sourcemap, rea_js_bundle } from "../rea-domains/javascript/JsAnalyzer.js";
@@ -106,6 +110,16 @@ const R: Array<[string, string, any, H]> = [
   ["rea_frida_step", "Sonraki-komut emülasyonu.", z.object({ pid: z.number().int().positive(), adres: z.string().optional() }), (a) => rea_frida_step(a.pid, a.adres)],
   ["rea_frida_cond", "Koşullu breakpoint.", z.object({ pid: z.number().int().positive(), adres: z.string().min(1), kosul: z.string().min(1) }), (a) => rea_frida_cond(a.pid, a.adres, a.kosul)],
   ["rea_frida_stalker", "Stalker çağrı izleme.", z.object({ pid: z.number().int().positive(), sure_ms: z.number().int().positive().optional() }), (a) => rea_frida_stalker(a.pid, undefined, a.sure_ms)],
+  ["rea_frida_api", "API tracer (isim+args+retval).", z.object({ pid: z.number().int().positive(), desen: z.string().optional() }), (a) => rea_frida_api(a.pid, a.desen)],
+  ["rea_upx_info", "UPX sıkışık mı bilgisi.", P, (a) => rea_upx_info(a.path)],
+  ["rea_upx_unpack", "UPX açma.", z.object({ path: z.string().min(1), out: z.string().min(1) }), (a) => rea_upx_unpack(a.path, a.out)],
+  ["rea_ilspy_decompile", ".NET C# decompile.", z.object({ path: z.string().min(1), out: z.string().min(1) }), (a) => rea_ilspy_decompile(a.path, a.out)],
+  ["rea_unpack_try", "Otomatik unpack yönlendirme.", P, (a) => rea_unpack_try(a.path)],
+  ["rea_net_capture", "Yerel ağ yakalama (HAR).", z.object({ url: z.string().min(1) }), (a) => rea_net_capture(a.url)],
+  ["rea_behavior_timeline", "Olay çizelgesi + özet.", z.object({ olaylar: z.string().min(1) }), (a) => {
+    const p = jsonParse<any[]>("rea_behavior_timeline", a.olaylar); if ("err" in p) return p.err;
+    return rea_behavior_timeline(p.v);
+  }],
   ["rea_browser_nav", "Sayfa açma + başlık.", z.object({ url: z.string().min(1) }), (a) => rea_browser_nav(a.url)],
   ["rea_browser_click", "Tıklama + sonrası durum.", z.object({ url: z.string().min(1), selector: z.string().min(1) }), (a) => rea_browser_click(a.url, a.selector)],
   ["rea_browser_shot", "Tam sayfa ekran görüntüsü.", z.object({ url: z.string().min(1), out: z.string().min(1) }), (a) => rea_browser_shot(a.url, a.out)],
