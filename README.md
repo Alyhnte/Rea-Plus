@@ -44,9 +44,11 @@ Ready-made configs live in `configs/cursor`, `configs/opencode`, and `configs/cl
 | Native binaries (live) | Breakpoints, stepping, registers, callstack, memory, threads, timing | x64dbg / cdb / Frida via conduit-core |
 | Hardware breakpoints | Execute/read/write slots 0..3, ScyllaHide plugin rows | Frida engine, x64dbg plugin dir |
 | Native binaries (static) | Disassembly, CFG, xrefs, strings, sections, dumps | radare2 |
-| Hopper / Ghidra / IDA / JEB | Provider-backed inspection units, digests, pseudo-code | Caller-supplied installs (see FAQ) |
+| Hopper / IDA / JEB | Gate-checked providers, fallback chains (jeb→jadx, hopper→cutter) | Caller-supplied installs (see FAQ) |
+| Ghidra 12.1.4 | Headless analyze, funcs, decompile, xrefs, strings | `REA_GHIDRA_DIR` + Java 17+ |
+| Cutter / rizin 0.9.1 | Funcs, disasm, xrefs, strings, decompile | rizin CLI (Cutter GUI optional) |
 | .NET assemblies | Metadata, CIL, declared native dependencies | Static only, no runtime needed |
-| Android APKs | Manifest declarations, classes, methods | Headless jadx 1.5.6 + full JDK |
+| Android APKs | Manifest declarations, classes, methods, xrefs | Headless jadx 1.5.6 + JRE 21+ |
 | Android devices | Devices, packages, processes, logs, captures | Caller-supplied adb 1.0.41 |
 | Android resources | Decoded manifest, string tables, locales | apktool launcher on PATH |
 | WASM artifacts | Validation, sections, exact import/export WAT forms | wabt 1.0.42 |
@@ -65,7 +67,7 @@ Live-debug operations that mutate target state require `confirm:true`, otherwise
 
 - **Frozen core.** The 30 conduit tool names are immutable, locked by `src/facade/toolNamespace.ts`
   (`FROZEN_CONDUIT_TOOLS.length === 30`). Renaming is forbidden, so conduit clients keep working.
-- **rea domains.** 30 `rea_*` tools register in a single loop (`src/server/registerReaTools.ts`).
+- **rea domains.** 51 `rea_*` tools register centrally (`src/server/registerReaTools.ts`).
   Missing backends answer `capability_unsupported` with an install hint; nothing fakes a result.
 - **Evidence.** Runs can emit an evidence bundle plus an obligation ledger
   (`advance` / `verify` chain) for auditable investigations.
@@ -93,11 +95,11 @@ node dist/cli/index.js doctor --json
 22 files: 127 unit its plus smoke, namespace, CLI, and e2e lanes. `tsc` is clean.
 
 ```bash
-node --test tests/             # everything (pass 51, fail 0)
+node --test tests/             # everything (pass 127, fail 0)
 node --test tests/evm.test.mjs # selectors: transfer / approve
 node --test tests/wasm.test.mjs
 node tests/namespace.test.mjs  # prefix + collision lock
-node tests/reaplus.smoke.mjs   # frozen=30, catalog=16
+node tests/reaplus.smoke.mjs   # frozen=30, katalog=17
 node tests/e2e.http.mjs        # spawn -> /health -> tools/list
 ```
 
@@ -105,9 +107,9 @@ Details: `docs/VERIFY.md`, `docs/PLAN-HEPSI.md`, `docs/MCP-CONTRACTS.md`, `CHANG
 
 ## Roadmap
 
-- Wire real backends behind the `capability_unsupported` tools (provider installs detected via `doctor`).
-- Win32 prebuild for `src/native-windows` (`REA_NATIVE_PREBUILD=1`, SHA256-sealed, hashed into the evidence bundle).
-- More provider handoffs and recorded-crash timelines.
+- Hopper / IDA / JEB live backends (license-gated; fallback chains already route to Cutter/jadx).
+- Real CIL dump behind `rea_dotnet_cil`, Win32 prebuild (`REA_NATIVE_PREBUILD=1`), air-gap bundle.
+- Recorded-crash timelines and version-to-version binary diff in regular runs.
 
 ## FAQ
 
@@ -132,8 +134,11 @@ No. Conduit defaults to port 3847; rea-plus serves 3848.
 
 **What was added on top of a rea-style base?**
 Live Windows debugging (x64dbg / cdb / Frida, 4-slot hardware breakpoints, ScyllaHide rows),
+Ghidra professor (headless + dump scripts), Cutter via rizin, full JADX use,
 `confirm:true` gates, frozen-tool compatibility, the evidence bundle plus obligation ledger and
-compact schema, and the rea-plus CLI (`analyze-evm` / `analyze-wasm` / `analyze-js` / `doctor`).
+compact schema, 8 assistance systems (sniffing, confidence, fallbacks, probe cache, parallel
+probe, install reasons, config suggest, telemetry), and the rea-plus CLI
+(`analyze-evm` / `analyze-wasm` / `analyze-js` / `doctor`).
 
 ## Contributing
 
