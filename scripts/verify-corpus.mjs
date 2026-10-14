@@ -15,9 +15,21 @@ const VARSAYILAN_MANIFEST = join(VARSAYILAN_CORPUS, "HASHES.json");
 // Manifestin kendi yardımcı dosyaları: fixture değil, fazladan sayılmaz.
 export const MANIFEST_YARDIMCILARI = ["HASHES.json", "README.md"];
 
-// Dosyanın sha256 özeti (ham baytlar üzerinden).
+// Metin fixture uzantıları: satır-sonu (CRLF/LF) checkout farkı hash'i
+// bozmaması için normalize edilerek özetlenir. Binary'ler ham bayttır.
+const METIN_UZANTILARI = new Set([".js", ".mjs", ".cjs", ".json", ".md", ".txt"]);
+
+// Dosyanın sha256 özeti: metin fixture'da CRLF→LF normalize, binary'de ham.
 export function sha256Dosya(yol) {
-  return createHash("sha256").update(readFileSync(yol)).digest("hex");
+  const ham = readFileSync(yol);
+  const kucuk = yol.toLowerCase();
+  const nokta = kucuk.lastIndexOf(".");
+  const uzanti = nokta >= 0 ? kucuk.slice(nokta) : "";
+  if (METIN_UZANTILARI.has(uzanti)) {
+    const normalize = Buffer.from(ham.toString("utf8").replace(/\r\n/g, "\n"), "utf8");
+    return createHash("sha256").update(normalize).digest("hex");
+  }
+  return createHash("sha256").update(ham).digest("hex");
 }
 
 // Manifesti okur ve biçimi doğrular; bozuksa dosya yoluyla hata fırlatır.
