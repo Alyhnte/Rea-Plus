@@ -8,6 +8,7 @@ import { engineKind, isDebugEngineId } from "./engines/types.js";
 import { X64dbgError } from "./engines/x64dbg.js";
 import { registry, type DebugSession } from "./registry.js";
 import { clearCheckpoints } from "./snapshots.js";
+import { applyWorkspaceRoot, WorkspaceRootError } from "../server/workspaceRoot.js";
 
 type ToolContent = { type: "text"; text: string };
 
@@ -57,6 +58,23 @@ function requireDebugSession(session_id: string, tool: string): DebugGate {
     };
   }
   return { session, engine: getDebugEngine(session.engine) };
+}
+
+type WorkspaceGate = { path: string; error?: undefined } | { path?: undefined; error: ReturnType<typeof jsonResult> };
+
+/**
+ * REA_WORKSPACE_ROOT gate: same central rule as the rea_* surface. Runs before
+ * any engine call; with no root configured the path passes through unchanged.
+ */
+function workspacePathGate(tool: string, session_id: string, path: string): WorkspaceGate {
+  try {
+    return { path: applyWorkspaceRoot(tool, { path }).path };
+  } catch (error) {
+    if (error instanceof WorkspaceRootError) {
+      return { error: jsonResult({ error: "workspace_root", tool, session_id, detail: error.message }, true) };
+    }
+    throw error;
+  }
 }
 
 function x64Failure(error: unknown, tool: string, session_id: string): ReturnType<typeof jsonResult> {
@@ -125,19 +143,23 @@ export function registerDebugTools(server: McpServer): void {
       }),
     },
     async ({ session_id, path, break_on_entry, auto_analyze, command_line_args }) => {
+      const ws = workspacePathGate("debug_open", session_id, path);
+      if (ws.error !== undefined) {
+        return ws.error;
+      }
       const gate = requireDebugSession(session_id, "debug_open");
       if (gate.error !== undefined) {
         return gate.error;
       }
       try {
         clearCheckpoints(session_id); // re-open: eski hedefin checkpoint'ları yeniye yazılamaz
-        const info = await gate.engine.open(session_id, path, {
+        const info = await gate.engine.open(session_id, ws.path, {
           breakOnEntry: break_on_entry,
           autoAnalyze: auto_analyze,
           ...(command_line_args ? { commandLineArgs: command_line_args } : {}),
         });
         subscribeBridgePushes(session_id, gate.engine);
-        const openedPath = gate.engine.openPath(session_id) ?? path;
+        const openedPath = gate.engine.openPath(session_id) ?? ws.path;
         gate.session.events.push("target.opened", { path: openedPath, mode: "debug" });
         gate.session.events.push("debug.loaded", {
           pid: info.pid,

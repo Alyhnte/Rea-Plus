@@ -2,6 +2,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { resolveDerivedWorkspacePath, WorkspaceRootError } from "../../server/workspaceRoot.js";
 // Facade uyumu: rea_ prefix zorunlu, 4 araç.
 export const UNPACK_TOOLS = ["rea_upx_info", "rea_upx_unpack", "rea_ilspy_decompile", "rea_unpack_try"] as const;
 const ZAMAN = 120_000; // ilspy CoreLib ~20sn sürer, pay bırak.
@@ -54,7 +55,13 @@ export function rea_unpack_try(yol: string) {
   if (!yol) return { yontem: "none" as const, sonuc: engel("yol boş") };
   if (!existsSync(yol)) return { yontem: "none" as const, sonuc: engel(`dosya yok: ${yol}`) };
   const bilgi = rea_upx_info(yol);
-  if (bilgi.ok && bilgi.sikisik) return { yontem: "upx" as const, sonuc: rea_upx_unpack(yol, `${yol}.unpacked`) };
+  if (bilgi.ok && bilgi.sikisik) {
+    // Turev yazma ("${yol}.unpacked") kok tanimliysa yazmadan once ayni merkezi kuralla dogrulanir.
+    let cikti: string;
+    try { cikti = resolveDerivedWorkspacePath(yol, ".unpacked"); }
+    catch (e) { if (e instanceof WorkspaceRootError) return { yontem: "upx" as const, sonuc: engel(e.message) }; throw e; }
+    return { yontem: "upx" as const, sonuc: rea_upx_unpack(yol, cikti) };
+  }
   if (dotnetDllMi(yol)) return { yontem: "ilspy" as const, sonuc: { ok: false as const, code: "capability_unsupported" as const, oneri: `dotnet DLL, ilspycmd -o <dir> -p ${yol} ile decompile önerilir` } };
   return { yontem: "dump-hunt" as const, sonuc: { ok: false as const, code: "capability_unsupported" as const, oneri: "UPX sıkışık değil + dotnet değil, dump-hunt (bellek dökümü) önerilir" } };
 }

@@ -367,6 +367,9 @@ rpc.exports = {
 
 Process.setExceptionHandler(function onException(details) {
   const index = findSlot(details.address);
+  if (index < 0) {
+    return false;
+  }
   send(captureHit(details));
   recv("resume", function onResume() {}).wait();
   // Unset by the index captured at the hit. A remove() during the wait

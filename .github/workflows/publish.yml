@@ -1,0 +1,78 @@
+# rea-plus publish — yalniz elle tetiklenir (workflow_dispatch), varsayilan dry-run.
+# Gercek publish: mode=publish + confirm_publish=PUBLISH acik onayi + npm Trusted
+# Publishing (OIDC, token yok) ile --provenance. Trusted publisher, npm paket
+# ayarlarindan bu repo + publish.yml dosyasina tanimlanmis olmalidir (dis kapi).
+name: publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run (varsayilan, yayinlamaz) veya publish (gercek yayin)"
+        required: true
+        type: choice
+        default: dry-run
+        options:
+          - dry-run
+          - publish
+      confirm_publish:
+        description: "Gercek publish icin tam olarak PUBLISH yazin; dry-run icin bos birakin"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gercek publish acik onay guardi
+        if: ${{ inputs.mode == 'publish' && inputs.confirm_publish != 'PUBLISH' }}
+        run: |
+          echo "::error::mode=publish icin confirm_publish girdisi tam olarak PUBLISH olmalidir; yayin durduruldu."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 22 kur (npm registry)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+
+      - name: npm guncelle (Trusted Publishing icin guncel npm CLI gerekir)
+        run: npm install -g npm@latest
+
+      - name: Temiz kurulum (npm ci)
+        run: npm ci
+
+      - name: Tip denetimi
+        run: npm run typecheck
+
+      - name: Derle
+        run: npm run build
+
+      - name: Testler
+        run: npm test
+
+      - name: Publish kontrol
+        run: |
+          node --test tests/publish.test.mjs tests/version-sync.test.mjs tests/publish-workflow.test.mjs
+          node scripts/publish-kontrol.mjs
+
+      - name: Publish dry-run (yayinlamaz)
+        if: ${{ inputs.mode == 'dry-run' }}
+        run: npm publish --dry-run
+
+      - name: Publish (provenance, Trusted Publishing)
+        if: ${{ inputs.mode == 'publish' && inputs.confirm_publish == 'PUBLISH' }}
+        run: npm publish --provenance

@@ -1,6 +1,6 @@
 // rea-plus merkezi rea kayıtları: TÜMÜ gerçek bağlı (hopper/ida/jeb hariç kapılı).
 // Conduit 30 ismi donduruldu; rea kökenliler qualifyReaTool ile korunur.
-import type { McpServer } from "@modelcontextprotocol/server";
+import type { JSONObject, McpServer, ServerContext } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import { assertNoCollision, qualifyReaTool } from "../facade/toolNamespace.js";
 import { sniffBytes } from "../facade/sniff.js";
@@ -24,7 +24,8 @@ import { rea_unpack_hunt } from "../rea-domains/unpack/UnpackHunt.js";
 import { rea_net_capture } from "../rea-domains/behavior/NetCapture.js";
 import { rea_behavior_timeline } from "../rea-domains/behavior/BehaviorTimeline.js";
 import { rea_browser_scenario, rea_browser_har_import, rea_browser_caps, rea_browser_nav, rea_browser_click, rea_browser_shot } from "../rea-domains/firmware-browser/BrowserBridge.js";
-import { rea_process_run, rea_process_compare, rea_process_caps } from "../rea-domains/firmware-browser/ProcessCapture.js";
+import { rea_process_run_async, rea_process_compare, rea_process_caps } from "../rea-domains/firmware-browser/ProcessCapture.js";
+import { pilotContextFromCtx } from "./progress.js";
 import { rea_js_sourcemap, rea_js_bundle } from "../rea-domains/javascript/JsAnalyzer.js";
 import { rea_diff_match, rea_diff_summary } from "../rea-domains/javascript/BinaryDiff.js";
 import { rea_recon_funcs, rea_recon_harness, rea_recon_tag } from "../rea-domains/javascript/ReconHarness.js";
@@ -58,6 +59,9 @@ import { rea_pdb_yolu } from "../rea-domains/typedef/PdbReader.js";
 import { rea_dwarf_ozet } from "../rea-domains/typedef/DwarfReader.js";
 import { rea_typedef_oner } from "../rea-domains/typedef/TypeSpread.js";
 import { rea_scan_repo } from "../rea-domains/reposcan/RepoScan.js";
+import { applyWorkspaceRoot } from "./workspaceRoot.js";
+import { reaToolMetadata } from "./toolMetadata.js";
+import { ASYNC_JOB_TOOLS, AsyncJobManager, asyncJobsEnabled } from "./asyncJobs.js";
 
 const P = z.object({ path: z.string().min(1) });
 const J = z.object({ text: z.string().min(1) });
@@ -68,24 +72,61 @@ const ADRES = z.string().regex(/^(0x[0-9a-fA-F]+|[0-9]+|[A-Za-z_][A-Za-z0-9_.:]*
 const ADDR = z.object({ path: z.string().min(1), addr: ADRES });
 
 type C = { type: "text"; text: string };
+type Zarf = {
+  content: C[];
+  isError?: true;
+  structuredContent?: JSONObject;
+};
+// Düz JSON nesnesi: dizi/sınıf örneği değil, yalın prototipli nesne.
+function duzNesne(v: unknown): v is Record<string, unknown> {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+  const p = Object.getPrototypeOf(v) as unknown;
+  return p === Object.prototype || p === null;
+}
+// structuredContent, text JSON'undan parse edilerek türetilir: iki kanal birebir aynı değeri taşır.
+function yapi(text: string): JSONObject | undefined {
+  try {
+    const v: unknown = JSON.parse(text);
+    return duzNesne(v) ? (v as JSONObject) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+// Tek zarf kurucu: text her zaman korunur; sonuç düz JSON nesnesiyse structuredContent da eklenir.
+function zarfYap(v: unknown, isError?: true): Zarf {
+  const text = JSON.stringify(v) as string;
+  const z: Zarf = { content: [{ type: "text", text }] };
+  if (isError) z.isError = true;
+  const s = typeof text === "string" ? yapi(text) : undefined;
+  if (s) z.structuredContent = s;
+  return z;
+}
 // Sonuç zarfı: hazır MCP zarfı (kapı) aynen geçer; ok:false isError'a çevrilir; başarı ok() ile sarılır.
-function zarf(v: unknown): { content: C[]; isError?: true } {
-  if (v && typeof v === "object" && "content" in (v as Record<string, unknown>)) return v as { content: C[]; isError?: true };
+function zarf(v: unknown): Zarf {
+  if (v && typeof v === "object" && "content" in (v as Record<string, unknown>)) {
+    const hazir = v as Zarf;
+    if (hazir.structuredContent === undefined) {
+      const ilk = Array.isArray(hazir.content) ? hazir.content.find((c) => c.type === "text") : undefined;
+      const s = ilk ? yapi(ilk.text) : undefined;
+      if (s) return { ...hazir, structuredContent: s };
+    }
+    return hazir;
+  }
   if (v && typeof v === "object" && (v as Record<string, unknown>).ok === false) {
-    return { content: [{ type: "text", text: JSON.stringify(v) }], isError: true as const };
+    return zarfYap(v, true);
   }
   return ok(v);
 }
 // Fırlayan handler hatası: protokol hatası yerine isError zarfı (yalnız mesaj, stack yok).
-function hataZarfi(tool: string, e: unknown): { content: C[]; isError: true } {
+function hataZarfi(tool: string, e: unknown): Zarf & { isError: true } {
   const neden = e instanceof Error ? e.message : String(e);
-  return { content: [{ type: "text", text: JSON.stringify({ ok: false, code: "tool_error", tool, reason: neden }) }], isError: true as const };
+  return zarfYap({ ok: false, code: "tool_error", tool, reason: neden }, true) as Zarf & { isError: true };
 }
-function ok(v: unknown): { content: C[] } {
-  return { content: [{ type: "text", text: JSON.stringify(v) }] };
+function ok(v: unknown): Zarf {
+  return zarfYap(v);
 }
-function kapı(tool: string, neden: string): { content: C[]; isError: true } {
-  return { content: [{ type: "text", text: JSON.stringify({ ok: false, code: "capability_unsupported", tool, reason: neden }) }], isError: true as const };
+function kapı(tool: string, neden: string): Zarf & { isError: true } {
+  return zarfYap({ ok: false, code: "capability_unsupported", tool, reason: neden }, true) as Zarf & { isError: true };
 }
 function jsonParse<T>(tool: string, s: string): { v: T } | { err: ReturnType<typeof kapı> } {
   try {
@@ -96,7 +137,10 @@ function jsonParse<T>(tool: string, s: string): { v: T } | { err: ReturnType<typ
 }
 const b64 = (s: string): Uint8Array => Buffer.from(s, "base64");
 
-type H = (a: any) => Promise<unknown> | unknown;
+// Ikinci arguman yalniz pilot araca gecirilir (PILOT_CTX); diger handler'lar tek argumanla cagrilir.
+type H = (a: any, ctx?: ServerContext) => Promise<unknown> | unknown;
+// Progress/cancel pilotu: SDK ctx (AbortSignal + paced progress) yalniz bu araca ulasir.
+const PILOT_CTX = new Set(["rea_process_run"]);
 const R: Array<[string, string, any, H]> = [
   ["rea_evm_selector", "EVM 4-byte selector (keccak, offline).", z.object({ sig: z.string().min(1) }), (a) => rea_evm_selector(a.sig)],
   ["rea_wasm_exports", "WAT export listesi (offline).", z.object({ wat: z.string().min(1) }), (a) => rea_wasm_exports(a.wat)],
@@ -166,7 +210,10 @@ const R: Array<[string, string, any, H]> = [
   ["rea_browser_har_import", "HAR içe aktarma.", P, (a) => rea_browser_har_import(a.path)],
   ["rea_browser_scenario", "Senaryo kaydı.", J, (a) => rea_browser_scenario(JSON.parse(a.text))],
   ["rea_browser_caps", "Browser yetenek yoklaması.", O, () => rea_browser_caps()],
-  ["rea_process_run", "Süreç koşusu kaydı.", z.object({ cmd: z.string().min(1) }), (a) => rea_process_run(a.cmd)],
+  ["rea_process_run", "Süreç koşusu kaydı.", z.object({ cmd: z.string().min(1) }), (a, ctx) => {
+    const pilot = pilotContextFromCtx(ctx);
+    return rea_process_run_async(a.cmd, { signal: pilot.signal, onProgress: pilot.onProgress });
+  }],
   ["rea_process_compare", "Pipe/PTY karşılaştırma.", z.object({ cmd: z.string().min(1) }), (a) => rea_process_compare(a.cmd)],
   ["rea_process_caps", "Süreç yetenek yoklaması.", O, () => rea_process_caps()],
   ["rea_js_sourcemap", "Source-map çözümleme.", J, (a) => rea_js_sourcemap(a.text)],
@@ -291,10 +338,59 @@ const R: Array<[string, string, any, H]> = [
 
 export function registerReaTools(server: McpServer): void {
   assertNoCollision(R.map(([ad]) => qualifyReaTool(ad)));
-  for (const [ad, aciklama, sema, is] of R) {
+  const handlerlar = new Map(R.map(([ad, , , is]) => [ad, is] as const));
+  // Tek calistirma yolu: normal tools/call ve async job ayni zarf/workspace
+  // kurallarindan gecer. signal verilirse pilot aracin MCP ctx'i yalniz
+  // AbortSignal tasiyan sentetik ctx ile degistirilir (progress sessizdir).
+  async function calistir(ad: string, args: unknown, ctx?: ServerContext, signal?: AbortSignal): Promise<Zarf> {
     const isim = qualifyReaTool(ad);
-    server.registerTool(isim, { description: aciklama, inputSchema: sema }, async (args: unknown) => {
-      try { return zarf(await is(args as any)); } catch (e) { return hataZarfi(isim, e); }
-    });
+    const is = handlerlar.get(ad);
+    if (!is) return hataZarfi(isim, new Error(`bilinmeyen arac: ${ad}`));
+    try {
+      const girdi = applyWorkspaceRoot(ad, args) as any;
+      if (PILOT_CTX.has(ad)) {
+        const etkiliCtx = signal ? ({ mcpReq: { signal } } as unknown as ServerContext) : ctx;
+        return zarf(await is(girdi, etkiliCtx));
+      }
+      return zarf(await is(girdi));
+    } catch (e) { return hataZarfi(isim, e); }
   }
+  for (const [ad, aciklama, sema] of R) {
+    const isim = qualifyReaTool(ad);
+    // REA_WORKSPACE_ROOT tanimliysa yollar handler oncesi dogrulanir; ihlalde handler cagrilmadan hataZarfi doner.
+    const meta = reaToolMetadata(ad);
+    server.registerTool(isim, {
+      description: aciklama,
+      inputSchema: sema,
+      ...(meta?.outputSchema ? { outputSchema: meta.outputSchema } : {}),
+      ...(meta?.annotations ? { annotations: meta.annotations } : {}),
+    }, async (args: unknown, ctx?: ServerContext) => calistir(ad, args, ctx));
+  }
+  // Async job pilotu: yalniz REA_ASYNC_JOBS=1 ile kaydolur; varsayilan 171
+  // arac yuzeyi degismez. Acikken 5 job araci eklenir.
+  if (!asyncJobsEnabled()) return;
+  const jobs = new AsyncJobManager();
+  const jobAraci = (ad: string, aciklama: string, sema: any, is: (a: any) => unknown) => {
+    server.registerTool(qualifyReaTool(ad), { description: aciklama, inputSchema: sema }, async (args: unknown) => {
+      try { return zarf(await is(args as any)); } catch (e) { return hataZarfi(qualifyReaTool(ad), e); }
+    });
+  };
+  jobAraci("rea_job_start", "Whitelist'teki araci async job olarak baslatir (REA_ASYNC_JOBS=1).", z.object({ tool: z.string().min(1), arguments: z.record(z.string(), z.unknown()).optional() }), (a) => {
+    if (!ASYNC_JOB_TOOLS.has(a.tool)) return { ok: false, code: "async_job_tool_not_whitelisted", tool: a.tool, reason: `async job whitelist disi: ${a.tool}. Whitelist: ${[...ASYNC_JOB_TOOLS].join(", ")}` };
+    const job = jobs.start(a.tool, (signal) => calistir(a.tool, a.arguments ?? {}, undefined, signal));
+    return { ok: true, job };
+  });
+  jobAraci("rea_job_status", "Async job durumu.", z.object({ job_id: z.string().min(1) }), (a) => {
+    const job = jobs.status(a.job_id);
+    return job ? { ok: true, job } : { ok: false, code: "async_job_not_found", job_id: a.job_id, reason: "job bulunamadi (surec-ici kayit; sunucu yeniden baslatildiysa silinir)" };
+  });
+  jobAraci("rea_job_result", "Async job sonucu (bittiyse).", z.object({ job_id: z.string().min(1) }), (a) => {
+    const r = jobs.result(a.job_id);
+    return r ? { ok: true, ready: r.ready, job: r.snapshot, ...(r.result !== undefined ? { result: r.result } : {}) } : { ok: false, code: "async_job_not_found", job_id: a.job_id, reason: "job bulunamadi" };
+  });
+  jobAraci("rea_job_cancel", "Async job iptali (kuyrukta veya calisirken).", z.object({ job_id: z.string().min(1) }), (a) => {
+    const job = jobs.cancel(a.job_id);
+    return job ? { ok: true, job } : { ok: false, code: "async_job_not_found", job_id: a.job_id, reason: "job bulunamadi" };
+  });
+  jobAraci("rea_job_list", "Son async joblari listeler.", z.object({ limit: z.number().int().min(1).max(100).optional() }), (a) => ({ ok: true, jobs: jobs.list(a.limit ?? 20) }));
 }

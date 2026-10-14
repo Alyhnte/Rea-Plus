@@ -3,6 +3,75 @@
 Tüm önemli değişiklikler bu dosyada tutulur. Format: Keep a Changelog + SemVer.
 All notable changes are documented here (Türkçe özet + English detail).
 
+## [0.8.0] — 2026-10-14
+
+Sürüm 0.8.0: MCP protokol yüzeyi büyüdü (resources/prompts, toolsets, typed
+outputs), güvenlik sınırları eklendi (workspace kökü, tokensiz HTTP, audit),
+uzun işler için async job + progress pilotları geldi. Aşağıdakiler bu sürümün
+durumunu anlatır; "Henüz yapılmadı" bölümündeki dış kapılar açıktır.
+Release 0.8.0: bigger MCP surface, new security boundaries, async job and
+progress pilots. External gates in "Not yet done" remain open.
+
+### Eklendi / Added
+
+- Araç referansı: derlenmiş sunucunun gerçek MCP yüzeyinden üretilen `docs/TOOLS.md`
+  (171 araç + 2 resource + 3 prompt). README ve ROADMAP bu referansa bağlandı.
+- MCP resources: statik, salt-okunur `rea-plus://server-info` ve
+  `rea-plus://capabilities-safety` (env değeri, kişisel yol veya dosya içeriği açmaz).
+- MCP prompts: yan etkisiz, yalnız metin üreten `packer-triage`,
+  `dotnet-malware-triage` ve `android-triage` akışları.
+- `REA_TOOLSETS` profilleri: tanımsız/boş/`all` = 171 araç; `minimal` = 8,
+  `static` = 98, `android` = 27, `dotnet` = 20, `web` = 26, `debug` = 50.
+  Virgüllü yazım birleşimdir; bilinmeyen/boş profil sessizce `all`'a düşmez,
+  açılışta açık hata verir. Resources/prompts filtrelenmez.
+- `REA_WORKSPACE_ROOT` çalışma kökü sınırı: tanımlıyken `rea_*` yol argümanları,
+  conduit `open_target`/`debug_open` yolları ve kullanıcıya görünür türev yazmalar
+  (`.unpacked`, `.extracted`, HAR çıktısı) kök içinde, realpath kanıtıyla doğrulanır;
+  tanımsızken davranış değişmez. Operatör temp/cache yüzeyleri bilinçli istisnadır:
+  browser artifacts dizini, Ghidra tmp proje/girdi dizinleri, hopper tmp istek
+  dosyası ve apktool framework cache'i kök içine zorlanmaz.
+- Tokensiz HTTP salt-okunur kipi: `DBG_BRIDGE_TOKEN` tanımsızken HTTP, uyarının
+  yanında yalnız 44 araçlık, yol parametresi almayan salt-okunur allowlist'i
+  kaydeder (sonuç `REA_TOOLSETS` ile kesişimdir). Token'lı HTTP ve stdio tam
+  (veya toolset) yüzeyi korur. Yeni/listede olmayan araç tokensiz HTTP'de görünmez.
+- `REA_AUDIT_LOG` (JSONL, iki transportta da): satır başına yalnız `ts`,
+  `transport`, `tool`, `durationMs`, `isError`. Argüman, token, yol veya hedef
+  içeriği asla yazılmaz; yazma hatası tek uyarıyla audit'i kapatır, sunucuyu çökertmez.
+- HTTP sınırları: IP başına `REA_HTTP_RATE_LIMIT_PER_MIN` (varsayılan 120/dk) ve
+  aktif istek tavanı `REA_HTTP_MAX_CONCURRENT` (varsayılan 16); aşımda `429`.
+  Pozitif tam sayı olmayan değer sessiz varsayılana düşmez, açılış hatası verir.
+- Tip güvenli çıktılar (kısmi taban): 120 araç `outputSchema` taşıyor, 169 araçta
+  annotations var; metin JSON'u düz nesne olan sonuçlarda `structuredContent` aynı
+  değeri taşır. Şema kümesi dışındaki araçlar şemasız metin JSON'u döner; araç
+  başına durum `docs/TOOLS.md`'dedir. Şema kapsamı tüm 171 araca genişlemiş değildir.
+- Async job pilotu: `REA_ASYNC_JOBS=1` açılınca 5 job aracı
+  (`rea_job_start/status/result/cancel/list`) kaydolur; varsayılan yüzey 171
+  araç olarak kalır, opt-in yüzey 176 araçtır. Kuyruk en fazla 2 eşzamanlı iş
+  koşar, kayıtlar süreç-içidir ve whitelist bugün yalnız AbortSignal alan
+  `rea_process_run` aracını içerir; çalışan işin iptali süreç ağacını öldürür.
+- Roots pilotu: `REA_ROOTS=1` ve legacy stdio yolunda istemci kökleri çekilir;
+  kökler `REA_WORKSPACE_ROOT` sınırını yalnız daraltabilir. Modern protokolün
+  MRTR akışı ayrı iştir ve desteklenmiş gibi gösterilmez.
+- Progress/iptal pilotu: `rea_process_run` ilk bildirimi beklemeden, sonrakileri
+  en fazla yaklaşık 20/sn hızla gönderir; `notifications/cancelled` çocuk süreç
+  ağacını öldürür. Diğer senkron handler'lar bu pilotun dışındadır.
+- Yayın hazırlığı: Registry adı `io.github.Alyhnte/rea-plus` ve paket `mcpName`'i
+  hazır; publish workflow'u yalnız elle tetiklenen, varsayılanı dry-run olan bir
+  hazırlık olarak eklendi (gerçek yayın açık `PUBLISH` onayı ister).
+- jadx köprüsü dürüstlüğü (kod tabanı): manifest paket/izin/aktivite ve sınıf FQCN
+  çıkarımı gerçek ayrıştırmaya dayanıyor; canlı jadx koşusu bu girdinin kanıtı değildir.
+- Frida ajanı exception davranışı (kod tabanı): kurulu slotun adresiyle eşleşmeyen
+  exception artık breakpoint sanılıp yutulmuyor, `false` ile gerçek akışa bırakılıyor.
+
+### Henüz yapılmadı / Not yet done
+
+- npm yayını ve MCP Registry kaydı yapılmadı. Desteklenen kurulum hâlâ
+  `npx -y github:Alyhnte/ReaPlus` ve GHCR'dır; `npx -y rea-plus` henüz çalışmaz.
+- Frida canlı VM onayı tamamlanmış değildir; yukarıdaki Frida maddesi canlı kabul
+  kanıtı sayılmaz.
+- DEX golden APK kabul testi (canlı jadx + gerçek APK) tamamlanmış değildir;
+  golden korpus kapısı açık durur.
+
 ## [0.7.4] — 2026-10-13
 
 Dağıtım yaması: başkalarının kurulumu kolaylaştı; tüketiciyi kilitleyen bir paket
