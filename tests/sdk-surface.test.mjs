@@ -1,6 +1,6 @@
 // sdk-surface.test.mjs: derlenmis sunucu uzerinde gercek stdio JSON-RPC yuzeyi.
 // Kos: npm run build sonrasi `node --test tests/sdk-surface.test.mjs`.
-// Kapsam: initialize, tools/list (171), outputSchema dalga 1+2+3+4 (117 rea
+// Kapsam: initialize, tools/list (171), outputSchema dalga 1+2+3+4+D/2 (137 rea
 // araci) + acik annotations kumeleri (rea: 79 readOnly, 24 destructive,
 // 59 openWorld; siniflandirilmamis yalniz process_compare + pwn_elf_layout),
 // tools/call'da structuredContent == text JSON. Yalniz deterministik/offline
@@ -160,7 +160,7 @@ describe("sdk yuzeyi (stdio JSON-RPC)", () => {
       assert.ok(a, `${ad} listede olmali`);
       assert.notEqual(a.annotations?.readOnlyHint, true, `${ad} readOnly isaretlenmemeli`);
     }
-    const semasiz = araclar.find((t) => t.name === "rea_unpack_hunt");
+    const semasiz = araclar.find((t) => t.name === "rea_fallback");
     assert.equal(semasiz.outputSchema, undefined, "sema disi arac outputSchema almamali");
     // Siniflandirilmamis (her zaman kapidan donen sablon) arac tahminle isaretlenmez.
     const pc = araclar.find((t) => t.name === "rea_process_compare");
@@ -197,8 +197,8 @@ describe("sdk yuzeyi (stdio JSON-RPC)", () => {
       assert.equal(a.annotations?.idempotentHint, true, `${ad} idempotentHint true olmali`);
       assert.equal(a.annotations?.openWorldHint, false, `${ad} openWorldHint false olmali`);
     }
-    // Toplamlar dalga 4 sonrasi degerlerdir; ayrinti dalga-4 testinde.
-    assert.equal(araclar.filter((a) => a.outputSchema).length, 120, "toplam outputSchema 120 olmali (117 rea + 3 conduit)");
+    // Toplamlar dalga D/2 sonrasi degerlerdir; ayrinti dalga-4 ve dalga-D/2 testlerinde.
+    assert.equal(araclar.filter((a) => a.outputSchema).length, 147, "toplam outputSchema 147 olmali (137 rea + 10 conduit)");
     assert.equal(araclar.filter((a) => a.annotations?.readOnlyHint === true).length, 83, "toplam readOnly 83 olmali (79 rea + 4 conduit)");
     assert.equal(araclar.filter((a) => a.annotations?.destructiveHint === true).length, 37, "toplam destructive 37 olmali (24 rea + 13 conduit)");
     assert.equal(araclar.filter((a) => a.annotations?.openWorldHint === true).length, 85, "toplam openWorld 85 olmali (59 rea + 26 conduit)");
@@ -282,8 +282,58 @@ describe("sdk yuzeyi (stdio JSON-RPC)", () => {
       assert.equal(a.annotations?.readOnlyHint, false, `${ad} harici arac/surec, readOnly olmamali`);
       assert.equal(a.annotations?.openWorldHint, true, `${ad} openWorld olmali`);
     }
-    assert.equal(araclar.filter((a) => a.outputSchema).length, 120, "toplam outputSchema 120 olmali (117 rea + 3 conduit)");
-    assert.equal(araclar.filter((a) => a.annotations).length, 169, "annotations toplami dalga 4 ile degismemeli");
+    assert.equal(araclar.filter((a) => a.outputSchema).length, 147, "toplam outputSchema 147 olmali (137 rea + 10 conduit)");
+    assert.equal(araclar.filter((a) => a.annotations).length, 169, "annotations toplami dalga D/2 ile degismemeli");
+  });
+
+  it("dalga-D/2 kopru araclari outputSchema tasir; annotations kumeleri degismez", () => {
+    // Onceki dalgalarda semasiz kalan 20 kopru araci: basari sekli handler
+    // govdesindeki ok:true literalinden turetilmistir. Tumu harici arac/surec/
+    // ag/cihaz ile konusur (readOnly degil). Sema disi kalan 4 rea araci:
+    // string donenler (best_motor, fallback) + her zaman kapidan donen
+    // sablonlar (process_compare, pwn_elf_layout).
+    const yikiciVeAcik = [
+      "rea_firmware_extract", "rea_frida_pause", "rea_frida_resume",
+      "rea_frida_step", "rea_frida_cond", "rea_ida_idb",
+      "rea_unpack_try", "rea_browser_shot", "rea_browser_scenario",
+      "rea_net_capture",
+    ];
+    const yalnizAcik = [
+      "rea_browser_caps", "rea_browser_nav", "rea_browser_click",
+      "rea_console_yakala", "rea_storage_dump", "rea_jeb_sorgu",
+      "rea_frida_api", "rea_frida_stalker", "rea_unpack_hunt",
+    ];
+    assert.equal(yikiciVeAcik.length + yalnizAcik.length + 1, 20);
+    for (const ad of [...yikiciVeAcik, ...yalnizAcik, "rea_hopper_istek"]) {
+      const a = araclar.find((t) => t.name === ad);
+      assert.ok(a, `${ad} listede olmali`);
+      assert.equal(a.outputSchema?.type, "object", `${ad} outputSchema nesne olmali`);
+      assert.equal(a.annotations?.readOnlyHint, false, `${ad} harici arac/surec, readOnly olmamali`);
+    }
+    for (const ad of yikiciVeAcik) {
+      const a = araclar.find((t) => t.name === ad);
+      assert.equal(a.annotations?.destructiveHint, true, `${ad} destructive olmali`);
+      assert.equal(a.annotations?.openWorldHint, true, `${ad} openWorld olmali`);
+    }
+    for (const ad of yalnizAcik) {
+      const a = araclar.find((t) => t.name === ad);
+      assert.equal(a.annotations?.destructiveHint, undefined, `${ad} destructive iddia etmemeli`);
+      assert.equal(a.annotations?.openWorldHint, true, `${ad} openWorld olmali`);
+    }
+    // hopper_istek yalniz yerel istek dosyasi yazar: yikici ama openWorld degil.
+    const istek = araclar.find((t) => t.name === "rea_hopper_istek");
+    assert.equal(istek.annotations?.destructiveHint, true, "rea_hopper_istek destructive olmali");
+    assert.equal(istek.annotations?.openWorldHint, undefined, "rea_hopper_istek openWorld iddia etmemeli");
+    // unpack_try ust zarfta ok tasimaz; yontem dort literaldan biridir.
+    const yonlendir = araclar.find((t) => t.name === "rea_unpack_try");
+    assert.deepEqual(yonlendir.outputSchema.properties.yontem?.enum?.sort(), ["dump-hunt", "ilspy", "none", "upx"]);
+    assert.ok(yonlendir.outputSchema.properties.sonuc, "rea_unpack_try semasi sonuc icermeli");
+    // Sema disi kalanlar: string/dizi donenler + kapidan donen sablonlar.
+    for (const ad of ["rea_best_motor", "rea_fallback", "rea_process_compare", "rea_pwn_elf_layout"]) {
+      assert.equal(araclar.find((t) => t.name === ad)?.outputSchema, undefined, `${ad} outputSchema almamali`);
+    }
+    assert.equal(araclar.filter((a) => a.outputSchema).length, 147, "toplam outputSchema 147 olmali (137 rea + 10 conduit)");
+    assert.equal(araclar.filter((a) => a.annotations).length, 169, "annotations toplami dalga D/2 ile degismemeli");
   });
 
   it("yazanlar destructive, ag/cihaz/surec/harici araclar openWorld isaretli", () => {
@@ -462,11 +512,11 @@ describe("sdk yuzeyi (stdio JSON-RPC)", () => {
       ["rea_dos_com", { path: WASM }, (s) => assert.deepEqual(s.details, { boyut: 11, com: true })],
       ["rea_hopper_tara", { path: JS, desen: "selamla" }, (s) => { assert.equal(s.sayi, 3); assert.equal(s.eslesmeler[0].satir, 4); }],
       ["rea_ida_flirt", { path: JS }, (s) => { assert.equal(s.sayi, 0); assert.deepEqual(s.eslesmeler, []); }],
-      ["rea_fs_snapshot", { path: corpus }, (s) => assert.deepEqual(Object.keys(s["kayıt"].dosyalar).sort(), ["mini_branch.elf", "mini_pe_x64.exe", "ornek.js", "ornek.wasm", "sahte.apk"])],
+      ["rea_fs_snapshot", { path: corpus }, (s) => assert.deepEqual(Object.keys(s["kayıt"].dosyalar).filter((f) => !["HASHES.json", "README.md"].includes(f)).sort(), ["mini_branch.elf", "mini_pe_x64.exe", "ornek.js", "ornek.wasm", "sahte.apk"])],
       ["rea_js_require", { path: corpus }, (s) => assert.deepEqual(s.details.graf, { "ornek.js": ["node:path", "node:fs"] })],
       ["rea_js_export_shape", { path: JS }, (s) => { assert.deepEqual(s.details.fonksiyonlar, ["selamla"]); assert.equal(s.details.defaultVarMi, true); }],
       ["rea_investigate", { path: PE }, (s) => { assert.equal(s.tip, "pe"); assert.equal(s.motor, "cutter"); assert.equal(s.plan.length, 3); }],
-      ["rea_scan_repo", { path: corpus }, (s) => { assert.equal(s.details.dosyalar.length, 5); assert.deepEqual(s.details.tipler, { elf: 1, pe: 1, js: 1, wasm: 1, apk: 1 }); }],
+      ["rea_scan_repo", { path: corpus }, (s) => { const gercek = s.details.dosyalar.filter((d) => !["HASHES.json", "README.md"].includes((d.yol ?? "").split(/[\\/]/).pop())); assert.equal(gercek.length, 5); assert.deepEqual(s.details.tipler, { elf: 1, pe: 1, js: 1, wasm: 1, apk: 1 }); }],
     ];
     assert.equal(cagrilar.length, 28);
     let paket;
@@ -485,6 +535,28 @@ describe("sdk yuzeyi (stdio JSON-RPC)", () => {
     assert.notEqual(dogrula.isError, true);
     assert.deepEqual(dogrula.structuredContent, { ok: true });
     assert.deepEqual(dogrula.structuredContent, textJson(dogrula).json);
+  });
+
+  it("dalga-D/2 araclari semaya uygun doner (alt surec yoklayan dal dosyasiz)", async () => {
+    // Varolmayan yol: unpack_try hizli "none" dalina duser (upx yoklamasi
+    // yapilmaz, alt surec yok); ust zarf basaridir ve semaya uyar.
+    const yonlendir = await istek("tools/call", {
+      name: "rea_unpack_try",
+      arguments: { path: "yok-boyle-bir-dosya.bin" },
+    });
+    assert.notEqual(yonlendir.isError, true);
+    assert.deepEqual(yonlendir.structuredContent, textJson(yonlendir).json);
+    assert.equal(yonlendir.structuredContent.yontem, "none");
+    assert.equal(yonlendir.structuredContent.sonuc.ok, false);
+    // Ayni yol unpack_hunt'ta erken kapiya duser: isError kalir, iki kanal ayni.
+    const av = await istek("tools/call", {
+      name: "rea_unpack_hunt",
+      arguments: { path: "yok-boyle-bir-dosya.bin" },
+    });
+    assert.equal(av.isError, true);
+    const { json } = textJson(av);
+    assert.equal(json.ok, false);
+    assert.deepEqual(av.structuredContent, json);
   });
 
   it("nesne sonucu structuredContent alir, nesne disi sonuc almaz", async () => {

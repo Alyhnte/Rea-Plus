@@ -1,7 +1,7 @@
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
-import { copyFile, mkdir, open as fsOpen, stat } from "node:fs/promises";
+import { copyFile, mkdir, open as fsOpen, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -387,6 +387,244 @@ export async function ensureBridgeFiles(debuggerExe: string, arch: X64Arch): Pro
   await copyIfDifferent(files.sdkSource, join(pluginsDir, "x64dbg_bridge_sdk.py"));
   await copyIfDifferent(files.bridgeSource, join(pluginsDir, "x64dbg_mcp_bridge.py"));
   return pluginsDir;
+}
+
+// ---------------------------------------------------------------------------
+// Bridge oto-provizyonu: doctor (rapor) + setup (kur/doğrula) — Dalga A/4
+//
+// Bugüne dek bridge dosyaları elle bekleniyordu; ilk kurulum sürtünmeliydi.
+// reaX64dbgDoctor nerede ne beklendiğini ve hangisinin var/yok/bozuk
+// olduğunu DÜRÜST raporlar (eksik varken sahte "hazır" yok).
+// reaX64dbgSetup eksik dosyaları kurar, mevcutları hash ile doğrular,
+// ikinci çalışta "zaten hazır" der (idempotent). Bozuk dosya açık
+// bridge_error + yeniden kurulum önerisi verir; force:true ile onarılır.
+//
+// Güvenlik sınırı: yazma hedefi YALNIZ çözümlenen debuggerExe'nin
+// plugins/ dizinidir. Testler geçici dizin + sahte kaynaklarla çalışır;
+// gerçek kullanıcı dizinine yazma olmaz. Canlı debugger spawn edilmez.
+// ---------------------------------------------------------------------------
+
+export type X64dbgBridgeFileKind = "loader" | "sdk" | "bridge";
+
+export interface X64dbgBridgeFileStatus {
+  /** Hedef dosya adı (örn. "x64dbg_mcp_loader.dp64"). */
+  ad: string;
+  /** Debugger plugins/ altındaki beklenen tam yol (debugger bilinmiyorsa ad). */
+  beklenenYol: string;
+  /** Dosya yoksa/bozuksa nereden alınacağı (dürüst kaynak notu). */
+  kaynak: string;
+  tur: X64dbgBridgeFileKind;
+  kaynakYol: string;
+  kaynakVar: boolean;
+  mevcut: boolean;
+  boyut: number | null;
+  sha256: string | null;
+  /** Mevcut ama vendored kaynak hash'inden farklı. */
+  bozuk: boolean;
+}
+
+export interface X64dbgDoctorReport {
+  ready: boolean;
+  arch: X64Arch;
+  sourceDir: string;
+  debuggerExe: string | null;
+  pluginsDir: string | null;
+  dosyalar: X64dbgBridgeFileStatus[];
+  missing: X64dbgBridgeFileStatus[];
+  corrupt: X64dbgBridgeFileStatus[];
+  ozet: string;
+}
+
+export interface X64dbgSetupOptions {
+  arch?: X64Arch;
+  /** Açık debugger yolu (testler geçici dizin verir; verilmezse resolve denenir). */
+  debuggerExe?: string;
+  /** Vendored kaynak dizini (varsayılan pluginSourceDir()). */
+  sourceDir?: string;
+  /** Bozuk dosyayı onarmak için true gerekir; yoksa açık hata verilir. */
+  force?: boolean;
+}
+
+export interface X64dbgSetupResult {
+  ready: boolean;
+  alreadyReady: boolean;
+  arch: X64Arch;
+  pluginsDir: string;
+  installed: string[];
+  verified: string[];
+}
+
+const LOADER_KAYNAK =
+  "On derlemeli loader yoksa plugin/x64dbg/THIRD_PARTY_NOTICES.md adımlarıyla MinGW ile derlenir " +
+  "(VS Build Tools gerekmez). Duyuru: https://github.com/x64dbg/x64dbg/releases";
+const VENDORED_KAYNAK =
+  "Paket içi vendored kaynak: plugin/x64dbg/ (kurulumla gelir; ayrıca indirilmez)";
+
+interface ProvizyonManifest {
+  ad: string;
+  kaynakYol: string;
+  tur: X64dbgBridgeFileKind;
+  kaynak: string;
+}
+
+function provizyonManifest(arch: X64Arch, sourceDir: string): ProvizyonManifest[] {
+  const loaderName = arch === "x64" ? "x64dbg_mcp_loader.dp64" : "x64dbg_mcp_loader.dp32";
+  return [
+    { ad: loaderName, kaynakYol: join(sourceDir, "prebuilt", loaderName), tur: "loader", kaynak: LOADER_KAYNAK },
+    { ad: "x64dbg_bridge_sdk.py", kaynakYol: join(sourceDir, "x64dbg_bridge_sdk.py"), tur: "sdk", kaynak: VENDORED_KAYNAK },
+    { ad: "x64dbg_mcp_bridge.py", kaynakYol: join(sourceDir, "x64dbg_mcp_bridge.py"), tur: "bridge", kaynak: VENDORED_KAYNAK },
+  ];
+}
+
+async function sha256Dosya(yol: string): Promise<{ boyut: number; sha256: string } | null> {
+  try {
+    const veri = await readFile(yol);
+    if (!(await isFile(yol))) {
+      return null;
+    }
+    return { boyut: veri.length, sha256: createHash("sha256").update(veri).digest("hex") };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * rea_x64dbg_doctor: bridge dosyaları nerede beklenir, hangisi var/yok/bozuk
+ * raporlar. Eksik varken asla "hazır" denmez; her eksik ad + beklenen yol +
+ * kaynak taşır. Debugger bulunamazsa pluginsDir/debuggerExe null olur ama
+ * kaynak tarafı yine dürüst raporlanır. Hiçbir şey yazmaz, debugger açmaz.
+ */
+export async function reaX64dbgDoctor(
+  opts: { arch?: X64Arch; debuggerExe?: string; sourceDir?: string } = {},
+): Promise<X64dbgDoctorReport> {
+  const arch = opts.arch ?? "x64";
+  const sourceDir = opts.sourceDir ?? pluginSourceDir();
+  let debuggerExe: string | null = null;
+  if (opts.debuggerExe !== undefined && opts.debuggerExe !== "") {
+    if (await isFile(opts.debuggerExe)) {
+      debuggerExe = opts.debuggerExe;
+    }
+  } else {
+    try {
+      debuggerExe = await resolveDebuggerExe(await resolveX64dbgDir(), arch);
+    } catch {
+      debuggerExe = null;
+    }
+  }
+  const pluginsDir = debuggerExe !== null ? join(debuggerArchDir(debuggerExe), "plugins") : null;
+  const dosyalar: X64dbgBridgeFileStatus[] = [];
+  for (const m of provizyonManifest(arch, sourceDir)) {
+    const kBilgi = await sha256Dosya(m.kaynakYol);
+    const beklenenYol = pluginsDir !== null ? join(pluginsDir, m.ad) : m.ad;
+    const dBilgi = pluginsDir !== null ? await sha256Dosya(beklenenYol) : null;
+    const mevcut = dBilgi !== null;
+    const kaynakVar = kBilgi !== null;
+    dosyalar.push({
+      ad: m.ad,
+      beklenenYol,
+      kaynak: m.kaynak,
+      tur: m.tur,
+      kaynakYol: m.kaynakYol,
+      kaynakVar,
+      mevcut,
+      boyut: dBilgi?.boyut ?? null,
+      sha256: dBilgi?.sha256 ?? null,
+      bozuk: mevcut && kaynakVar && dBilgi.sha256 !== (kBilgi?.sha256 ?? ""),
+    });
+  }
+  const missing = dosyalar.filter((f) => !f.mevcut || !f.kaynakVar);
+  const corrupt = dosyalar.filter((f) => f.bozuk);
+  const ready = debuggerExe !== null && missing.length === 0 && corrupt.length === 0;
+  const ozet = ready
+    ? `x64dbg bridge hazır (${arch}): 3/3 dosya doğrulandı (${pluginsDir}).`
+    : `x64dbg bridge hazır değil (${arch}): debugger ${debuggerExe ?? "bulunamadı"}, ` +
+      `eksik ${missing.length}, bozuk ${corrupt.length}. ` +
+      "Eksiklerin kaynak alanı nereden alınacağını söyler; köprü dosyayı kendisi indirmez.";
+  return { ready, arch, sourceDir, debuggerExe, pluginsDir, dosyalar, missing, corrupt, ozet };
+}
+
+/**
+ * rea_x64dbg_setup: bridge dosyalarını kurar veya hash ile doğrular.
+ * Yazma hedefi YALNIZ çözümlenen debuggerExe'nin plugins/ dizinidir.
+ * İkinci çalışta değişiklik yapmaz (alreadyReady). Kaynak eksikse sahte
+ * "hazır" yerine engine_unavailable; hedef bozuksa force yokken açık
+ * bridge_error + yeniden kurulum önerisi verir.
+ */
+export async function reaX64dbgSetup(opts: X64dbgSetupOptions = {}): Promise<X64dbgSetupResult> {
+  const arch = opts.arch ?? "x64";
+  const sourceDir = opts.sourceDir ?? pluginSourceDir();
+  const force = opts.force ?? false;
+
+  const manifest = provizyonManifest(arch, sourceDir);
+  const kayipKaynak: string[] = [];
+  const kaynakHash = new Map<string, string>();
+  for (const m of manifest) {
+    const bilgi = await sha256Dosya(m.kaynakYol);
+    if (bilgi === null) {
+      kayipKaynak.push(`${m.ad} <- ${m.kaynakYol} (${m.kaynak})`);
+    } else {
+      kaynakHash.set(m.ad, bilgi.sha256);
+    }
+  }
+  if (kayipKaynak.length > 0) {
+    throw new X64dbgError(
+      "engine_unavailable",
+      `x64dbg bridge kaynakları eksik (${arch}); sahte hazır bildirilmiyor: ${kayipKaynak.join("; ")}`,
+      { arch, sourceDir, kayip: kayipKaynak },
+    );
+  }
+
+  let debuggerExe: string;
+  if (opts.debuggerExe !== undefined && opts.debuggerExe !== "") {
+    if (!(await isFile(opts.debuggerExe))) {
+      throw new X64dbgError("invalid_argument", `debugger dosyası bulunamadı: ${opts.debuggerExe}`, {
+        debuggerExe: opts.debuggerExe,
+      });
+    }
+    debuggerExe = opts.debuggerExe;
+  } else {
+    const dir = await resolveX64dbgDir();
+    debuggerExe = await resolveDebuggerExe(dir, arch);
+  }
+  const pluginsDir = join(debuggerArchDir(debuggerExe), "plugins");
+  await mkdir(pluginsDir, { recursive: true });
+
+  const installed: string[] = [];
+  const verified: string[] = [];
+  for (const m of manifest) {
+    const dest = join(pluginsDir, m.ad);
+    const want = kaynakHash.get(m.ad) ?? "";
+    const mevcut = await sha256Dosya(dest);
+    if (mevcut !== null && mevcut.sha256 === want) {
+      verified.push(m.ad);
+      continue;
+    }
+    if (mevcut !== null && mevcut.sha256 !== want && !force) {
+      throw new X64dbgError(
+        "bridge_error",
+        `bridge dosyası bozuk: ${m.ad} (${dest} beklenen sha256 ${want}, bulunan ${mevcut.sha256}). ` +
+          "Yeniden kurulum için reaX64dbgSetup(..., { force: true }) çalıştırın.",
+        { arch, ad: m.ad, dest, beklenen: want, bulunan: mevcut.sha256 },
+      );
+    }
+    await copyFile(m.kaynakYol, dest);
+    installed.push(m.ad);
+  }
+  for (const m of manifest) {
+    const dest = join(pluginsDir, m.ad);
+    const son = await sha256Dosya(dest);
+    if (son === null || son.sha256 !== (kaynakHash.get(m.ad) ?? "")) {
+      throw new X64dbgError("bridge_error", `kurulum sonrası doğrulama tutmadı: ${m.ad} (${dest})`, {
+        arch,
+        ad: m.ad,
+        dest,
+      });
+    }
+    if (!verified.includes(m.ad)) {
+      verified.push(m.ad);
+    }
+  }
+  return { ready: true, alreadyReady: installed.length === 0, arch, pluginsDir, installed, verified };
 }
 
 // ---------------------------------------------------------------------------

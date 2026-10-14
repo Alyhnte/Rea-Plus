@@ -91,17 +91,40 @@ export function rea_ida_idb(hedef: string, cikti: string) {
   }
 }
 
-// FLIRT çevrimdışı taraması (IDA/lisans gerekmez): imza veritabanı yerine
-// dosyadaki derleyici kalıpları aranır (hedef çalıştırılmaz, salt okuma).
+// Çevrimdışı string-sezgisel derleyici/kütüphane tahmini (gerçek FLIRT imzası
+// DEĞİL: imza veritabanı uygulanmaz, IDA/lisans gerekmez; hedef çalıştırılmaz,
+// salt okuma). Gerçek FLIRT için rea_ida_idb çıktısına IDA'da imza uygulanmalıdır.
 const FLIRT_KALIPLARI = ["MSVC", "Microsoft Visual C++", "RTTI", "MFC", "ATL", "GCC:", "clang version", "__cxa_", ".eh_frame", "Borland", "Delphi", "FLIRT"] as const;
-export function rea_ida_flirt(hedef: string) {
+
+// Güven eşiği: altında kalan eşleşme "bilinmiyor" döner (sahte kesinlik yok).
+const FLIRT_GUVEN_ESIGI = 0.5;
+
+function flirtKutuphaneTahmini(eslesmeler: string[], surumler: string[]): string {
+  const kume = new Set(eslesmeler);
+  if (kume.has("MSVC") || kume.has("Microsoft Visual C++") || kume.has("MFC") || kume.has("ATL"))
+    return "MSVC (tahmini)";
+  if (kume.has("clang version")) return surumler[0] ?? "Clang (tahmini)";
+  if (kume.has("GCC:") || kume.has("__cxa_") || kume.has(".eh_frame"))
+    return surumler[0] ?? "GCC (tahmini)";
+  if (kume.has("Borland") || kume.has("Delphi")) return "Borland/Delphi (tahmini)";
+  // Yalnız "FLIRT"/"RTTI" kelimesi tek başına kütüphane kanıtı değildir.
+  return "bilinmiyor";
+}
+
+export function rea_ida_flirt(hedef: string, env = process.env) {
   if (!hedef || !existsSync(hedef))
     return { ok: false as const, code: "capability_unsupported" as const, neden: `hedef yok: ${hedef}` };
   try {
     const metin = readFileSync(hedef).toString("latin1");
     const eslesmeler = FLIRT_KALIPLARI.filter((k) => metin.includes(k));
     const surumler = [...metin.matchAll(/((?:GCC:|clang version)[^\r\n]{0,80})/g)].map((m) => (m[1] as string).trim()).slice(0, 10);
-    return { ok: true as const, arac: "rea_ida_flirt", hedef, eslesmeler, surumler, sayi: eslesmeler.length };
+    const guven = Math.min(0.95, 0.25 * eslesmeler.length + (surumler.length ? 0.3 : 0));
+    const kutuphane = guven < FLIRT_GUVEN_ESIGI ? "bilinmiyor" : flirtKutuphaneTahmini(eslesmeler, surumler);
+    const ida = idaDurumu(env);
+    const not = ida.tamam
+      ? "IDA mevcut ancak bu araç gerçek FLIRT imzası uygulamaz; doğrulama için rea_ida_idb çıktısını IDA'da imza uygulayarak kullanın."
+      : `IDA bulunamadı (${ida.neden}); gerçek FLIRT imzası uygulanmadı, sonuç string-sezgisel tahmindir.`;
+    return { ok: true as const, arac: "rea_ida_flirt", hedef, eslesmeler, surumler, sayi: eslesmeler.length, method: "string-heuristic" as const, guven, kutuphane, idaMevcut: ida.tamam, not };
   } catch (e) {
     return { ok: false as const, code: "capability_unsupported" as const, neden: `flirt taraması hatası: ${e instanceof Error ? e.message : String(e)}` };
   }

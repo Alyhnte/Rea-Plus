@@ -2,7 +2,7 @@
 // protokol kaniti (InMemoryTransport). Kos: npm run build sonrasi
 // `node --test tests/conduit-surface.test.mjs`.
 // Kapsam: toplam 171 korunur; 30 conduit adinin tamami annotations tasir;
-// tehlikeli araclar readOnly degildir; outputSchema yalniz deterministik 3
+// tehlikeli araclar readOnly degildir; outputSchema yalniz sabit sekilli 10
 // aracta; tools/call'da structuredContent == text JSON (basari + isError).
 // Canli motor/hedef ACILMAZ: cagrilan conduit araclari yalniz surec-ici
 // registry'ye dokunur (health/session_*/events_pull) veya bilinmeyen
@@ -34,7 +34,10 @@ const DESTRUCTIVE_13 = [
   "debug_pause", "debug_code", "debug_thread", "debug_time",
 ];
 const KAPALI_4 = ["health", "session_open", "session_list", "events_pull"]; // openWorld olmayanlar
-const SEMALI_3 = ["health", "session_list", "session_open"];
+const SEMALI_10 = [
+  "health", "session_list", "session_open", "session_close", "close_target",
+  "open_target", "debug_close", "events_pull", "prerequisites", "explain",
+];
 const BILINMEYEN_UUID = "00000000-0000-4000-8000-000000000000";
 
 // REA_TOOLSETS / REA_AUDIT_LOG test boyunca kontrollu; onceki degerler geri yuklenir.
@@ -122,10 +125,10 @@ describe("conduit metadata (birim)", () => {
     }
   });
 
-  it("30 aracin tamami annotations tasir; sayilar sabittir; sema yalniz 3 aracta", () => {
+  it("30 aracin tamami annotations tasir; sayilar sabittir; sema 10 aracta", () => {
     const metal = BEKLENEN_30.map((ad) => [ad, conduitToolMetadata(ad)]);
     for (const [ad, m] of metal) assert.ok(m?.annotations, `${ad} annotations tasimali`);
-    assert.deepEqual(metal.filter(([, m]) => m.outputSchema).map(([ad]) => ad).sort(), [...SEMALI_3].sort());
+    assert.deepEqual(metal.filter(([, m]) => m.outputSchema).map(([ad]) => ad).sort(), [...SEMALI_10].sort());
     assert.deepEqual(metal.filter(([, m]) => m.annotations.readOnlyHint === true).map(([ad]) => ad).sort(), [...READ_ONLY_4].sort());
     assert.deepEqual(metal.filter(([, m]) => m.annotations.destructiveHint === true).map(([ad]) => ad).sort(), [...DESTRUCTIVE_13].sort());
     assert.equal(metal.filter(([, m]) => m.annotations.openWorldHint === true).length, 26);
@@ -265,10 +268,12 @@ describe("conduit yuzeyi (gercek protokol, InMemoryTransport)", () => {
     });
   });
 
-  it("outputSchema yalniz health/session_open/session_list uzerindedir", () => {
-    assert.deepEqual(conduitAraclar.filter((a) => a.outputSchema).map((a) => a.name).sort(), [...SEMALI_3].sort());
+  it("outputSchema yalniz sabit sekilli 10 conduit araci uzerindedir", () => {
+    assert.deepEqual(conduitAraclar.filter((a) => a.outputSchema).map((a) => a.name).sort(), [...SEMALI_10].sort());
+    for (const ad of SEMALI_10) {
+      assert.equal(araclar.find((t) => t.name === ad)?.outputSchema?.type, "object", `${ad} outputSchema nesne olmali`);
+    }
     const health = araclar.find((t) => t.name === "health");
-    assert.equal(health.outputSchema.type, "object");
     for (const alan of ["status", "name", "protocol", "sessions"]) {
       assert.ok(health.outputSchema.properties[alan], `health semasi ${alan} icermeli`);
     }
@@ -276,6 +281,27 @@ describe("conduit yuzeyi (gercek protokol, InMemoryTransport)", () => {
     assert.ok(liste.outputSchema.properties.sessions, "session_list semasi sessions icermeli");
     const ac = araclar.find((t) => t.name === "session_open");
     assert.ok(ac.outputSchema.properties.session_id, "session_open semasi session_id icermeli");
+    // Dalga D/2: kapatma zarfi, acma zarfi, olay havi, yoklama ve aciklama.
+    for (const ad of ["session_close", "close_target", "debug_close"]) {
+      const sema = araclar.find((t) => t.name === ad)?.outputSchema;
+      assert.ok(sema.properties.closed, `${ad} semasi closed icermeli`);
+      assert.ok(sema.properties.session_id, `${ad} semasi session_id icermeli`);
+    }
+    const hedefAc = araclar.find((t) => t.name === "open_target")?.outputSchema;
+    for (const alan of ["opened", "session_id", "engine", "mode", "path"]) {
+      assert.ok(hedefAc.properties[alan], `open_target semasi ${alan} icermeli`);
+    }
+    const olaylar = araclar.find((t) => t.name === "events_pull")?.outputSchema;
+    for (const alan of ["session_id", "retainedFrom", "events"]) {
+      assert.ok(olaylar.properties[alan], `events_pull semasi ${alan} icermeli`);
+    }
+    const yoklama = araclar.find((t) => t.name === "prerequisites")?.outputSchema;
+    assert.ok(yoklama.properties.ozet, "prerequisites semasi ozet icermeli");
+    assert.ok(yoklama.properties.araclar, "prerequisites semasi araclar icermeli");
+    const aciklama = araclar.find((t) => t.name === "explain")?.outputSchema;
+    for (const alan of ["kaynak", "dil", "ozet", "satirlar", "atlamalar", "cagrilar", "bildirimler", "komut_sayisi", "gosterilen"]) {
+      assert.ok(aciklama.properties[alan], `explain semasi ${alan} icermeli`);
+    }
   });
 
   it("sarmalayici rea yuzune sizmaz: rea isaretleri ve isaretsizligi aynen durur", async () => {
@@ -316,6 +342,24 @@ describe("conduit yuzeyi (gercek protokol, InMemoryTransport)", () => {
     const olayS = ikiKanalAyni(olaylar, "events_pull");
     assert.equal(olayS.session_id, acilanSessionId);
     assert.equal(olayS.events[0]?.kind, "session.opened");
+  });
+
+  it("explain hazir komutla debugger'a dokunmadan semaya uygun doner", async () => {
+    const sonuc = await bag.gonder("tools/call", {
+      name: "explain",
+      arguments: {
+        instructions: [
+          { address: "0x1000", mnemonic: "push", operands: "rbp" },
+          { address: "0x1001", mnemonic: "ret", operands: "" },
+        ],
+      },
+    });
+    assert.notEqual(sonuc.isError, true);
+    const s = ikiKanalAyni(sonuc, "explain");
+    assert.equal(s.kaynak, "verilen_komutlar");
+    assert.equal(s.dil, "tr");
+    assert.equal(s.komut_sayisi, 2);
+    assert.equal(s.satirlar.length, 2);
   });
 
   it("bilinmeyen session hatasinda isError kalir; structuredContent text ile tutarlidir", async () => {

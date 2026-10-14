@@ -40,7 +40,7 @@ progress pilots. External gates in "Not yet done" remain open.
 - HTTP sınırları: IP başına `REA_HTTP_RATE_LIMIT_PER_MIN` (varsayılan 120/dk) ve
   aktif istek tavanı `REA_HTTP_MAX_CONCURRENT` (varsayılan 16); aşımda `429`.
   Pozitif tam sayı olmayan değer sessiz varsayılana düşmez, açılış hatası verir.
-- Tip güvenli çıktılar (kısmi taban): 120 araç `outputSchema` taşıyor, 169 araçta
+- Tip güvenli çıktılar (kısmi taban): 147 araç `outputSchema` taşıyor, 169 araçta
   annotations var; metin JSON'u düz nesne olan sonuçlarda `structuredContent` aynı
   değeri taşır. Şema kümesi dışındaki araçlar şemasız metin JSON'u döner; araç
   başına durum `docs/TOOLS.md`'dedir. Şema kapsamı tüm 171 araca genişlemiş değildir.

@@ -190,10 +190,11 @@ async function firstExisting(candidates: readonly string[]): Promise<string | un
   return undefined;
 }
 
-function missingCdbError(arch: X64Arch, checked: readonly string[]): CdbError {
+/** cdb.exe bulunamazsa durust hata: sahte basari yok, kurulum ipucu var. */
+export function missingCdbError(arch: X64Arch, checked: readonly string[]): CdbError {
   const listed = checked.length > 0 ? checked.join(", ") : "(no candidates on this platform)";
   return new CdbError(
-    "engine_unavailable",
+    "capability_unsupported",
     `cdb.exe for ${arch} not found. Set CDB_DIR to the Debugging Tools "Debuggers" directory ` +
       `(the parent of x64\\ and x86\\). Checked: ${listed}. ${suggestDownload("cdb")}`,
     { arch, checked: [...checked] },
@@ -434,6 +435,62 @@ class CdbPipe {
   /** True while a framed command (typically `g`) is waiting for its end marker. */
   hasPending(): boolean {
     return this.pending !== null;
+  }
+
+  /**
+   * Break a running debuggee without blocking the event loop. A running
+   * target does not see Ctrl-F on a pipe, so `DebugBreakProcess` is injected
+   * through an async PowerShell child; callers keep awaiting other work.
+   */
+  async requestBreak(pid: number): Promise<void> {
+    const ps = [
+      "$src = 'using System; using System.Runtime.InteropServices; public class BridgeBreak {",
+      "[DllImport(\"kernel32.dll\", SetLastError=true)] public static extern IntPtr OpenProcess(uint a, bool i, int p);",
+      "[DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool DebugBreakProcess(IntPtr h);",
+      "[DllImport(\"kernel32.dll\")] public static extern bool CloseHandle(IntPtr h); }'",
+      "Add-Type -TypeDefinition $src -ErrorAction Stop",
+      `$h = [BridgeBreak]::OpenProcess(2035711, $false, ${pid})`,
+      "if ($h -eq [IntPtr]::Zero) { Write-Output ('open-fail ' + [Runtime.InteropServices.Marshal]::GetLastWin32Error()); exit 2 }",
+      "$ok = [BridgeBreak]::DebugBreakProcess($h)",
+      "[BridgeBreak]::CloseHandle($h) | Out-Null",
+      "Write-Output ('break=' + $ok)",
+    ].join("\n");
+    const TIMEOUT_MS = 20_000;
+    const outcome = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve) => {
+      const child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", ps], {
+        windowsHide: true,
+      });
+      let stdout = "";
+      let stderr = "";
+      const timer = setTimeout(() => {
+        try {
+          child.kill();
+        } catch {
+          // Already gone.
+        }
+        resolve({ code: null, stdout, stderr: `${stderr} (timed out after ${TIMEOUT_MS}ms)` });
+      }, TIMEOUT_MS);
+      child.stdout?.on("data", (chunk: Buffer) => {
+        stdout += chunk.toString("utf8");
+      });
+      child.stderr?.on("data", (chunk: Buffer) => {
+        stderr += chunk.toString("utf8");
+      });
+      child.on("error", () => {
+        clearTimeout(timer);
+        resolve({ code: null, stdout, stderr: stderr === "" ? "powershell.exe could not start" : stderr });
+      });
+      child.on("close", (code) => {
+        clearTimeout(timer);
+        resolve({ code, stdout, stderr });
+      });
+    });
+    if (outcome.code !== 0 || !/break=True/i.test(outcome.stdout)) {
+      throw new CdbError("engine_error", `could not break pid ${pid}`, {
+        pid,
+        excerpt: `${outcome.stdout} ${outcome.stderr}`.trim().slice(0, 400),
+      });
+    }
   }
 
   waitForPrompt(timeoutMs: number): Promise<void> {
@@ -866,6 +923,9 @@ export class CdbEngine implements DebugEngine {
     }
     const body = await session.pipe.command("g", timeoutMs ?? cdbContinueTimeoutMs());
     const result = await this.finishStop(session, body);
+    if (result.reason === "breakpoint") {
+      this.emitPush(session, "debugEvent", result);
+    }
     return result;
   }
 
@@ -875,13 +935,24 @@ export class CdbEngine implements DebugEngine {
       return { reason: "exited", address: "0x0" };
     }
     if (session.pipe.hasPending()) {
-      debugBreakProcess(session.pid);
+      await session.pipe.requestBreak(session.pid);
     }
     const address = await this.readIp(session);
+    const result: ContinueResult = { reason: session.exited ? "exited" : "paused", address };
     if (!session.exited) {
       session.pauseReason = "paused";
     }
-    return { reason: session.exited ? "exited" : "paused", address };
+    this.emitPush(session, "debugEvent", result);
+    return result;
+  }
+
+  /**
+   * Opt-in async pause entry. Same result as pause(): the break injection
+   * never blocks the event loop, and completion is fanned out to onPush
+   * subscribers (silent when there are none).
+   */
+  async pauseAsync(sessionId: string): Promise<ContinueResult> {
+    return this.pause(sessionId);
   }
 
   async step(sessionId: string, kind: "into" | "over", count = 1): Promise<StepResult> {
@@ -970,8 +1041,18 @@ export class CdbEngine implements DebugEngine {
     return normalizeDbgAddress(raw);
   }
 
-  private async finishStop(session: CdbSession, body: string): Promise<ContinueResult> {
-    let result = classifyStop(body);
+  /** Fan a stop out to onPush subscribers. No subscriber (or a throwing one) stays silent. */
+  private emitPush(session: CdbSession, type: "stateChange" | "debugEvent", payload: unknown): void {
+    for (const handler of [...session.pushes]) {
+      try {
+        handler(type, payload);
+      } catch {
+        // One bad subscriber must not break pause/continue for the rest.
+      }
+    }
+  }
+
+  private async finishStop(session: CdbSession, body: string): Promise<ContinueResult> {    let result = classifyStop(body);
     if (result.reason === "paused" && !/Break instruction exception/i.test(body)) {
       const listed = await session.pipe.command("|", cdbCmdTimeoutMs());
       if (/exited/i.test(listed)) {
@@ -1260,33 +1341,6 @@ export async function getProcessExePath(pid: number): Promise<string> {
     );
   }
   return stdout;
-}
-
-function debugBreakProcess(pid: number): void {
-  const ps = [
-    "$src = 'using System; using System.Runtime.InteropServices; public class BridgeBreak {",
-    "[DllImport(\"kernel32.dll\", SetLastError=true)] public static extern IntPtr OpenProcess(uint a, bool i, int p);",
-    "[DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool DebugBreakProcess(IntPtr h);",
-    "[DllImport(\"kernel32.dll\")] public static extern bool CloseHandle(IntPtr h); }'",
-    "Add-Type -TypeDefinition $src -ErrorAction Stop",
-    `$h = [BridgeBreak]::OpenProcess(2035711, $false, ${pid})`,
-    "if ($h -eq [IntPtr]::Zero) { Write-Output ('open-fail ' + [Runtime.InteropServices.Marshal]::GetLastWin32Error()); exit 2 }",
-    "$ok = [BridgeBreak]::DebugBreakProcess($h)",
-    "[BridgeBreak]::CloseHandle($h) | Out-Null",
-    "Write-Output ('break=' + $ok)",
-  ].join("\n");
-  const res = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", ps], {
-    encoding: "utf8",
-    timeout: 20_000,
-    windowsHide: true,
-  });
-  const stdout = typeof res.stdout === "string" ? res.stdout : "";
-  if (res.status !== 0 || !/break=True/i.test(stdout)) {
-    throw new CdbError("engine_error", `could not break pid ${pid}`, {
-      pid,
-      excerpt: `${stdout} ${typeof res.stderr === "string" ? res.stderr : ""}`.trim().slice(0, 400),
-    });
-  }
 }
 
 export const cdbEngine = new CdbEngine();

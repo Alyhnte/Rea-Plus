@@ -1,4 +1,4 @@
-// rea araclari icin SDK yuzeyi metadata'si: outputSchema (dalga 1+2+3+4) +
+// rea araclari icin SDK yuzeyi metadata'si: outputSchema (dalga 1+2+3+4+D/2) +
 // annotations. Kapsam bilincli olarak sinirli: yalniz gercek donus sekli
 // handler govdesinde dogrulanmis araclar sema alir; surec-ici saf hesaplar ve
 // (dalga 3) alt surec/ag/yazma etkisi olmayan salt dosya okuyan kopruler
@@ -570,6 +570,11 @@ const OUTPUT_SCHEMAS: Readonly<Record<string, StandardSchemaWithJSON>> = {
     eslesmeler: z.array(z.string()),
     surumler: z.array(z.string()),
     sayi: z.number(),
+    method: z.literal("string-heuristic"),
+    guven: z.number(),
+    kutuphane: z.string(),
+    idaMevcut: z.boolean(),
+    not: z.string(),
   }),
   rea_fs_snapshot: z.object({
     ok: z.literal(true),
@@ -724,6 +729,102 @@ const OUTPUT_SCHEMAS: Readonly<Record<string, StandardSchemaWithJSON>> = {
   rea_process_run: z.object({
     ok: z.literal(true), tool: z.string(), summary: z.string(),
     "kayıt": z.object({ komut: z.string(), args: z.array(z.string()), kanal: z.enum(["pty", "pipe"]), "süre_ms": z.number(), "çıkış_kodu": z.number().nullable(), stdout_sha256_kısa: z.string() }),
+  }),
+  // Dalga D/2: onceki dalgalarda semasiz kalan kopru araclarinin sabit basari
+  // sekilleri. Sekiller yalniz handler govdelerindeki ok:true donuslerindeki
+  // nesne literallerinden turetilir; kapida donen ok:false sonuclari SDK
+  // tarafindan semayla dogrulanmaz. Degisken icerikli listelerde cekirdek
+  // alanlar sabitlenir, icerik z.unknown() kalir. Her zaman kapidan donen
+  // sablonlar (process_compare, pwn_elf_layout) ile string/dizi donenler
+  // (best_motor, fallback) sema almaz.
+  // Browser koprusu (BrowserBridge.ts): details her basarida ayni anahtarlari
+  // tasir; shot yalniz cikti yolu verildiyse dolar (diger halde null).
+  rea_browser_caps: z.object({
+    ok: z.literal(true), tool: z.string(), summary: z.string(),
+    details: z.object({ cdp: z.boolean(), playwright: z.string().nullable() }),
+  }),
+  rea_browser_nav: z.object({
+    ok: z.literal(true), tool: z.string(), summary: z.string(),
+    details: z.object({ title: z.string(), url: z.string(), shot: z.string().nullable(), icerik: z.string() }),
+  }),
+  rea_browser_click: z.object({
+    ok: z.literal(true), tool: z.string(), summary: z.string(),
+    details: z.object({ title: z.string(), url: z.string(), selector: z.string(), shot: z.string().nullable(), icerik: z.string() }),
+  }),
+  rea_browser_shot: z.object({
+    ok: z.literal(true), tool: z.string(), summary: z.string(),
+    details: z.object({ file: z.string(), url: z.string(), title: z.string() }),
+  }),
+  rea_browser_scenario: z.object({
+    ok: z.literal(true), tool: z.string(), summary: z.string(),
+    details: z.object({ file: z.string(), dir: z.string() }),
+  }),
+  // Browser derinligi (BrowserDepth.ts): depo betigi her zaman nesne doner,
+  // konsol iletileri tip+metin ciftleridir.
+  rea_storage_dump: z.object({
+    ok: z.literal(true), tool: z.string(), summary: z.string(),
+    details: z.object({ cookies: z.array(z.unknown()), localStorage: z.record(z.string(), z.string().nullable()) }),
+  }),
+  rea_console_yakala: z.object({
+    ok: z.literal(true), tool: z.string(), summary: z.string(),
+    details: z.object({ mesajlar: z.array(z.object({ tip: z.string(), metin: z.string() })), sure_ms: z.number() }),
+  }),
+  // Firmware cikarma (FirmwareBridge.ts): basarida tool alani secilen
+  // araca gore degisir (rea_firmware_binwalk/unblob), handoff tasimaz.
+  rea_firmware_extract: z.object({ ok: z.literal(true), tool: z.string(), summary: z.string() }),
+  // Frida araclari (FridaPlus.ts, ApiTracer.ts): arac/pid her basarida dolu,
+  // durum dizgileri handler'da sabittir. step'in adres/sonraki/vurdu alanlari
+  // ajan cevabina gore dusurulebilir (JSON'da alan hic yoktur).
+  rea_frida_pause: z.object({ ok: z.literal(true), arac: z.string(), pid: z.number(), durum: z.literal("duraklatildi") }),
+  rea_frida_resume: z.object({ ok: z.literal(true), arac: z.string(), pid: z.number(), durum: z.literal("sürdürüldü") }),
+  rea_frida_step: z.object({
+    ok: z.literal(true), arac: z.string(), pid: z.number(),
+    adres: z.string().optional(), sonraki: z.string().optional(), vurdu: z.boolean().optional(),
+  }),
+  rea_frida_cond: z.object({
+    ok: z.literal(true), arac: z.string(), pid: z.number(),
+    adres: z.string(), tuttu: z.boolean(), hitSayisi: z.number(),
+  }),
+  rea_frida_stalker: z.object({
+    ok: z.literal(true), arac: z.string(), pid: z.number(),
+    cagrilar: z.array(z.string()), sayi: z.number(),
+  }),
+  rea_frida_api: z.object({
+    ok: z.literal(true), arac: z.string(), pid: z.number(),
+    cagrilar: z.array(z.object({ api: z.string(), tid: z.number(), args: z.array(z.string()), retval: z.string() })),
+    sayi: z.number(),
+  }),
+  // Hopper istek dosyasi (HopperProvider.ts): kayit tek dalda uretilir,
+  // adresler kayit katmaninda her zaman bos dizidir (handler varsayilani).
+  rea_hopper_istek: z.object({
+    ok: z.literal(true), arac: z.string(), hedef: z.string(),
+    adresler: z.array(z.string()), istekDosyasi: z.string(), hopper: z.string(),
+  }),
+  // IDA batch (IdaProvider.ts): basarida idb dosyasi gercekten uretilmistir.
+  rea_ida_idb: z.object({
+    ok: z.literal(true), arac: z.string(), hedef: z.string(), idb: z.string(), idat: z.string(),
+  }),
+  // JEB sorgusu (JebProvider.ts): basarida HTTP durum + govde (16k kirpik) doner.
+  rea_jeb_sorgu: z.object({
+    ok: z.literal(true), arac: z.string(), url: z.string(), yontem: z.string(), durum: z.number(), govde: z.string(),
+  }),
+  // Ag yakalama (NetCapture.ts): basarida HAR dosyasi gercekten yazilmistir.
+  rea_net_capture: z.object({
+    ok: z.literal(true), tool: z.string(), summary: z.string(),
+    "kayıt": z.object({ url: z.string(), har: z.string(), bayt: z.number() }),
+  }),
+  // Unpack yonlendirme (Unpack.ts): ust zarfta ok alani yoktur; yontem dort
+  // literaldan biridir, sonucun cekirdegi yalniz ok bayragidir (upx basarisi
+  // dahil tum dallar ok tasir).
+  rea_unpack_try: z.object({
+    yontem: z.enum(["upx", "ilspy", "dump-hunt", "none"]),
+    sonuc: z.looseObject({ ok: z.boolean() }),
+  }),
+  // Unpack avi (UnpackHunt.ts): karar uc literaldan biri, adimlar sirali
+  // recetedir (sira/eylem/tool/neden her adimda dolu).
+  rea_unpack_hunt: z.object({
+    ok: z.literal(true), arac: z.string(), karar: z.enum(["upx", "dotnet", "dump"]),
+    adimlar: z.array(z.object({ sira: z.number(), eylem: z.string(), tool: z.string(), neden: z.string() })),
   }),
 };
 

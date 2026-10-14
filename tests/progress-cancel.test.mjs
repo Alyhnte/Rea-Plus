@@ -14,7 +14,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createPacedProgress, pilotContextFromCtx, PROGRESS_MIN_INTERVAL_MS } from "../dist/server/progress.js";
+import { createPacedProgress, createStageProgress, onAbort, pilotContextFromCtx, PROGRESS_MIN_INTERVAL_MS } from "../dist/server/progress.js";
 import { rea_process_run_async } from "../dist/rea-domains/firmware-browser/ProcessCapture.js";
 
 const kok = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -399,5 +399,106 @@ describe("stdio JSON-RPC: progress + cancelled", () => {
     const kapsama = istek("tools/call", { name: "rea_coverage", arguments: { incelenen: 1, toplam: 4 } }, 5000);
     assert.equal((await kapsama.soz).structuredContent.oran, 0.25);
     uyuyanPid = undefined; // oldu; after() tekrar ugrasmasin
+  });
+});
+
+describe("genellenen progress/iptal: ikinci uzun arac (asamali + onAbort)", () => {
+  // Ikinci arac burada gercek asamalariyla modellenir (or. 4 asamali uzun is):
+  // sahte progress YOK — bildirim yalniz advance() ile gerceklesen asamada gider.
+  it("asamali ilerleme paced gider; hiz tavani ve monotonluk kanitli", async () => {
+    let simdi = 5000; // sahte saat
+    const giden = [];
+    const paced = createPacedProgress(
+      async (n) => { giden.push({ t: simdi, progress: n.params.progress, total: n.params.total, token: n.params.progressToken }); },
+      "tok-ikinci",
+      { now: () => simdi },
+    );
+    const is = createStageProgress(paced, ["coz", "yukle", "analiz", "yaz"]);
+    assert.equal(is.stageCount, 4);
+
+    assert.equal(await is.advance(0), true); // t=5000: ilk bildirim gecikmez
+    simdi += 60; assert.equal(await is.advance("yukle"), true); // isimle ilerleme
+    simdi += 10; assert.equal(await is.advance(2), true); // gercek asama ama pacing atar (10ms)
+    assert.equal(await is.advance(2), false); // ayni asama tekrari: sahte bildirim yok
+    assert.equal(await is.advance(1), false); // geri gidis: bildirim yok
+    assert.equal(await is.advance("olmayan-asama"), false); // bilinmeyen asama: sessiz
+    simdi += 60; assert.equal(await is.advance(3, "yazma bitti"), true);
+    // Pacing 3. asamayi atti (beklenen kayip); gidenler monoton ve aralıklıdır.
+
+    assert.deepEqual(giden.map((g) => g.progress), [1, 2, 4]);
+    assert.deepEqual(giden.map((g) => g.t), [5000, 5060, 5130]);
+    // Hiz tavani kaniti: pes pese gonderimler arasi en az 50ms.
+    for (let i = 1; i < giden.length; i += 1) {
+      assert.ok(giden[i].t - giden[i - 1].t >= PROGRESS_MIN_INTERVAL_MS, "pacing araligi korunmali");
+    }
+    assert.ok(giden.every((g) => g.token === "tok-ikinci" && g.total === 4));
+    assert.equal(giden[giden.length - 1].progress, 4);
+    assert.equal(is.reached, 4);
+  });
+
+  it("bos/hatali asama listesi hizli patlar (sessiz yanlis kurulum yok)", () => {
+    const sessiz = () => Promise.resolve();
+    assert.throws(() => createStageProgress(sessiz, []), /asama/);
+    assert.throws(() => createStageProgress(sessiz, ["a", "a"]), /yinelenen|tekrar/i);
+  });
+
+  it("onAbort: onceden iptalde temizlik hemen; tanımsız sinyalde noop", async () => {
+    let sayi = 0;
+    const ac = new AbortController();
+    ac.abort();
+    const birak = onAbort(ac.signal, () => { sayi += 1; });
+    assert.equal(sayi, 1);
+    birak(); // ikinci cagri/atma yok, hata da yok
+
+    let cagrildi = false;
+    const birak2 = onAbort(undefined, () => { cagrildi = true; });
+    birak2();
+    assert.equal(cagrildi, false);
+    const birak3 = onAbort(null, () => { cagrildi = true; });
+    birak3();
+    assert.equal(cagrildi, false);
+  });
+
+  it("onAbort: iptal, genellenen aractaki cocuk sureci ve isi temizler; birakma dinleyiciyi sokup atar", async () => {
+    // Birakma kaniti: unsubscribe sonrasi abort temizligi cagirmaz.
+    {
+      const ac = new AbortController();
+      let sayi = 0;
+      const birak = onAbort(ac.signal, () => { sayi += 1; });
+      birak();
+      ac.abort();
+      await bekle(20);
+      assert.equal(sayi, 0);
+    }
+
+    // Gercek temizlik kaniti: uyuyan cocuk + suren is abort ile durur.
+    const cocuk = spawn(process.execPath, ["-e", "setInterval(()=>{},1000);"], { stdio: "ignore" });
+    let isDurduruldu = false;
+    const isTemizle = () => { isDurduruldu = true; };
+    const ac = new AbortController();
+    const birak = onAbort(ac.signal, () => {
+      isTemizle();
+      try { cocuk.kill("SIGKILL"); } catch { /* zaten olu */ }
+      if (cocuk.exitCode === null) {
+        if (process.platform === "win32") { try { spawnSync("taskkill", ["/PID", String(cocuk.pid), "/T", "/F"], { stdio: "ignore" }); } catch { /* olu */ } }
+        else { try { process.kill(cocuk.pid, "SIGKILL"); } catch { /* olu */ } }
+      }
+    });
+    try {
+      assert.ok(canli(cocuk.pid), "iptal oncesi cocuk canli olmali");
+      const t0 = Date.now();
+      ac.abort();
+      assert.equal(await olumuBekle(cocuk.pid, 5000), true, "abort sonrasi cocuk olmeli");
+      assert.ok(Date.now() - t0 < 5000, "temizlik hizli olmali");
+      assert.equal(isDurduruldu, true, "surdurulen is de durdurulmali");
+      birak();
+    } finally {
+      birak();
+      if (canli(cocuk.pid)) {
+        if (process.platform === "win32") { try { spawnSync("taskkill", ["/PID", String(cocuk.pid), "/T", "/F"], { stdio: "ignore" }); } catch { /* olu */ } }
+        else { try { process.kill(cocuk.pid, "SIGKILL"); } catch { /* olu */ } }
+      }
+      await bekle(10); // olum gozlemi disinda asili timer birakma
+    }
   });
 });

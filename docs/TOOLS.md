@@ -6,11 +6,11 @@
 
 ## Özet
 
-- Sunucu: `rea-plus` 0.7.4
+- Sunucu: `rea-plus` 0.8.0
 - Toplam araç: 171
 - Toplam resource: 2
 - Toplam prompt: 3
-- outputSchema taşıyan araç: 120
+- outputSchema taşıyan araç: 147
 - annotations taşıyan araç: 169
 
 ## Araçlar
@@ -21,7 +21,7 @@ Release the binary target (and its radare2 process) held by a session.
 
 - Girdi alanları:
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: closed, session_id)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `debug_attach`
@@ -70,7 +70,7 @@ Tear down the hidden x64dbg process held by a session. Launched targets are stop
 
 - Girdi alanları:
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: closed, session_id)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `debug_code`
@@ -235,7 +235,7 @@ Pull events stored for one application session since a sequence number. This doe
   - `after` (integer, opsiyonel) — Return events with seq greater than this.
   - `limit` (integer, opsiyonel)
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: events, retainedFrom, session_id)
 - annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
 
 ### `explain`
@@ -248,7 +248,7 @@ Short Turkish explanation of an assembly window: what the region does, where it 
   - `count` (integer, opsiyonel) — How many instructions to read (default 16).
   - `instructions` (object[], opsiyonel) — Already fetched ops. When set, the debugger is not called.
   - `session_id` (string, opsiyonel) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: atlamalar, bildirimler, cagrilar, dil, gosterilen, kaynak, komut_sayisi, ozet, satirlar)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `get_cfg`
@@ -279,7 +279,7 @@ Open a binary target for static analysis in a radare2 session. Only mode 'static
   - `mode` (string, opsiyonel) — Analysis mode. Only "static" is supported.
   - `path` (string, zorunlu) — Filesystem path of the binary to analyze.
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: engine, mode, opened, path, session_id)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `prerequisites`
@@ -287,7 +287,7 @@ Open a binary target for static analysis in a radare2 session. Only mode 'static
 Check the programs Conduit uses (radare2, x64dbg, cdb, Python, Frida, Graphviz, ScyllaHide). Missing ones include a download URL and where to put the files. The bridge does not download them. Call this when a tool is missing or before choosing an engine.
 
 - Girdi alanları: yok
-- outputSchema: yok
+- outputSchema: var (alanlar: araclar, ozet)
 - annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=true, readOnlyHint=true)
 
 ### `rea_adb_devices`
@@ -481,7 +481,7 @@ Hedef tip için en iyi motor (skor).
 Browser yetenek yoklaması.
 
 - Girdi alanları: yok
-- outputSchema: yok
+- outputSchema: var (alanlar: details, ok, summary, tool)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `rea_browser_click`
@@ -491,7 +491,7 @@ Tıklama + sonrası durum.
 - Girdi alanları:
   - `selector` (string, zorunlu)
   - `url` (string, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: details, ok, summary, tool)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `rea_browser_har_import`
@@ -509,7 +509,7 @@ Sayfa açma + başlık.
 
 - Girdi alanları:
   - `url` (string, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: details, ok, summary, tool)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `rea_browser_scenario`
@@ -518,7 +518,7 @@ Senaryo kaydı.
 
 - Girdi alanları:
   - `text` (string, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: details, ok, summary, tool)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `rea_browser_shot`
@@ -528,7 +528,7 @@ Tam sayfa ekran görüntüsü.
 - Girdi alanları:
   - `out` (string, zorunlu)
   - `url` (string, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: details, ok, summary, tool)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `rea_config_suggest`
@@ -546,7 +546,7 @@ Konsol mesajları.
 
 - Girdi alanları:
   - `url` (string, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: details, ok, summary, tool)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `rea_coverage`
@@ -833,7 +833,7 @@ Firmware çıkarma.
 
 - Girdi alanları:
   - `path` (string, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: ok, summary, tool)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `rea_firmware_handoff`
@@ -871,7 +871,7 @@ API tracer (isim+args+retval).
 - Girdi alanları:
   - `desen` (string, opsiyonel)
   - `pid` (integer, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: arac, cagrilar, ok, pid, sayi)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `rea_frida_cond`
@@ -882,7 +882,7 @@ Koşullu breakpoint.
   - `adres` (string, zorunlu)
   - `kosul` (string, zorunlu)
   - `pid` (integer, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: adres, arac, hitSayisi, ok, pid, tuttu)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `rea_frida_pause`
@@ -891,7 +891,7 @@ Hedef süreç duraklatma (NtSuspend).
 
 - Girdi alanları:
   - `pid` (integer, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: arac, durum, ok, pid)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `rea_frida_resume`
@@ -900,7 +900,7 @@ Duraklatılmış süreci devam ettirme.
 
 - Girdi alanları:
   - `pid` (integer, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: arac, durum, ok, pid)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `rea_frida_stalker`
@@ -910,7 +910,7 @@ Stalker çağrı izleme.
 - Girdi alanları:
   - `pid` (integer, zorunlu)
   - `sure_ms` (integer, opsiyonel)
-- outputSchema: yok
+- outputSchema: var (alanlar: arac, cagrilar, ok, pid, sayi)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `rea_frida_step`
@@ -920,7 +920,7 @@ Sonraki-komut emülasyonu.
 - Girdi alanları:
   - `adres` (string, opsiyonel)
   - `pid` (integer, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: adres, arac, ok, pid, sonraki, vurdu)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `rea_fs_diff`
@@ -1061,7 +1061,7 @@ Hopper istek dosyası üretimi.
 
 - Girdi alanları:
   - `path` (string, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: adresler, arac, hedef, hopper, istekDosyasi, ok)
 - annotations: var (destructiveHint=true, readOnlyHint=false)
 
 ### `rea_hopper_tara`
@@ -1076,11 +1076,11 @@ Dosyada string/regex tarama.
 
 ### `rea_ida_flirt`
 
-Derleyici imzası taraması.
+String-tabanlı derleyici/kütüphane tahmini (gerçek FLIRT imzası değil; IDA kuruluysa doğrulama için rea_ida_idb çıktısını IDA'da imza uygulayarak kullanın).
 
 - Girdi alanları:
   - `path` (string, zorunlu)
-- outputSchema: var (alanlar: arac, eslesmeler, hedef, ok, sayi, surumler)
+- outputSchema: var (alanlar: arac, eslesmeler, guven, hedef, idaMevcut, kutuphane, method, not, ok, sayi, surumler)
 - annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
 
 ### `rea_ida_idb`
@@ -1090,7 +1090,7 @@ IDB batch üretimi (idat).
 - Girdi alanları:
   - `out` (string, zorunlu)
   - `path` (string, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: arac, hedef, idat, idb, ok)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `rea_ilspy_decompile`
@@ -1189,7 +1189,7 @@ JEB MCP sorgusu.
   - `govde` (string, opsiyonel)
   - `url` (string, zorunlu)
   - `yontem` (string, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: arac, durum, govde, ok, url, yontem)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `rea_js_bundle`
@@ -1291,7 +1291,7 @@ Yerel ağ yakalama (HAR).
 
 - Girdi alanları:
   - `url` (string, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: kayıt, ok, summary, tool)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `rea_obligation_advance`
@@ -1511,7 +1511,7 @@ Cookies + localStorage.
 
 - Girdi alanları:
   - `url` (string, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: details, ok, summary, tool)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `rea_typedef_oner`
@@ -1529,7 +1529,7 @@ Bilinmeyen packer rehberli akışı.
 
 - Girdi alanları:
   - `path` (string, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: adimlar, arac, karar, ok)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `rea_unpack_try`
@@ -1538,7 +1538,7 @@ Otomatik unpack yönlendirme.
 
 - Girdi alanları:
   - `path` (string, zorunlu)
-- outputSchema: yok
+- outputSchema: var (alanlar: sonuc, yontem)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `rea_upx_info`
@@ -1611,7 +1611,7 @@ Drop an application session and its event buffer.
 
 - Girdi alanları:
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: closed, session_id)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `session_list`

@@ -89,6 +89,9 @@ export class FridaError extends Error {
 }
 
 const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_ATTACH_TIMEOUT_MS = 15_000;
+const DEFAULT_SCRIPT_TIMEOUT_MS = 10_000;
+const DEFAULT_LOAD_TIMEOUT_MS = 15_000;
 const IMAGE_FILE_MACHINE_I386 = 0x014c;
 const IMAGE_FILE_MACHINE_AMD64 = 0x8664;
 const IMAGE_FILE_MACHINE_ARMNT = 0x01c4;
@@ -101,13 +104,68 @@ function envTimeout(name: string, fallback: number): number {
   }
   const parsed = Number(raw);
   if (!Number.isInteger(parsed) || parsed <= 0) {
-    return fallback;
+    throw new FridaError(
+      "invalid_argument",
+      `"${name}" must be a positive integer timeout in ms; got ${JSON.stringify(raw)}`,
+    );
   }
   return parsed;
 }
 
 export function fridaTimeoutMs(): number {
   return envTimeout("DBG_BRIDGE_FRIDA_TIMEOUT_MS", DEFAULT_TIMEOUT_MS);
+}
+
+export function fridaAttachTimeoutMs(): number {
+  return envTimeout("REA_FRIDA_ATTACH_TIMEOUT_MS", DEFAULT_ATTACH_TIMEOUT_MS);
+}
+
+export function fridaScriptTimeoutMs(): number {
+  return envTimeout("REA_FRIDA_SCRIPT_TIMEOUT_MS", DEFAULT_SCRIPT_TIMEOUT_MS);
+}
+
+export function fridaLoadTimeoutMs(): number {
+  return envTimeout("REA_FRIDA_LOAD_TIMEOUT_MS", DEFAULT_LOAD_TIMEOUT_MS);
+}
+
+/**
+ * Test seam: pid-attach islevini sahte nesnelerle degistirir.
+ * Varsayilan `frida` paketinin attach'idir; canli test yoktur, yalniz
+ * birim testleri `attach` alanini doldurur ve sonra geri alir.
+ */
+export const __fridaTestHooks: { attach?: (pid: number) => Promise<Session> } = {};
+
+/**
+ * callAgent/describe yarisiyle ayni desen (Promise.race + setTimeout);
+ * kazanan belli olunca zamanlayici temizlenir, asili timer kalmaz.
+ */
+async function raceStepTimeout<T>(
+  step: "attach" | "createScript" | "load",
+  timeoutMs: number,
+  pid: number,
+  work: Promise<T>,
+): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      work,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          const label = step === "load" ? "script load" : step;
+          reject(
+            new FridaError("engine_timeout", `frida ${label} timed out after ${timeoutMs}ms`, {
+              pid,
+              step,
+            }),
+          );
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+  }
 }
 
 interface AgentInfo {
@@ -744,7 +802,27 @@ export class FridaEngine implements DebugEngine {
     remoteAddress: string | null,
     existing?: Session,
   ): Promise<FridaSession> {
-    const fridaSession = existing ?? (await attach(pid));
+    let timedOutAttach = false;
+    const doAttach = __fridaTestHooks.attach ?? attach;
+    const fridaSession =
+      existing ??
+      (await raceStepTimeout(
+        "attach",
+        fridaAttachTimeoutMs(),
+        pid,
+        doAttach(pid).then((session) => {
+          if (timedOutAttach) {
+            // Geciken attach: timeout sonrasi cozulen yarim-acik oturumu birakma.
+            void session.detach().catch(() => {});
+          }
+          return session;
+        }),
+      ).catch((error) => {
+        if (error instanceof FridaError && error.code === "engine_timeout") {
+          timedOutAttach = true;
+        }
+        throw error;
+      }));
     const held: FridaSession = {
       pid,
       attached,
@@ -774,12 +852,17 @@ export class FridaEngine implements DebugEngine {
     fridaSession.detached.connect((reason) => {
       this.onDetached(held, reason);
     });
-    const script = await fridaSession.createScript(agentSource(basename(target)));
+    const script = await raceStepTimeout(
+      "createScript",
+      fridaScriptTimeoutMs(),
+      pid,
+      fridaSession.createScript(agentSource(basename(target))),
+    );
     held.script = script;
     script.message.connect((message) => {
       this.onScriptMessage(held, message);
     });
-    await script.load();
+    await raceStepTimeout("load", fridaLoadTimeoutMs(), pid, script.load());
     let info: AgentInfo;
     try {
       info = await Promise.race([

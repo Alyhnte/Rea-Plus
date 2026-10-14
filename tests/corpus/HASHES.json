@@ -1,0 +1,31 @@
+{
+  "surum": 1,
+  "aciklama": "Golden korpus fixture listesi: her dosyanın sha256 hash'i ile kaynak/lisans kaydı. Bilinmeyen alanlar bilerek 'bilinmiyor' bırakıldı; uydurma lisans YOK.",
+  "dosyalar": {
+    "mini_branch.elf": {
+      "sha256": "ce9e4025ea7330865106f2f63a6e25c05ef68ce9ad8747fc3d82687a85339d04",
+      "kaynak": "bilinmiyor",
+      "lisans": "bilinmiyor"
+    },
+    "mini_pe_x64.exe": {
+      "sha256": "ba2e8af217aa332c797a4b2a1c51beba4690f91c19bc6c60d56950a8eeeea267",
+      "kaynak": "bilinmiyor",
+      "lisans": "bilinmiyor"
+    },
+    "ornek.js": {
+      "sha256": "7933ef8eaf7742db7c68598bcd8ff08737adb3f97a2397700e11d05a8fa2db2b",
+      "kaynak": "scripts/korpus-kur.mjs ile uretildi (deterministik)",
+      "lisans": "bilinmiyor"
+    },
+    "ornek.wasm": {
+      "sha256": "bd511107d193f0a856c7174e382c35f0c545989f1d4d697203046d5aa8487918",
+      "kaynak": "scripts/korpus-kur.mjs ile uretildi (deterministik)",
+      "lisans": "bilinmiyor"
+    },
+    "sahte.apk": {
+      "sha256": "8cd8f7f06f06676e70cc60c3c8f578a6f7dab572d781a2d42487876e925cf487",
+      "kaynak": "scripts/korpus-kur.mjs ile uretildi (deterministik)",
+      "lisans": "bilinmiyor"
+    }
+  }
+}

@@ -222,7 +222,7 @@ flowchart LR
 - **Confirm gates.** Live operations that mutate a target require `confirm:true`; otherwise you get `confirmation_required`, never a silent side effect.
 - **One catalog.** `mergedCatalog()` (8 conduit + 16 rea prerequisite entries) is the single source `doctor` reads for versions and download links.
 - **Resources + prompts.** Two static, read-only resources (`rea-plus://server-info`, `rea-plus://capabilities-safety`) and three side-effect-free prompts (`packer-triage`, `dotnet-malware-triage`, `android-triage`) are registered alongside the tools; prompts only return text and never run a tool.
-- **Typed outputs (partial).** `structuredContent` mirrors the text JSON, and coverage is deliberately partial: 120 tools declare an `outputSchema` and 169 tools carry annotations. Tools outside the schema set return text JSON without a declared output schema — see [`docs/TOOLS.md`](docs/TOOLS.md) per tool.
+- **Typed outputs (partial).** `structuredContent` mirrors the text JSON, and coverage is deliberately partial: 147 tools declare an `outputSchema` and 169 tools carry annotations. Tools outside the schema set return text JSON without a declared output schema — see [`docs/TOOLS.md`](docs/TOOLS.md) per tool.
 - **Toolset profiles.** `REA_TOOLSETS` filters registration to a profile slice (comma-separated union; unknown names fail startup instead of silently falling back to `all`). Resources and prompts are not filtered.
 - **Roots pilot (opt-in).** With `REA_ROOTS=1` on the legacy stdio path, client roots can only narrow `REA_WORKSPACE_ROOT`; they can never widen it. Modern-protocol Roots still needs the SDK's multi-round-trip flow and is not faked.
 - **Progress pilot.** `rea_process_run` emits paced `notifications/progress` (first immediately, then at most about 20/s) and kills the child process tree on `notifications/cancelled`. Other synchronous handlers are not mid-flight cancellable yet.
@@ -294,7 +294,7 @@ Details: [`docs/VERIFY.md`](docs/VERIFY.md) · [`docs/MCP-CONTRACTS.md`](docs/MC
 Near the top of the list — the full, prioritized table lives in [`docs/ROADMAP.md`](docs/ROADMAP.md):
 
 - npm publish + MCP Registry listing (one-command `npx rea-plus`) — metadata and a manual, dry-run-by-default publish workflow are ready; the actual publish has not happened yet
-- Wider `outputSchema` coverage beyond the current 120 tools (169 already carry annotations), progress + cancellation beyond the `rea_process_run` pilot, and a wider async-job whitelist beyond that same pilot tool
+- Wider `outputSchema` coverage beyond the current 147 tools (169 already carry annotations), progress + cancellation beyond the `rea_process_run` pilot, and a wider async-job whitelist beyond that same pilot tool
 - Completing the golden binary corpus (expected-output hashes per provider) — including the still-open live Frida VM check and the DEX golden APK acceptance test
 - Syscall/file/registry behavior profiles, repo-scale scanning with a persistent worker
 - Signed releases + SBOM, and a documented VM sandbox profile for live work

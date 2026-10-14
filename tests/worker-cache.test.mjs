@@ -1,0 +1,230 @@
+// worker-cache.test.mjs: kalıcı worker + sonuç cache testi (Dalga C/3, node:test).
+// Koş: npm run build sonrası `node --test tests/worker-cache.test.mjs` (tsc emit şart).
+// Kapsam: (a) aynı soru ikinci kez cache'ten (vuruş sayacı + hız),
+// (b) dosya değişince geçersizlenir, (c) farklı argüman ayrı anahtar,
+// (d) REA_CACHE=0'da davranış aynı, (e) LRU taşması en eskiyi düşürür,
+// + kalıcı havuz yeniden kullanımı, hata cache'lenmez, dosya hash kararlılığı.
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { ResultCache, WorkerPool, dosyaHashi } from "../dist/facade/workerCache.js";
+
+// Kısa uyku: cache ıskalamadaki pahalı işi taklit eder.
+const bekle = (ms) => new Promise((r) => setTimeout(r, ms));
+// Taze tmp dizini üretir (repo kirlenmez).
+const taze = (one) => mkdtempSync(join(tmpdir(), `rea-worker-${one}-`));
+
+describe("ResultCache (a) aynı soru ikinci kez cache'ten", () => {
+  it("ikinci çağrı üreticiyi koşturmaz, vuruş sayar, belirgin hızlıdır", async () => {
+    const cache = new ResultCache(100);
+    let sayac = 0;
+    const girdi = { arac: "ornek-arac", argumanlar: { derinlik: 1 } };
+    const uret = async () => {
+      sayac++;
+      await bekle(50);
+      return { tip: "pe", motor: "x64dbg" };
+    };
+    const ilk = await cache.calistir(girdi, uret);
+    assert.deepEqual(ilk, { tip: "pe", motor: "x64dbg" });
+    assert.equal(sayac, 1);
+    const t0 = Date.now();
+    const ikinci = await cache.calistir(girdi, uret);
+    const gecen = Date.now() - t0;
+    assert.deepEqual(ikinci, ilk);
+    assert.equal(sayac, 1); // üretici ikinci kez koşmadı
+    assert.equal(cache.vurus, 1);
+    assert.equal(cache.iskalama, 1);
+    assert.ok(gecen < 25, `cache vuruşu (${gecen}ms) 50ms'lik işten hızlı olmalı`);
+  });
+});
+
+describe("ResultCache (b) dosya değişince geçersizlenir", () => {
+  it("içerik değişince yeniden hesaplar, yeni sonucu döner", async () => {
+    const dir = taze("gecersiz");
+    try {
+      const dosya = join(dir, "ornek.bin");
+      writeFileSync(dosya, "v1-icerik");
+      const cache = new ResultCache();
+      let sayac = 0;
+      const uret = async () => {
+        sayac++;
+        return `${readFileSync(dosya, "utf8")}#${sayac}`;
+      };
+      const girdi = { dosya, arac: "isleyici", argumanlar: {} };
+      assert.equal(await cache.calistir(girdi, uret), "v1-icerik#1");
+      assert.equal(await cache.calistir(girdi, uret), "v1-icerik#1"); // vuruş
+      assert.equal(sayac, 1);
+      writeFileSync(dosya, "v2-icerik"); // dosya değişti
+      assert.equal(await cache.calistir(girdi, uret), "v2-icerik#2"); // ıskalama
+      assert.equal(sayac, 2);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("ResultCache (c) farklı argüman ayrı anahtar", () => {
+  it("argüman değişince ayrı hesaplar, ilk argümana dönüş vuruştan gelir", async () => {
+    const cache = new ResultCache();
+    let sayac = 0;
+    const uret = async (etiket) => {
+      sayac++;
+      return `sonuc-${etiket}`;
+    };
+    const a = { arac: "cozucu", argumanlar: { derinlik: 1 } };
+    const b = { arac: "cozucu", argumanlar: { derinlik: 2 } };
+    assert.equal(await cache.calistir(a, () => uret("a1")), "sonuc-a1");
+    assert.equal(await cache.calistir(b, () => uret("b1")), "sonuc-b1");
+    assert.equal(sayac, 2); // ayrı anahtarlar
+    assert.equal(await cache.calistir(a, () => uret("a2")), "sonuc-a1"); // a vuruşu
+    assert.equal(sayac, 2);
+    assert.equal(cache.vurus, 1);
+  });
+});
+
+describe("ResultCache (d) REA_CACHE=0 bypass", () => {
+  it("kapalıyken her çağrı hesaplar ama sonuç birebir aynıdır", async () => {
+    const eski = process.env.REA_CACHE;
+    try {
+      const girdi = { arac: "saf-arac", argumanlar: { k: 7 } };
+      const uret = async () => ({ deger: 42, liste: [1, 2, 3] });
+      delete process.env.REA_CACHE;
+      const acik = new ResultCache();
+      const beklenen = await acik.calistir(girdi, uret);
+      process.env.REA_CACHE = "0";
+      const kapali = new ResultCache();
+      let sayac = 0;
+      const yavasUret = async () => {
+        sayac++;
+        await bekle(10);
+        return { deger: 42, liste: [1, 2, 3] };
+      };
+      const r1 = await kapali.calistir(girdi, yavasUret);
+      const r2 = await kapali.calistir(girdi, yavasUret);
+      assert.deepEqual(r1, beklenen); // davranış birebir aynı
+      assert.deepEqual(r2, beklenen);
+      assert.equal(sayac, 2); // cache yazılmadı/okunmadı
+      assert.equal(kapali.vurus, 0);
+      assert.equal(kapali.boyut(), 0);
+    } finally {
+      if (eski === undefined) delete process.env.REA_CACHE;
+      else process.env.REA_CACHE = eski;
+    }
+  });
+});
+
+describe("ResultCache (e) LRU taşması", () => {
+  it("kapasite aşımında en eski (kullanılmayan) girdi düşer", async () => {
+    const cache = new ResultCache(3);
+    assert.equal(cache.kapasite, 3);
+    let sayac = 0;
+    const sor = (i) =>
+      cache.calistir({ arac: "t", argumanlar: { i } }, async () => {
+        sayac++;
+        return `d${i}`;
+      });
+    assert.equal(await sor(0), "d0");
+    assert.equal(await sor(1), "d1");
+    assert.equal(await sor(2), "d2");
+    assert.equal(sayac, 3);
+    assert.equal(await sor(0), "d0"); // 0 tazelenir (vuruş); sıra: 1,2,0
+    assert.equal(sayac, 3);
+    assert.equal(await sor(3), "d3"); // taşma: en eski (1) düşer; sıra: 2,0,3
+    assert.equal(sayac, 4);
+    assert.equal(cache.boyut(), 3);
+    assert.equal(await sor(0), "d0"); // 0 hâlâ içeride (vuruş)
+    assert.equal(sayac, 4);
+    assert.equal(await sor(1), "d1"); // 1 düşmüştü: yeniden hesap
+    assert.equal(sayac, 5);
+  });
+  it("varsayılan kapasite 100 girdidir", () => {
+    assert.equal(new ResultCache().kapasite, 100);
+  });
+});
+
+describe("ResultCache sağlamlık", () => {
+  it("üretici hatası cache'lenmez; sonraki çağrı yeniden dener", async () => {
+    const cache = new ResultCache();
+    let sayac = 0;
+    const girdi = { arac: "bozuk", argumanlar: null };
+    await assert.rejects(
+      cache.calistir(girdi, async () => {
+        sayac++;
+        throw new Error("gecici ariza");
+      }),
+      /gecici ariza/,
+    );
+    assert.equal(await cache.calistir(girdi, async () => {
+      sayac++;
+      return "duzeldi";
+    }), "duzeldi");
+    assert.equal(sayac, 2);
+    assert.equal(await cache.calistir(girdi, async () => {
+      sayac++;
+      return "asla";
+    }), "duzeldi"); // artık vuruş
+    assert.equal(sayac, 2);
+  });
+  it("dosyaHashi aynı bayta aynı, farklı bayta farklı özet verir", async () => {
+    const dir = taze("hash");
+    try {
+      const dosya = join(dir, "a.bin");
+      writeFileSync(dosya, "ayni");
+      const h1 = await dosyaHashi(dosya);
+      const h2 = await dosyaHashi(dosya);
+      assert.equal(h1, h2);
+      assert.match(h1, /^[0-9a-f]{64}$/);
+      writeFileSync(dosya, "farkli");
+      assert.notEqual(await dosyaHashi(dosya), h1);
+      await assert.rejects(dosyaHashi(join(dir, "yok.bin")));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("WorkerPool kalıcılık", () => {
+  it("tek havuz 6 işi limit 2 ile koşar, sonra ikinci dalgayı da aynı havuz kaldırır", async () => {
+    const havuz = new WorkerPool(2);
+    let anlik = 0;
+    let enYuksek = 0;
+    const is = (i) => async () => {
+      anlik++;
+      enYuksek = Math.max(enYuksek, anlik);
+      await bekle(20);
+      anlik--;
+      return i;
+    };
+    const ilk = await Promise.all([0, 1, 2, 3, 4, 5].map((i) => havuz.gonder(is(i))));
+    assert.deepEqual(ilk, [0, 1, 2, 3, 4, 5]);
+    assert.ok(enYuksek <= 2, `eşzaman ${enYuksek} ≤ 2 olmalı`);
+    assert.ok(enYuksek >= 2, `paralellik gerçekten kullanılmalı (${enYuksek})`);
+    assert.equal(havuz.tamamlanan, 6);
+    // Kalıcılık kanıtı: yeni havuz yok, aynı örnek ikinci dalgayı koşar.
+    const ikinci = await Promise.all([6, 7].map((i) => havuz.gonder(is(i))));
+    assert.deepEqual(ikinci, [6, 7]);
+    assert.equal(havuz.tamamlanan, 8);
+    await havuz.kapat();
+    await assert.rejects(havuz.gonder(async () => 1), /kapalı/);
+  });
+  it("cache ıskalaması havuzu kullanır, vuruş havuza dokunmaz", async () => {
+    const cache = new ResultCache();
+    const havuz = new WorkerPool(2);
+    try {
+      let sayac = 0;
+      const girdi = { arac: "w", argumanlar: { k: 1 } };
+      const uret = async () => {
+        sayac++;
+        return "w-sonuc";
+      };
+      assert.equal(await cache.calistir(girdi, uret, havuz), "w-sonuc");
+      assert.equal(await cache.calistir(girdi, uret, havuz), "w-sonuc");
+      assert.equal(sayac, 1);
+      assert.equal(havuz.tamamlanan, 1); // yalnız ıskalama havuza indi
+    } finally {
+      await havuz.kapat();
+    }
+  });
+});

@@ -28,11 +28,11 @@ export const CONDUIT_TOOL_NAMES: readonly string[] = [
   "explain", "prerequisites",
 ];
 
-// Output semalari (yalniz 3): donus sekli handler govdesinde kelimesi kelimesine
-// sabit ve motor/hedef cevabina yayilmayan (spread'siz) araclar. Diger 27 aracin
-// basari sekli engine/action'a gore degisir veya motor sonucunu ...spread ile
-// tasir; onlar icin sahte kesinlik yapilmaz, sema verilmez. SDK isError
-// sonuclarini semayla dogrulamaz.
+// Output semalari (10; dalga D/2 ile 7 eklendi): donus sekli handler govdesinde
+// kelimesi kelimesine sabit ve motor/hedef cevabina yayilmayan (spread'siz)
+// araclar. Diger 20 aracin basari sekli engine/action'a gore degisir veya motor
+// sonucunu ...spread ile tasir; onlar icin sahte kesinlik yapilmaz, sema
+// verilmez. SDK isError sonuclarini semayla dogrulamaz.
 const OUTPUT_SCHEMAS: Readonly<Record<string, StandardSchemaWithJSON>> = {
   // tools.ts: {status:"ok", name, protocol, sessions} -- dort alan her zaman dolu.
   health: z.object({
@@ -52,6 +52,64 @@ const OUTPUT_SCHEMAS: Readonly<Record<string, StandardSchemaWithJSON>> = {
     sessions: z.array(
       z.object({ session_id: z.string(), engine: z.string(), createdAt: z.string() }),
     ),
+  }),
+  // Dalga D/2: kapatma araclari ayni sabit zarfi doner (closed her zaman boolean;
+  // kapaliyken false, acikken true -- iki dal da semaya uyar).
+  // Kaynak: tools.ts session_close/close_target, debug_tools.ts debug_close.
+  session_close: z.object({ closed: z.boolean(), session_id: z.string() }),
+  close_target: z.object({ closed: z.boolean(), session_id: z.string() }),
+  debug_close: z.object({ closed: z.boolean(), session_id: z.string() }),
+  // tools.ts open_target: kapidan gecen basarida mode her zaman "static"tir
+  // (farkli mode capability_unsupported doner); engine sabitiyle birlikte
+  // dizgi olarak sabitlenir, sahte literal kesinligi yapilmaz.
+  open_target: z.object({
+    opened: z.literal(true),
+    session_id: z.string(),
+    engine: z.string(),
+    mode: z.string(),
+    path: z.string(),
+  }),
+  // tools.ts events_pull: registry.ts BridgeEvent sekli sabittir
+  // ({seq, at, kind, data}); data tasiyici yuk degiskendir, unknown kalir.
+  // retainedFrom bos tamponda null'dur.
+  events_pull: z.object({
+    session_id: z.string(),
+    retainedFrom: z.number().nullable(),
+    events: z.array(
+      z.object({ seq: z.number(), at: z.string(), kind: z.string(), data: z.unknown() }),
+    ),
+  }),
+  // guide_tools.ts prerequisites: prereq.ts checkPrerequisites + ToolStatus
+  // arayuzu; durum iki literaldan biri, yol yokken null, oneri/indir/nereye
+  // yalniz eksik satirlarda vardir.
+  prerequisites: z.object({
+    ozet: z.string(),
+    araclar: z.array(
+      z.object({
+        id: z.string(),
+        ad: z.string(),
+        zorunlu: z.boolean(),
+        durum: z.enum(["var", "yok"]),
+        yol: z.string().nullable(),
+        oneri: z.string().optional(),
+        indir: z.string().optional(),
+        nereye: z.string().optional(),
+      }),
+    ),
+  }),
+  // guide_tools.ts explain: kaynak cagiran girdisine gore degisir (verilen
+  // komutlar/radare2/motor id) ama explain.ts ExplainResult govdesi her
+  // basarida aynidir; satir/atlama/cagri/bildirim cekirdek alanlari sabittir.
+  explain: z.object({
+    kaynak: z.string(),
+    dil: z.literal("tr"),
+    ozet: z.string(),
+    satirlar: z.array(z.object({ adres: z.string(), kod: z.string(), anlam: z.string() })),
+    atlamalar: z.array(z.object({ adres: z.string(), hedef: z.string(), kosul: z.string(), anlam: z.string() })),
+    cagrilar: z.array(z.object({ adres: z.string(), hedef: z.string(), anlam: z.string() })),
+    bildirimler: z.array(z.object({ adres: z.string(), ad: z.string(), anlam: z.string() })),
+    komut_sayisi: z.number(),
+    gosterilen: z.number(),
   }),
 };
 

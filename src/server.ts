@@ -23,6 +23,7 @@ import { registerWithConduitSurface } from "./server/conduitMetadata.js";
 import { registerReaTools } from "./server/registerReaTools.js";
 import { registerResourcesPrompts } from "./server/registerResourcesPrompts.js";
 import { attachLegacyRoots, resolveRootsEnabled } from "./server/roots.js";
+import { registerWithSessionQueue } from "./server/sessionQueue.js";
 import { parseToolsets, registerWithToolsetFilter } from "./server/toolsets.js";
 
 export const REA_PLUS_NAME = "rea-plus";
@@ -61,6 +62,10 @@ export function createReaPlusMcpServer(options: CreateReaPlusServerOptions = {})
   // resources: subscribe ilan edilmez (statik salt-okunur icerik); prompts: yan etkisiz metin.
   const server = new McpServer({ name: REA_PLUS_NAME, version: REA_PLUS_VERSION }, { capabilities: { tools: {}, resources: {}, prompts: {} } });
   // Filtre + audit + conduit metadata yalniz bilesim kokundedir: conduit/rea kayit dosyalarina dokunulmaz, SDK this baglami korunur.
+  // Oturum kuyrugu en distadir: etkinse (REA_SESSION_QUEUE=1) session_id'li
+  // araclari FIFO'ya alir ve status aracini filtrenin disinda her zaman gorunur
+  // kilar; devre disiyken kayit ve davranis birebir korunur (171 arac).
+  registerWithSessionQueue(server, () => {
   registerWithToolsetFilter(server, allowedTools, () => {
     registerWithAudit(server, auditLogger, transport, () => {
       // Conduit sarmalayici audit'in ICINDE ve yalniz conduit kaydinin cevresindedir:
@@ -70,6 +75,7 @@ export function createReaPlusMcpServer(options: CreateReaPlusServerOptions = {})
       registerReaTools(server);
     });
   }); // 141 rea aracı (merkezi gerçek kayıt)
+  });
   registerResourcesPrompts(server, { name: REA_PLUS_NAME, version: REA_PLUS_VERSION }); // 2 resource + 3 prompt
   // Roots: cift opt-in yoksa attach hicbir handler'a dokunmaz (varsayilan birebir).
   if (resolveRootsEnabled(options.roots, process.env)) attachLegacyRoots(server, { enabled: true });
