@@ -102,14 +102,14 @@ test("keşif: REA_JADX_JAR var olmayan jar'ı gösterirse null", () => {
   assert.equal(resolveJadxCommand(env, process.platform), null);
 });
 
-test("keşif: var olan REA_JADX_JAR java -jar komutuna çevrilir", () => {
+test("keşif: var olan REA_JADX_JAR java -cp + ana sınıf komutuna çevrilir", () => {
   const dir = mkdtempSync(join(tmpdir(), "jadx-jar-"));
   const jar = join(dir, "jadx-9.9-all.jar");
   writeFileSync(jar, "sahte jar (koşulmaz)");
   const cmd = resolveJadxCommand({ ...process.env, REA_JADX_JAR: jar, REA_JADX_BIN: "" }, process.platform);
   assert.ok(cmd);
   assert.equal(cmd.kaynak, "REA_JADX_JAR");
-  assert.deepEqual(cmd.onEkArgs, ["-jar", jar]);
+  assert.deepEqual(cmd.onEkArgs, ["-cp", jar, "jadx.cli.JadxCLI"]);
   assert.match(cmd.komut, /java(\.exe)?$/);
 });
 

@@ -77,7 +77,7 @@
 
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
-| ◐ jadx gerçek manifest/sınıf alanları | KOD TABANI GELDİ, KABUL KAPISI AÇIK: manifest paket/izin/aktivite + sınıf FQCN çıkarımı gerçek ayrıştırmaya dayalı ve canlı olmayan testlerle kilitli; canlı jadx ile DEX golden APK kabul testi tamamlanmadı, madde kapanmış sayılmaz | Android çıktısı güvenilir olur | S | **P0** (golden APK) |
+| ◐ jadx gerçek manifest/sınıf alanları | KOD + CANLI KABUL (v0.8.0 sonrası): `java -jar` asılması `-cp jadx.cli.JadxCLI` ile düzeltildi; gerçek APK (`com.zb.test`, 7 izin, 5 sınıf) ile manifest/classes/decompile birebir doğrulandı. Kalıcı golden korpus (repo içi fixture + hash) açık iş | Android çıktısı güvenilir olur | S | P1 (kalıcı korpus) |
 | Browser scenario'yu gerçekten çalıştırma | Adımlar yalnız JSON'a yazılıyor | Adı gibi çalışır; yoksa araca dürüst isim | M | P1 |
 | `rea_ida_flirt` gerçek FLIRT veya yeniden adlandırma | String taraması FLIRT diye sunuluyor | Güven (inceleme bulgusu) | S | P1 |
 | WasmInfo import/LEB düzeltmeleri | Import gövdesi tek-LEB sanılıyor; taşmada negatif boyut | Sessiz yanlış sonuç biter | S | P1 |

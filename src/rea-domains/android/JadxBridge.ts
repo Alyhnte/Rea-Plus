@@ -57,7 +57,9 @@ export function resolveJadxCommand(env: NodeJS.ProcessEnv = process.env, platfor
   const jarEnv = (env.REA_JADX_JAR ?? "").trim();
   if (jarEnv) {
     if (!existsSync(jarEnv)) return null;
-    return { komut: resolveJavaCommand(env, platform), onEkArgs: ["-jar", jarEnv], kaynak: "REA_JADX_JAR" };
+    // jadx fat-jar'i -jar ile degil -cp + ana sinif ile kosulur (1.5.x'te
+    // -jar asilabiliyor; resmi jadx.bat da -cp jadx.cli.JadxCLI kullanir).
+    return { komut: resolveJavaCommand(env, platform), onEkArgs: ["-cp", jarEnv, "jadx.cli.JadxCLI"], kaynak: "REA_JADX_JAR" };
   }
   const binEnv = (env.REA_JADX_BIN ?? "").trim();
   if (binEnv) {
@@ -71,7 +73,7 @@ export function resolveJadxCommand(env: NodeJS.ProcessEnv = process.env, platfor
   }
   if (platform === "win32") {
     const { jar, launcher } = windowsJarBul();
-    if (jar) return { komut: resolveJavaCommand(env, platform), onEkArgs: ["-jar", jar], kaynak: "where jadx + lib jar" };
+    if (jar) return { komut: resolveJavaCommand(env, platform), onEkArgs: ["-cp", jar, "jadx.cli.JadxCLI"], kaynak: "where jadx + lib jar" };
     if (launcher) return { komut: "cmd.exe", onEkArgs: ["/d", "/c", launcher], kaynak: "where jadx" };
     return null;
   }
