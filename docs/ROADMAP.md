@@ -30,7 +30,7 @@
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
 | ✅ npm'e yayın (`rea-plus`) | KAPANDI (v0.8.0): `rea-plus@0.8.0` registry'de, tüketici kurulumu doğrulandı (`npm install` + 171 araç); provenance/trusted publisher sonraki adım | Kurulum tek komut: `npx -y rea-plus` | S | — |
-| MCP Registry kaydı (`mcp-publisher`) | HAZIRLIK VAR, KAYIT YOK: ad `io.github.Alyhnte/rea-plus`, `server.json` + paket `mcpName` hazır ve senkron; Registry kaydı henüz yapılmadı | Resmi katalogda keşfedilebilirlik | S | **P0** (dış kapı açık) |
+| ✅ MCP Registry kaydı (`mcp-publisher`) | KAPANDI (v0.8.0): `io.github.Alyhnte/rea-plus` registry'de yayında (GHA + OIDC, tag/manuel tetikleme); `publish-registry.yml` korur | Resmi katalogda keşfedilebilirlik | S | — |
 | ✅ GHCR imajını ilk release ile basma | KAPANDI (v0.7.4): `ghcr.io/alyhnte/reaplus` için `0.7.4` ve `latest` etiketleri yayımlandı ve anonim çekilebilirliği doğrulandı | Docker kullanıcılarına sıfır kurulum | S | — |
 | `rea-plus-cli setup` sihirbazı | Config dosyaları elle kopyalanıyor | İstemciyi (Cursor/Claude/VS Code/Codex) algılayıp config'e yazar; en büyük sürtünme gider | M | P1 |
 | `doctor --fix` | doctor yalnız raporluyor | Eksik araç için onaylı kurulum komutu önerir/çalıştırır (winget/brew/apt) | M | P1 |

@@ -66,7 +66,7 @@ Any stdio MCP client can launch it straight from the npm registry:
 }
 ```
 
-> **Publishing status:** `rea-plus@0.8.0` is live on the [npm registry](https://www.npmjs.com/package/rea-plus). The MCP Registry name `io.github.Alyhnte/rea-plus` and the package `mcpName` are ready in `server.json`/`package.json`, and a manual publish workflow with a dry-run default is prepared — but the MCP Registry entry itself has **not been published yet**. The supported installs are `npx -y rea-plus` (above) and GHCR (see [Docker](#-docker)).
+> **Publishing status:** `rea-plus@0.8.0` is live on the [npm registry](https://www.npmjs.com/package/rea-plus) and [`io.github.Alyhnte/rea-plus`](https://registry.modelcontextprotocol.io) is published on the MCP Registry. The supported installs are `npx -y rea-plus` (above) and GHCR (see [Docker](#-docker)).
 
 ### Clone & build
 
@@ -314,7 +314,7 @@ They mutate a running target (breakpoints, stepping, memory writes). The gate ke
 No. Conduit defaults to port 3847; rea-plus serves 3848, and the 30 conduit tool names are frozen.
 
 **npm says the package is not found?**
-Update your cache — `rea-plus@0.8.0` is on the [npm registry](https://www.npmjs.com/package/rea-plus). The Registry name (`io.github.Alyhnte/rea-plus`) and `mcpName` are prepared, but the MCP Registry entry itself hasn't been published yet. Use `npx -y rea-plus` everywhere above or the GHCR image.
+Update your cache — `rea-plus@0.8.0` is on the [npm registry](https://www.npmjs.com/package/rea-plus) and published on the MCP Registry. Use `npx -y rea-plus` everywhere above or the GHCR image.
 
 ## 🤝 Contributing
 
