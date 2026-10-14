@@ -11,7 +11,7 @@ Your agent asks questions; rea-plus inspects the binary and answers with evidenc
 [![CI](https://github.com/Alyhnte/ReaPlus/actions/workflows/ci.yml/badge.svg)](https://github.com/Alyhnte/ReaPlus/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Alyhnte/ReaPlus?style=flat-square)](https://github.com/Alyhnte/ReaPlus/releases)
 [![Tools](https://img.shields.io/badge/MCP%20tools-171-blue?style=flat-square)](#-features)
-[![Tests](https://img.shields.io/badge/tests-547%20its%20%2B%20e2e-green?style=flat-square)](#-tests)
+[![Tests](https://img.shields.io/badge/tests-698%20its%20%2B%20e2e-green?style=flat-square)](#-tests)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE)
 
@@ -28,7 +28,7 @@ Your agent asks questions; rea-plus inspects the binary and answers with evidenc
 - 🤝 **Honest by design** — a missing backend answers `capability_unsupported` with an install hint. Nothing fakes a result, errors come back as proper MCP `isError`, and mutating live-debug calls require `confirm:true`.
 - 🧩 **171 tools, 2 resources, 3 prompts** — the full generated catalog lives in [`docs/TOOLS.md`](docs/TOOLS.md); `REA_TOOLSETS` lets small-context clients load only a profile slice (see [Configuration](#-configuration)). Without an HTTP token, only a 44-tool read-only allowlist is registered instead of the full surface.
 - 🔌 **Two transports** — stdio for local agents, streamable HTTP (`/mcp` + `/health`, bearer token, localhost Host/Origin validation) for shared setups.
-- 🧪 **Proven, not promised** — a 58-file default test lane, Ubuntu CI for the released line, and protocol tests that drive the real compiled server.
+- 🧪 **Proven, not promised** — a 70-file default test lane, Ubuntu CI for the released line, and protocol tests that drive the real compiled server.
 
 ```console
 $ rea-plus-cli doctor            # what is installed on this machine, what is missing
@@ -278,10 +278,10 @@ rea-plus is a debugger: by design it can launch, attach to, and instrument local
 
 ## 🧪 Tests
 
-65 test files. The default lane (`npm test`) runs 58 files and excludes the live-injection/debugger, packet-capture, browser, e2e, and local-Ghidra suites — those touch real processes or machine-specific installs and belong to a VM or a dedicated CI job (`npm run test:live`). Every file is capped at 90s with process-tree kill, so a hung backend can never hang the lane. The released line's CI runs the default lane on Ubuntu (Node 20 + 22).
+77 test files. The default lane (`npm test`) runs 70 files and excludes the live-injection/debugger, packet-capture, browser, e2e, and local-Ghidra suites — those touch real processes or machine-specific installs and belong to a VM or a dedicated CI job (`npm run test:live`). Every file is capped at 90s with process-tree kill, so a hung backend can never hang the lane. The released line's CI runs the default lane on Ubuntu (Node 20 + 22).
 
 ```bash
-npm test                        # default lane: 58 files (live suites excluded)
+npm test                        # default lane: 70 files (live suites excluded)
 npm run test:live               # everything, incl. frida/sniff/browser/e2e/ghidra (VM/CI only)
 npm run test:e2e                # spawn -> /health -> tools/list
 node --test tests/evm.test.mjs # single-domain runs work too

@@ -3,6 +3,41 @@
 Tüm önemli değişiklikler bu dosyada tutulur. Format: Keep a Changelog + SemVer.
 All notable changes are documented here (Türkçe özet + English detail).
 
+## [0.8.1] — 2026-10-14
+
+Sürüm 0.8.1: motor sağlamlığı (oturum kuyruğu, Frida timeout, cdb async, x64dbg
+provizyon), statik dürüstlük (browser scenario, FLIRT, Wasm/DWARF, PE/PDB),
+davranış ve ölçek (syscall matrisi, tek-çağrı koşu, worker cache), kalıcı test
+platformu (golden korpus, 147 outputSchema, progress genelleme). Varsayılan
+yüzey 171 araç olarak korunur; tüm yenilikler opt-in veya dürüst-hata
+iyileştirmesidir. 70/70 varsayılan test yeşil.
+
+### Eklendi / Added
+
+- Oturum FIFO kuyruğu (`REA_SESSION_QUEUE=1` opt-in, 32 derinlik, `session_queue_status` aracı; varsayılan 171 yüzey değişmez).
+- Frida kurulum timeout'ları (attach 15sn/script 10sn/load 15sn, env override'lı, timeout'ta unload/detach temizlikli `engine_timeout`).
+- cdb async pause + push olayları (event loop bloklanmaz, `pauseAsync` opt-in).
+- x64dbg provizyonu (`reaX64dbgDoctor` + `reaX64dbgSetup`, idempotent, hash doğrulamalı).
+- Browser scenario gerçek çalıştırma (adım kanıtlı, dry-run modlu, backendsizde `capability_unsupported`).
+- Syscall numara matrisi + CreateFileW/RegSet profilleri.
+- Tek-çağrı davranış koşusu (`BehaviorRun`: spawn+trace+capture, zorunlu timeout, crash dürüstlüğü).
+- Worker cache (LRU-100, hash-anahtarlı, `REA_CACHE=0` baypas).
+- Golden korpus manifesti (`tests/corpus/HASHES.json` + `verify-corpus.mjs`).
+- Progress genelleme yardımcıları (`createStageProgress`, `onAbort`).
+- 27 yeni `outputSchema` (toplam 147: 137 rea + 10 conduit).
+
+### Düzeltildi / Fixed
+
+- jadx `-jar` asılması: `-cp jadx.cli.JadxCLI` biçimine çevrildi; canlı APK kabulü geçti (`com.zb.test`, 7 izin, 5 sınıf, 2.2sn).
+- FLIRT yanlış isimlendirmesi: açıklama ve sonuç `string-heuristic` + güven skoru taşır.
+- WasmInfo çok-bayt LEB + DWARF v5/abbrev_offset/çoklu FORM (negatif boyut ve sahte boş özet bitti).
+- PE `SizeOfOptionalHeader` + PeReader/PdbReader kopya kodu birleşti; PDB indirme (önbellekli, bütünlüklü).
+
+### Henüz yapılmadı / Not yet done
+
+- Frida canlı VM onayı; DEX kalıcı korpus (repo içi fixture); self-hosted Windows runner.
+- Kalan 24 şemasız araç; progress genelleme (senkron handler'lar); trusted publisher OIDC + provenance.
+
 ## [0.8.0] — 2026-10-14
 
 Sürüm 0.8.0: MCP protokol yüzeyi büyüdü (resources/prompts, toolsets, typed
