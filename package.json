@@ -1,6 +1,7 @@
 {
   "name": "rea-plus",
-  "version": "0.7.4",
+  "mcpName": "io.github.Alyhnte/rea-plus",
+  "version": "0.8.0",
   "description": "Conduit live-debug core + Rea static domains. 30 frozen tools + prefixed rea domains over stdio/HTTP.",
   "type": "module",
   "license": "MIT",
@@ -9,8 +10,8 @@
     "node": ">=20"
   },
   "bin": {
-    "rea-plus": "./dist/server.js",
-    "rea-plus-cli": "./dist/cli/index.js"
+    "rea-plus": "dist/server.js",
+    "rea-plus-cli": "dist/cli/index.js"
   },
   "scripts": {
     "build": "tsc && node scripts/copy-assets.mjs",
@@ -63,7 +64,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Alyhnte/ReaPlus"
+    "url": "git+https://github.com/Alyhnte/ReaPlus.git"
   },
   "homepage": "https://github.com/Alyhnte/ReaPlus",
   "bugs": {

@@ -16,6 +16,7 @@ import { registerDynamicTools } from "./dynamic_tools.js";
 import { registerGuideTools } from "./guide_tools.js";
 import { clearCheckpoints } from "./snapshots.js";
 import { SessionNotFoundError, registry, type DebugSession } from "./registry.js";
+import { applyWorkspaceRoot, WorkspaceRootError } from "../server/workspaceRoot.js";
 
 const SERVER_NAME = "conduit";
 const PROTOCOL = "2026-07-28";
@@ -83,6 +84,23 @@ function r2Failure(error: unknown, tool: string, session_id: string): ReturnType
     },
     true,
   );
+}
+
+type WorkspaceGate = { path: string; error?: undefined } | { path?: undefined; error: ReturnType<typeof jsonResult> };
+
+/**
+ * REA_WORKSPACE_ROOT gate: same central rule as the rea_* surface. Runs before
+ * any engine call; with no root configured the path passes through unchanged.
+ */
+function workspacePathGate(tool: string, session_id: string, path: string): WorkspaceGate {
+  try {
+    return { path: applyWorkspaceRoot(tool, { path }).path };
+  } catch (error) {
+    if (error instanceof WorkspaceRootError) {
+      return { error: jsonResult({ error: "workspace_root", tool, session_id, detail: error.message }, true) };
+    }
+    throw error;
+  }
 }
 
 function capabilityFailure(
@@ -266,6 +284,10 @@ export function registerTools(server: McpServer): void {
       }),
     },
     async ({ session_id, path, mode }) => {
+      const ws = workspacePathGate("open_target", session_id, path);
+      if (ws.error !== undefined) {
+        return ws.error;
+      }
       const gate = requireStaticSession(session_id, "open_target");
       if (gate.error !== undefined) {
         return gate.error;
@@ -280,8 +302,8 @@ export function registerTools(server: McpServer): void {
         );
       }
       try {
-        await radare2Engine.open(session_id, path);
-        const openedPath = radare2Engine.openPath(session_id) ?? path;
+        await radare2Engine.open(session_id, ws.path);
+        const openedPath = radare2Engine.openPath(session_id) ?? ws.path;
         gate.session.events.push("target.opened", { path: openedPath, mode });
         return jsonResult({ opened: true, session_id, engine: "radare2", mode, path: openedPath });
       } catch (error) {

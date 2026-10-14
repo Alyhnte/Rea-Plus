@@ -2,6 +2,7 @@
 // binwalk/unblob yoksa capability_unsupported + native handoff.
 import { execFileSync } from "child_process";
 import { mkdirSync } from "fs";
+import { resolveDerivedWorkspacePath, WorkspaceRootError } from "../../server/workspaceRoot.js";
 export type ReaFwResult =
   | { ok: true; tool: string; summary: string; handoff?: string }
   | { ok: false; code: "capability_unsupported"; reason: string; handoff?: string };
@@ -22,7 +23,10 @@ export function rea_firmware_extract(imagePath: string, tool: "binwalk" | "unblo
   if (gate) return gate;
   if (!imagePath) return { ok: false, code: "capability_unsupported", reason: "image yolu boş", handoff: "native:binwalk/unblob" };
   const bin = resolveBin(tool);
-  const outDir = `${imagePath}.extracted`;
+  // Turev cikti dizini ("${imagePath}.extracted") kok tanimliysa mkdir/exec oncesi dogrulanir.
+  let outDir: string;
+  try { outDir = resolveDerivedWorkspacePath(imagePath, ".extracted"); }
+  catch (e) { if (e instanceof WorkspaceRootError) return { ok: false, code: "capability_unsupported", reason: e.message, handoff: "native:binwalk/unblob" }; throw e; }
   try {
     mkdirSync(outDir, { recursive: true }); // Çıktı dizinini hazırla.
     const args = tool === "binwalk" ? ["-e", "-C", outDir, imagePath] : ["-e", "--output-dir", outDir, imagePath];

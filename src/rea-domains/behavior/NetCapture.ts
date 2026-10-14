@@ -7,6 +7,7 @@ import { connect } from "node:net";
 import { readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { resolveWorkspaceOutputPath, WorkspaceRootError } from "../../server/workspaceRoot.js";
 // Katalog/facade ile uyumlu araç adı (rea_ prefix zorunlu).
 export const NET_TOOLS = ["rea_net_capture"] as const;
 // Sonuç: ok ise HAR kanıtı, değilse capability_unsupported kapısı.
@@ -41,6 +42,11 @@ const EKLENTİ = `import os\nfrom mitmproxy.addons.savehar import SaveHar\n_k=Sa
 // yem sunucu yalnız data: girdisinde (çağrılabilir URL yokken) kurulur ve özette belirtilir.
 export async function rea_net_capture(url: string, sure_sn = 15, ciktiHar = "net.har"): Promise<ReaNetSonuç> {
   if (!url || typeof url !== "string" || !yerelMi(url)) return { ok: false, code: "capability_unsupported", reason: `desteklenmeyen hedef (yalnız data:/localhost): ${url}` };
+  // HAR ciktisi: REA_WORKSPACE_ROOT tanimliysa kok icinde uretilir/dondurulur; tanimsizsa
+  // eski davranis (cwd'ye goreli "net.har") aynen korunur. Gecici eklenti dosyasi tmp'de kalir.
+  let harYol: string;
+  try { harYol = resolveWorkspaceOutputPath(ciktiHar); }
+  catch (e) { if (e instanceof WorkspaceRootError) return { ok: false, code: "capability_unsupported", reason: e.message }; throw e; }
   if (!mitmTamam()) return { ok: false, code: "capability_unsupported", reason: "mitmdump PATH'te yok (mitmproxy 12.x gerekli)" };
   const yemGerek = url.startsWith("data:");
   const srv = yemGerek ? createServer((_req, res) => { res.writeHead(200, { "content-type": "text/plain" }); res.end("rea-ok"); }) : null;
@@ -50,7 +56,7 @@ export async function rea_net_capture(url: string, sure_sn = 15, ciktiHar = "net
   const eklenti = join(tmpdir(), `rea-har-${process.pid}.py`);
   writeFileSync(eklenti, EKLENTİ, "utf8");
   const pport = 18080 + Math.floor(Math.random() * 200); // Port çakışmasına karşı rastgele proxy portu.
-  const izle = spawn("mitmdump", ["-p", String(pport), "-q", "-s", eklenti], { stdio: "ignore", env: { ...process.env, REA_HAR_YOL: ciktiHar } });
+  const izle = spawn("mitmdump", ["-p", String(pport), "-q", "-s", eklenti], { stdio: "ignore", env: { ...process.env, REA_HAR_YOL: harYol } });
   let açık = false;
   for (let i = 0; i < 15 && !açık; i++) { açık = await portAçık(pport); if (!açık) await uyu(800); } // ~12sn tavan.
   const bütçe = Math.min(Math.max(sure_sn, 3), 15) * 1000;
@@ -60,9 +66,9 @@ export async function rea_net_capture(url: string, sure_sn = 15, ciktiHar = "net
   try { rmSync(eklenti, { force: true }); } catch { /* geçici eklenti temizliği */ }
   if (!kod) return { ok: false, code: "capability_unsupported", reason: `proxy isteği başarısız: ${hata}` };
   try {
-    const ham = readFileSync(ciktiHar, "utf8"); // HAR üretildi mi?
-    const bayt = statSync(ciktiHar).size;
+    const ham = readFileSync(harYol, "utf8"); // HAR üretildi mi?
+    const bayt = statSync(harYol).size;
     if (bayt === 0 || !ham.includes("\"log\"")) return { ok: false, code: "capability_unsupported", reason: "HAR üretilemedi (eklenti yazmadı)" };
-    return { ok: true, tool: "rea_net_capture", summary: `${hedef} -> ${ciktiHar} (${bayt} bayt, HTTP ${kod})${yemGerek ? " [data: girdisi; trafik yerel yeme]" : ""}`, kayıt: { url: hedef, har: ciktiHar, bayt } };
+    return { ok: true, tool: "rea_net_capture", summary: `${hedef} -> ${harYol} (${bayt} bayt, HTTP ${kod})${yemGerek ? " [data: girdisi; trafik yerel yeme]" : ""}`, kayıt: { url: hedef, har: harYol, bayt } };
   } catch { return { ok: false, code: "capability_unsupported", reason: "HAR dosyası okunamadı" }; }
 }
