@@ -3,7 +3,7 @@
     "rea-plus": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "github:Alyhnte/ReaPlus"]
+      "args": ["-y", "rea-plus"]
     }
   }
 }

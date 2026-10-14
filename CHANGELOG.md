@@ -65,8 +65,9 @@ progress pilots. External gates in "Not yet done" remain open.
 
 ### Henüz yapılmadı / Not yet done
 
-- npm yayını ve MCP Registry kaydı yapılmadı. Desteklenen kurulum hâlâ
-  `npx -y github:Alyhnte/ReaPlus` ve GHCR'dır; `npx -y rea-plus` henüz çalışmaz.
+- npm yayını yapıldı: `rea-plus@0.8.0` registry'de, tüketici kurulumu
+  (`npm install` + stdio `initialize`/`tools/list` = 171) doğrulandı. MCP Registry
+  kaydı yapılmadı; desteklenen kurulum `npx -y rea-plus` ve GHCR'dır.
 - Frida canlı VM onayı tamamlanmış değildir; yukarıdaki Frida maddesi canlı kabul
   kanıtı sayılmaz.
 - DEX golden APK kabul testi (canlı jadx + gerçek APK) tamamlanmış değildir;

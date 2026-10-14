@@ -48,25 +48,25 @@ transfer(address,uint256) -> 0xa9059cbb
 
 ### One-click (Cursor / VS Code)
 
-[![Add to Cursor](https://img.shields.io/badge/Add%20to%20Cursor-000000?style=for-the-badge&logo=cursor&logoColor=white)](https://cursor.com/install-mcp?name=rea-plus&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImdpdGh1YjpBbHlobnRlL1JlYVBsdXMiXX0=)
-[![Install in VS Code](https://img.shields.io/badge/Install%20in%20VS%20Code-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=rea-plus&config=%7B%22type%22%3A%22stdio%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22github%3AAlyhnte%2FReaPlus%22%5D%7D)
+[![Add to Cursor](https://img.shields.io/badge/Add%20to%20Cursor-000000?style=for-the-badge&logo=cursor&logoColor=white)](https://cursor.com/install-mcp?name=rea-plus&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsInJlYS1wbHVzIl19)
+[![Install in VS Code](https://img.shields.io/badge/Install%20in%20VS%20Code-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=rea-plus&config=%7B%22type%22%3A%22stdio%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22rea-plus%22%5D%7D)
 
 ### npx (no clone)
 
-Any stdio MCP client can launch it straight from GitHub — the first run builds in a few seconds:
+Any stdio MCP client can launch it straight from the npm registry:
 
 ```json
 {
   "mcpServers": {
     "rea-plus": {
       "command": "npx",
-      "args": ["-y", "github:Alyhnte/ReaPlus"]
+      "args": ["-y", "rea-plus"]
     }
   }
 }
 ```
 
-> **Publishing status:** the MCP Registry name `io.github.Alyhnte/rea-plus` and the package `mcpName` are ready in `server.json`/`package.json`, and a manual publish workflow with a dry-run default is prepared — but the npm package and the MCP Registry entry have **not been published yet**. The supported installs remain `npx -y github:Alyhnte/ReaPlus` (above) and GHCR (see [Docker](#-docker)).
+> **Publishing status:** `rea-plus@0.8.0` is live on the [npm registry](https://www.npmjs.com/package/rea-plus). The MCP Registry name `io.github.Alyhnte/rea-plus` and the package `mcpName` are ready in `server.json`/`package.json`, and a manual publish workflow with a dry-run default is prepared — but the MCP Registry entry itself has **not been published yet**. The supported installs are `npx -y rea-plus` (above) and GHCR (see [Docker](#-docker)).
 
 ### Clone & build
 
@@ -104,7 +104,7 @@ Add to `claude_desktop_config.json` (see [`configs/claude-desktop/`](configs/cla
 ```json
 {
   "mcpServers": {
-    "rea-plus": { "command": "npx", "args": ["-y", "github:Alyhnte/ReaPlus"] }
+    "rea-plus": { "command": "npx", "args": ["-y", "rea-plus"] }
   }
 }
 ```
@@ -115,7 +115,7 @@ Add to `claude_desktop_config.json` (see [`configs/claude-desktop/`](configs/cla
 <summary><strong>Claude Code</strong></summary>
 
 ```bash
-claude mcp add rea-plus -- npx -y github:Alyhnte/ReaPlus
+claude mcp add rea-plus -- npx -y rea-plus
 ```
 
 Or drop [`configs/claude-code/.mcp.json`](configs/claude-code/.mcp.json) into your project root.
@@ -151,7 +151,7 @@ Append [`configs/codex/config.toml`](configs/codex/config.toml) to `~/.codex/con
 ```toml
 [mcp_servers.rea-plus]
 command = "npx"
-args = ["-y", "github:Alyhnte/ReaPlus"]
+args = ["-y", "rea-plus"]
 ```
 
 </details>
@@ -314,7 +314,7 @@ They mutate a running target (breakpoints, stepping, memory writes). The gate ke
 No. Conduit defaults to port 3847; rea-plus serves 3848, and the 30 conduit tool names are frozen.
 
 **npm says the package is not found?**
-Correct — it is not there yet. The Registry name (`io.github.Alyhnte/rea-plus`) and `mcpName` are prepared and the publish workflow exists (manual, dry-run by default), but neither npm nor the MCP Registry publish has happened. Use the GitHub form everywhere above (`npx -y github:Alyhnte/ReaPlus`) or the GHCR image.
+Update your cache — `rea-plus@0.8.0` is on the [npm registry](https://www.npmjs.com/package/rea-plus). The Registry name (`io.github.Alyhnte/rea-plus`) and `mcpName` are prepared, but the MCP Registry entry itself hasn't been published yet. Use `npx -y rea-plus` everywhere above or the GHCR image.
 
 ## 🤝 Contributing
 

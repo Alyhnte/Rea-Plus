@@ -2,7 +2,7 @@
   "_yorum_tr_1": "rea-plus Claude Desktop stdio yapılandırması.",
   "_yorum_tr_2": "Dosya Claude Desktop config dosyasındaki mcpServers bloğuna eklenir.",
   "_yorum_tr_3": "<REA_PLUS_DIR> yerine rea-plus klasörünün tam yolunu yaz.",
-  "_yorum_tr_4": "Örnek: C:/path/to/ReaPlus (klonun tam yolu) ya da npx formu: command=npx args=[-y, github:Alyhnte/ReaPlus]",
+  "_yorum_tr_4": "Örnek: C:/path/to/ReaPlus (klonun tam yolu) ya da npx formu: command=npx args=[-y, rea-plus]",
   "_yorum_tr_5": "dist/server.js yoksa önce projesinde npm run build çalıştır.",
   "_yorum_tr_6": "Bu dosya tsc derlemesine girmez; saf JSON olarak kalır.",
   "mcpServers": {

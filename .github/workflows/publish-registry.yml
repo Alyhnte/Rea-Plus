@@ -1,0 +1,50 @@
+# rea-plus MCP Registry yayini — tag (v*) veya elle tetiklenir.
+# Linux runner'da mcp-publisher + GitHub OIDC ile kayit yapar; Windows'taki
+# yerel token-saklama sorununa takilmaz. server.json tek otoritedir.
+name: publish-registry
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      confirm_registry:
+        description: "Registry yayini icin tam olarak PUBLISH yazin"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  id-token: write # OIDC icin sart
+  contents: read
+
+concurrency:
+  group: publish-registry-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  registry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Manuel tetikleme acik onay guardi
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_registry != 'PUBLISH' }}
+        run: |
+          echo "::error::manuel registry yayini icin confirm_registry girdisi tam olarak PUBLISH olmalidir."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: mcp-publisher kur
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+          ./mcp-publisher --help
+
+      - name: server.json dogrula
+        run: ./mcp-publisher validate
+
+      - name: Registry girisi (GitHub OIDC)
+        run: ./mcp-publisher login github-oidc
+
+      - name: Registry yayini
+        run: ./mcp-publisher publish
