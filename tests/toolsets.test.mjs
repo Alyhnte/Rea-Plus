@@ -115,10 +115,10 @@ describe("parseToolsets (birim)", () => {
 });
 
 describe("toolsetler (gercek protokol, InMemoryTransport)", () => {
-  it("varsayilan (tanimsiz/bos/all) mevcut 183 araci aynen korur", async () => {
+  it("varsayilan (tanimsiz/bos/all) mevcut 187 araci aynen korur", async () => {
     const tam = await listeleriAl(undefined);
-    assert.equal(tam.araclar.length, 183);
-    assert.equal(new Set(tam.araclar).size, 183, "arac adlari benzersiz olmali");
+    assert.equal(tam.araclar.length, 187);
+    assert.equal(new Set(tam.araclar).size, 187, "arac adlari benzersiz olmali");
     for (const v of ["", "all"]) {
       const r = await listeleriAl(v);
       assert.deepEqual(r.araclar, tam.araclar, `REA_TOOLSETS=${JSON.stringify(v)} varsayilandan sapiyor`);
@@ -179,7 +179,7 @@ describe("toolsetler (gercek protokol, InMemoryTransport)", () => {
     });
     // Sarmalayici prototipi kirletmemeli: filtreli ve filtresiz kurulumlar birbirini etkilemez.
     assert.equal((await listeleriAl("minimal")).araclar.length, 8);
-    assert.equal((await listeleriAl(undefined)).araclar.length, 183);
+    assert.equal((await listeleriAl(undefined)).araclar.length, 187);
     assert.equal((await listeleriAl("web")).araclar.length, 26);
   });
 });

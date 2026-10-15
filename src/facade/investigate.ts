@@ -1,7 +1,7 @@
 // rea-plus soruşturma orkestrasyonu: 5 çağrıyı 1'e indirir.
 // sniff -> confidence -> fallback -> plan -> evidence ipucu. SAF + fs (exec yok).
-import { readFileSync, existsSync } from "node:fs";
-import { sniffBytes } from "./sniff.js";
+import { existsSync } from "node:fs";
+import { baslikOku, sniffBytes } from "./sniff.js";
 import { scoreTarget, bestMotor } from "./confidence.js";
 import { resolveChain } from "./fallback.js";
 
@@ -35,10 +35,12 @@ export function rea_investigate(yol: string, soru = ""): SorusturmaPlani | { ok:
   if (!yol || !existsSync(yol)) {
     return { ok: false, code: "capability_unsupported", neden: `hedef yok: ${yol}` };
   }
+  // KRİTİK: dosyanın tamamı belleğe alınmaz; yalnız ilk 4KB penceresi okunur.
   let buf: Uint8Array;
   try {
-    const fd = readFileSync(yol);
-    buf = new Uint8Array(fd.buffer, fd.byteOffset, Math.min(fd.length, 4096));
+    const bas = baslikOku(yol, 4096);
+    if (!bas) return { ok: false, code: "capability_unsupported", neden: `okunamadı: ${yol}` };
+    buf = new Uint8Array(bas.buffer, bas.byteOffset, bas.byteLength);
   } catch {
     return { ok: false, code: "capability_unsupported", neden: `okunamadı: ${yol}` };
   }

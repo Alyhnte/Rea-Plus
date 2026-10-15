@@ -1,6 +1,6 @@
 // unpack: UPX + ILSpy gerçek exec (stub yok, hedef çalıştırılmaz).
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { resolveDerivedWorkspacePath, WorkspaceRootError } from "../../server/workspaceRoot.js";
 // Facade uyumu: rea_ prefix zorunlu, 4 araç.
@@ -46,9 +46,23 @@ export function rea_ilspy_decompile(dllYolu: string, ciktiDir: string) {
   catch (e) { return engel(`ilspy hatası: ${String((e as Error)?.message ?? e).slice(0, 500)}`); }
 }
 // Hızlı dotnet-dll sezi: MZ + .dll/.exe uzantısı (çalıştırma yok).
+// KRİTİK: yalnız ilk 2 bayt okunur (eski tam-okuma ile aynı karar: boy>2 + MZ).
 function dotnetDllMi(yol: string): boolean {
   if (!yol.endsWith(".dll") && !yol.endsWith(".exe")) return false;
-  try { const b = readFileSync(yol); return b.length > 2 && b[0] === 0x4d && b[1] === 0x5a; } catch { return false; }
+  let fd = -1;
+  try {
+    if (statSync(yol).size <= 2) return false;
+    fd = openSync(yol, "r");
+    const b = Buffer.alloc(2);
+    let doldu = 0;
+    while (doldu < 2) {
+      const k = readSync(fd, b, doldu, 2 - doldu, doldu);
+      if (k <= 0) break;
+      doldu += k;
+    }
+    return doldu === 2 && b[0] === 0x4d && b[1] === 0x5a;
+  } catch { return false; }
+  finally { if (fd >= 0) { try { closeSync(fd); } catch { /* kapanmış */ } } }
 }
 // Sıralı deneme: upx-info->upx-dene, dotnet ise ilspy öner, yoksa dump-hunt öner.
 export function rea_unpack_try(yol: string) {

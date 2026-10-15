@@ -1,6 +1,6 @@
 // Managed (.NET) denetçi: metadata + CIL okuma iskeleti (hedef ASLA çalıştırılmaz).
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, readFileSync, mkdtempSync, readdirSync } from "node:fs";
+import { closeSync, existsSync, openSync, readSync, statSync, mkdtempSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -20,22 +20,53 @@ function okuyucuBul(): string | null {
 
 // Gerçek .NET tespiti: PE optional header'daki CLR dizini (DataDirectory[14]) dolu mu?
 // Yalnız MZ bakmak her native PE'yi .NET sanır; karar bu kontrole dayanır.
+// KRİTİK: dosyanın tamamı belleğe alınmaz; yalnız başlık pencereleri okunur
+// (GB'lık imajlarda OOM bitirir). Karar mantığı eski tam-okuma ile birebir.
 function clrDurumu(yol: string): "dotnet" | "native" | "pe-degil" {
+  let fd = -1;
   try {
-    const buf = readFileSync(yol);
-    if (buf.length < 0x40 || buf[0] !== 0x4d || buf[1] !== 0x5a) return "pe-degil"; // MZ yok
-    const peOff = buf.readUInt32LE(0x3c);
-    if (peOff + 24 > buf.length || buf.toString("latin1", peOff, peOff + 4) !== "PE\0\0") return "pe-degil";
-    const optBoyu = buf.readUInt16LE(peOff + 20);
+    const boy = statSync(yol).size;
+    fd = openSync(yol, "r");
+    // [off, off+len) aralığını oku; menzil dışıysa null.
+    const oku = (off: number, len: number): Buffer | null => {
+      if (off < 0 || off >= boy || len <= 0) return null;
+      const n = Math.min(len, boy - off);
+      const buf = Buffer.alloc(n);
+      let doldu = 0;
+      while (doldu < n) {
+        const k = readSync(fd, buf, doldu, n - doldu, off + doldu);
+        if (k <= 0) break;
+        doldu += k;
+      }
+      return doldu > 0 ? buf.subarray(0, doldu) : null;
+    };
+    const bas = oku(0, 0x40);
+    if (!bas || bas.length < 0x40 || bas[0] !== 0x4d || bas[1] !== 0x5a) return "pe-degil"; // MZ yok
+    const peOff = bas.readUInt32LE(0x3c);
+    // COFF(20) + optional sihri + DataDirectory[14] için tek pencere (280B yeter).
+    const pencere = oku(peOff, 280);
+    if (!pencere || pencere.length < 24 || pencere.subarray(0, 4).toString("latin1") !== "PE\0\0") return "pe-degil";
+    const optBoyu = pencere.readUInt16LE(20);
     const opt = peOff + 24;
-    if (optBoyu < 2 || opt + optBoyu > buf.length) return "native";
-    const magic = buf.readUInt16LE(opt);
+    if (optBoyu < 2 || opt + optBoyu > boy) return "native";
+    const magic = pencere.readUInt16LE(24);
     const dizinBas = magic === 0x20b ? opt + 112 : magic === 0x10b ? opt + 96 : -1; // PE32+ / PE32
     if (dizinBas < 0) return "native";
-    if (buf.readUInt32LE(dizinBas - 4) < 15) return "native"; // CLR girdisi (14) yok
-    return buf.readUInt32LE(dizinBas + 14 * 8) !== 0 ? "dotnet" : "native";
+    // dizinBas görece ofsetleri pencere içine çevir (pencere peOff'ta başlar).
+    const r32 = (mutlak: number): number | null => {
+      const g = mutlak - peOff;
+      return g >= 0 && g + 4 <= pencere.length ? pencere.readUInt32LE(g) : null;
+    };
+    const girdiSayisi = r32(dizinBas - 4);
+    if (girdiSayisi === null) return "pe-degil"; // eski kod menzil dışında fırlatırdı
+    if (girdiSayisi < 15) return "native"; // CLR girdisi (14) yok
+    const clrRva = r32(dizinBas + 14 * 8);
+    if (clrRva === null) return "pe-degil"; // eski kod menzil dışında fırlatırdı
+    return clrRva !== 0 ? "dotnet" : "native";
   } catch {
     return "pe-degil";
+  } finally {
+    if (fd >= 0) { try { closeSync(fd); } catch { /* kapanmış */ } }
   }
 }
 
@@ -101,10 +132,25 @@ function disAracBul(envAd: string, adaylar: string[]): string | null {
 // Metadata sayımı: sınıf (TypeDefinition) + metod (MethodDef) başlık sayıları.
 export function rea_il2cpp_metadata(datYolu: string) {
   if (!existsSync(datYolu)) return il2cppKapi(`Dosya yok: ${datYolu}`);
-  let buf: Buffer;
-  try { buf = readFileSync(datYolu); }
-  catch { return il2cppKapi(`Dosya okunamadı: ${datYolu}`); }
-  if (buf.length < IL2CPP_BASLIK_ENAZ) return il2cppKapi("başlık çok kısa (global-metadata.dat değil?)");
+  // KRİTİK: yalnız başlık penceresi okunur (216B); ofset tutarlılığı stat boyuna göre.
+  let bas: Buffer;
+  let boy = 0;
+  let fd = -1;
+  try {
+    boy = statSync(datYolu).size;
+    if (boy < IL2CPP_BASLIK_ENAZ) return il2cppKapi("başlık çok kısa (global-metadata.dat değil?)");
+    fd = openSync(datYolu, "r");
+    bas = Buffer.alloc(IL2CPP_BASLIK_ENAZ);
+    let doldu = 0;
+    while (doldu < IL2CPP_BASLIK_ENAZ) {
+      const k = readSync(fd, bas, doldu, IL2CPP_BASLIK_ENAZ - doldu, doldu);
+      if (k <= 0) break;
+      doldu += k;
+    }
+    if (doldu < IL2CPP_BASLIK_ENAZ) return il2cppKapi("başlık çok kısa (global-metadata.dat değil?)");
+  } catch { return il2cppKapi(`Dosya okunamadı: ${datYolu}`); }
+  finally { if (fd >= 0) { try { closeSync(fd); } catch { /* kapanmış */ } } }
+  const buf = bas;
   if (buf.readUInt32LE(0) !== IL2CPP_SIHIR) return il2cppKapi("global-metadata.dat sihri yok (FAB11BAF bulunamadı)");
   const surum = buf.readUInt32LE(4);
   const metodOfset = buf.readUInt32LE(48);
@@ -116,7 +162,7 @@ export function rea_il2cpp_metadata(datYolu: string) {
   // Tutarlılık: ofsetler dosya içinde, sayılar makul aralıkta olmalı.
   const sayilar = [metodSayisi, sinifSayisi, goruntuSayisi, assemblySayisi];
   if (!sayilar.every((n) => n <= 50_000_000)) return il2cppKapi("sayılar tutarsız (aşırı büyük sayaç)");
-  if (metodOfset >= buf.length || sinifOfset >= buf.length) return il2cppKapi("ofsetler tutarsız (dosya dışında)");
+  if (metodOfset >= boy || sinifOfset >= boy) return il2cppKapi("ofsetler tutarsız (dosya dışında)");
   return {
     ok: true as const, arac: "rea_il2cpp_metadata", dosya: datYolu, surum,
     sinifSayisi, metodSayisi, goruntuSayisi, assemblySayisi,

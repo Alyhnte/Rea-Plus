@@ -7,11 +7,11 @@
 ## Özet
 
 - Sunucu: `rea-plus` 0.8.2
-- Toplam araç: 183
+- Toplam araç: 187
 - Toplam resource: 2
 - Toplam prompt: 3
-- outputSchema taşıyan araç: 179
-- annotations taşıyan araç: 183
+- outputSchema taşıyan araç: 183
+- annotations taşıyan araç: 187
 
 ## Araçlar
 
@@ -336,6 +336,24 @@ Cihaz ekran görüntüsü.
   - `seri` (string, opsiyonel)
 - outputSchema: var (alanlar: arac, bayt, ok, yol)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
+
+### `rea_android_dinamik_recete`
+
+Android dinamik analiz reçetesi üretimi.
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: arac, ok, recete)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
+### `rea_android_recete_dogrula`
+
+Reçete kuru-doğrulaması.
+
+- Girdi alanları:
+  - `text` (string, zorunlu)
+- outputSchema: var (alanlar: adim_sayisi, arac, ok)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
 
 ### `rea_aot_detect`
 
@@ -1433,6 +1451,16 @@ Zincir doğrulama.
 - outputSchema: var (alanlar: eksik, ok)
 - annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
 
+### `rea_pcap_oku`
+
+PCAP akış birleştirme + keylog TLS çözme.
+
+- Girdi alanları:
+  - `keylog` (string, opsiyonel)
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: details, ok, summary, tool)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
 ### `rea_pdb_indir`
 
 PE debug dizinindeki CodeView RSDS kaydından Microsoft symbol server'dan PDB indirme + bütünlük + önbellek.
@@ -1602,6 +1630,16 @@ Repo taraması (tip+plan).
 - Girdi alanları:
   - `path` (string, zorunlu)
 - outputSchema: var (alanlar: details, ok, summary, tool)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
+### `rea_scan_repo_paralel`
+
+Paralel repo taraması (4'lü havuz, iptalli).
+
+- Girdi alanları:
+  - `eszamanlilik` (integer, opsiyonel)
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: details, iptalEdildi, ok, summary, tool)
 - annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
 
 ### `rea_sniff`

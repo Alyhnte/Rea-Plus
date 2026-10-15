@@ -267,9 +267,9 @@ describe("stdio: (e) kuyruk devre disiyken mevcut davranis degismez", () => {
   before(async () => { istemci = await stdioIstemci(temizEnv({})).baslat(); });
   after(async () => { await istemci.kapat(); });
 
-  it("arac sayisi 183 kalir, status araci yoktur", async () => {
+  it("arac sayisi 187 kalir, status araci yoktur", async () => {
     const sayfa = await istemci.istek("tools/list", {}).soz;
-    assert.equal(sayfa.tools.length, 183);
+    assert.equal(sayfa.tools.length, 187);
     assert.ok(!sayfa.tools.some((t) => t.name === "session_queue_status"), "devre disiyken status araci olmamali");
   });
 
@@ -286,9 +286,9 @@ describe("stdio: kuyruk acikken (REA_SESSION_QUEUE=1)", () => {
   before(async () => { istemci = await stdioIstemci(temizEnv({ REA_SESSION_QUEUE: "1" })).baslat(); });
   after(async () => { await istemci.kapat(); });
 
-  it("arac sayisi 184 olur, status araci vardir", async () => {
+  it("arac sayisi 188 olur, status araci vardir", async () => {
     const sayfa = await istemci.istek("tools/list", {}).soz;
-    assert.equal(sayfa.tools.length, 184);
+    assert.equal(sayfa.tools.length, 188);
     assert.ok(sayfa.tools.some((t) => t.name === "session_queue_status"), "status araci listede olmali");
   });
 

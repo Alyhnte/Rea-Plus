@@ -63,7 +63,9 @@ import type { ApiOlay } from "../rea-domains/behavior/FileRegProfiles.js";
 import { rea_pdb_yolu, reaPdbIndirKayitHandler, REA_PDB_INDIR_ACIKLAMA } from "../rea-domains/typedef/PdbReader.js";
 import { rea_dwarf_ozet } from "../rea-domains/typedef/DwarfReader.js";
 import { rea_typedef_oner } from "../rea-domains/typedef/TypeSpread.js";
-import { rea_scan_repo } from "../rea-domains/reposcan/RepoScan.js";
+import { rea_scan_repo, rea_scan_repo_paralel } from "../rea-domains/reposcan/RepoScan.js";
+import { pcapAkislar } from "../rea-domains/behavior/PcapBridge.js";
+import { rea_android_dinamik_recete, rea_android_recete_dogrula } from "../rea-domains/android/DynamicRecipe.js";
 import { applyWorkspaceRoot } from "./workspaceRoot.js";
 import { existsSync } from "node:fs";
 import { reaToolMetadata } from "./toolMetadata.js";
@@ -344,6 +346,7 @@ const R: Array<[string, string, any, H]> = [
   ["rea_unpack_try", "Otomatik unpack yönlendirme.", P, (a) => rea_unpack_try(a.path)],
   ["rea_unpack_hunt", "Bilinmeyen packer rehberli akışı.", P, (a) => rea_unpack_hunt(a.path)],
   ["rea_net_capture", "Yerel ağ yakalama (HAR).", z.object({ url: z.string().min(1) }), (a) => rea_net_capture(a.url)],
+  ["rea_pcap_oku", "PCAP akış birleştirme + keylog TLS çözme.", z.object({ path: z.string().min(1), keylog: z.string().optional() }), (a) => pcapAkislar(a.path, a.keylog ? { keylogYol: a.keylog } : undefined)],
   ["rea_behavior_timeline", "Olay çizelgesi + özet.", z.object({ olaylar: z.string().min(1) }), (a) => {
     const p = jsonParse<any[]>("rea_behavior_timeline", a.olaylar); if ("err" in p) return p.err;
     return rea_behavior_timeline(p.v);
@@ -490,6 +493,9 @@ const R: Array<[string, string, any, H]> = [
   ["rea_dwarf_ozet", "ELF DWARF özeti.", P, (a) => rea_dwarf_ozet(a.path)],
   ["rea_typedef_oner", "Argüman adı önerisi + yayılım.", J, (a) => rea_typedef_oner(a.text)],
   ["rea_scan_repo", "Repo taraması (tip+plan).", P, (a, ctx) => reaScanRepoStaged(a, ctx)],
+  ["rea_scan_repo_paralel", "Paralel repo taraması (4'lü havuz, iptalli).", z.object({ path: z.string().min(1), eszamanlilik: z.number().int().min(1).max(4).optional() }), (a) => rea_scan_repo_paralel(a.path, a.eszamanlilik ? { eszamanlilik: a.eszamanlilik } : undefined)],
+  ["rea_android_dinamik_recete", "Android dinamik analiz reçetesi üretimi.", z.object({ path: z.string().min(1) }), (a) => rea_android_dinamik_recete({ apkYolu: a.path })],
+  ["rea_android_recete_dogrula", "Reçete kuru-doğrulaması.", J, (a) => { const p = JSON.parse(a.text); return rea_android_recete_dogrula(p); }],
 ];
 
 export function registerReaTools(server: McpServer): void {

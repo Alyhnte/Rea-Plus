@@ -778,6 +778,51 @@ const OUTPUT_SCHEMAS: Readonly<Record<string, StandardSchemaWithJSON>> = {
       ),
     }),
   }),
+  rea_scan_repo_paralel: z.object({
+    ok: z.literal(true),
+    tool: z.string(),
+    summary: z.string(),
+    iptalEdildi: z.boolean(),
+    details: z.object({
+      dosyalar: z.array(
+        z.object({ yol: z.string(), tip: z.string(), motor: z.string() }),
+      ),
+      tipler: z.record(z.string(), z.number()),
+      planlar: z.array(
+        z.object({ dosya: z.string(), motor: z.string(), neden: z.string() }),
+      ),
+      hatalar: z.array(
+        z.object({ yol: z.string(), hata: z.string() }),
+      ),
+    }),
+  }),
+  rea_pcap_oku: z.object({
+    ok: z.literal(true),
+    tool: z.string(),
+    summary: z.string(),
+    details: z.object({
+      akisSayisi: z.number(),
+      paketSayisi: z.number(),
+      akislar: z.array(z.unknown()),
+      sinirli: z.boolean(),
+      tshark: z.boolean(),
+    }),
+  }),
+  rea_android_dinamik_recete: z.object({
+    ok: z.literal(true),
+    arac: z.string(),
+    recete: z.object({
+      surum: z.number(),
+      ad: z.string(),
+      calistirma: z.string(),
+      adimlar: z.array(z.unknown()),
+    }),
+  }),
+  rea_android_recete_dogrula: z.object({
+    ok: z.literal(true),
+    arac: z.string(),
+    adim_sayisi: z.number(),
+  }),
   // Dalga 3: alt surec yoklayan ama basari sekli sabit kopruler (annotations'ta
   // openWorld; sema canli cagrida degil yalniz handler govdesinden dogrulandi)
   rea_dotnet_metadata: z.object({
@@ -1086,6 +1131,10 @@ const FILE_READ_ONLY_TOOLS: ReadonlySet<string> = new Set([
   "rea_pdb_yolu",
   "rea_dwarf_ozet",
   "rea_scan_repo",
+  "rea_scan_repo_paralel",
+  "rea_pcap_oku",
+  "rea_android_dinamik_recete",
+  "rea_android_recete_dogrula",
 ]);
 
 // Yikici kume (salt-okunur degil): dosya/cikti yazan, cihaza kuran ya da hedef
