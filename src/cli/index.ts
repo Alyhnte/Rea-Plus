@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-// cli: rea-plus komut satırı (analyze-evm/wasm/js + flutter/apple/hap/pe/go/wasm2 + doctor)
+// cli: rea-plus komut satırı (analyze-evm/wasm/js + flutter/apple/hap/pe/go/wasm2 + doctor + setup)
 // --json bayrağı her komutta JSON çıktı verir, bin eklemez.
 import { existsSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { runDoctorCommand } from "./doctor.js";
+import { runSetupCommand } from "./setup.js";
 import { runEvmCommand } from "./evm.js";
 import { runJsCommand } from "./js.js";
 import { runWasmCommand } from "./wasm.js";
@@ -25,6 +27,7 @@ const KOMUTLAR = [
   "analyze-go",
   "analyze-wasm2",
   "doctor",
+  "setup",
 ] as const;
 type Komut = (typeof KOMUTLAR)[number];
 
@@ -45,7 +48,9 @@ function kullanim(): void {
   console.log("  analyze-pe <dosya.exe>     machine/import/section özeti");
   console.log("  analyze-go <dosya>         pclntab + vendor yol listesi");
   console.log("  analyze-wasm2 <dosya>      section/import tablosu (saf TS)");
-  console.log("  doctor                     prerequisites raporu");
+  console.log("  doctor [--fix] [--yes]   prerequisites raporu (+onerilen kurulum)");
+  console.log("  setup [--client <id>] [--yes] [--dry-run] [--force] [--list]");
+  console.log("                             istemci MCP config'ine rea-plus bloğu yazar");
 }
 
 // Flutter komutu: ELF Dart taraması + yük izleri (offline, yürütme yok).
@@ -275,13 +280,19 @@ function runWasm2Command(args: string[], json: boolean): void {
   }
 }
 
-// Bayrakları ayıkla: --json global, kalanı komut + args.
+// Bayrakları ayıkla: --json global; --fix/--yes doctor fix için, kalanı komut + args.
+// setup komutu kendi bayraklarını (--yes/--dry-run/--force) kendisi ayıklar,
+// bu yüzden --yes yalnız doctor yolunda filtrelenir.
 function main(): void {
   const ham = process.argv.slice(2);
   const json = ham.includes("--json");
-  const temiz = ham.filter((a) => a !== "--json");
+  const fix = ham.includes("--fix");
+  const temiz = ham.filter((a) => a !== "--json" && a !== "--fix");
   const komut = temiz[0] as Komut | undefined;
-  const args = temiz.slice(1);
+  // --yes: doctor yolunda global sayılır (setup'a geçirilmez); setup yolunda
+  // komuta bırakılır (kendi parse eder). doctor-fix testi bu ayrımı kilitler.
+  const doctorYes = ham.includes("--yes");
+  const args = (komut === "setup" ? temiz : temiz.filter((a) => a !== "--yes")).slice(1);
   if (!komut || !KOMUTLAR.includes(komut)) {
     kullanim();
     process.exitCode = 1;
@@ -296,7 +307,11 @@ function main(): void {
   else if (komut === "analyze-pe") runPeCommand(args, json);
   else if (komut === "analyze-go") runGoCommand(args, json);
   else if (komut === "analyze-wasm2") runWasm2Command(args, json);
-  else runDoctorCommand(json);
+  else if (komut === "setup") runSetupCommand(args, json);
+  else if (fix && doctorYes) {
+    // Gerçek koşum yalnız kullanıcı makinesinde, açık onayla (--fix --yes).
+    runDoctorCommand(json, { fix, yes: doctorYes, kosucu: (k) => { spawnSync(k, { shell: true, stdio: "inherit", windowsHide: true }); } });
+  } else runDoctorCommand(json, { fix });
 }
 
 // Doğrudan çalışınca başlat (import edilirse sessiz kalır).
