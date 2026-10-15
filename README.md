@@ -10,8 +10,8 @@ Your agent asks questions; rea-plus inspects the binary and answers with evidenc
 
 [![CI](https://github.com/Alyhnte/ReaPlus/actions/workflows/ci.yml/badge.svg)](https://github.com/Alyhnte/ReaPlus/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Alyhnte/ReaPlus?style=flat-square)](https://github.com/Alyhnte/ReaPlus/releases)
-[![Tools](https://img.shields.io/badge/MCP%20tools-171-blue?style=flat-square)](#-features)
-[![Tests](https://img.shields.io/badge/tests-698%20its%20%2B%20e2e-green?style=flat-square)](#-tests)
+[![Tools](https://img.shields.io/badge/MCP%20tools-172-blue?style=flat-square)](#-features)
+[![Tests](https://img.shields.io/badge/tests-750%20its%20%2B%20e2e-green?style=flat-square)](#-tests)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE)
 
@@ -26,9 +26,9 @@ Your agent asks questions; rea-plus inspects the binary and answers with evidenc
 - 🐞 **Real debugging, not screenshots** — x64dbg, cdb (WinDbg), and Frida engines behind one frozen 30-tool core: breakpoints, stepping, registers, memory, call stacks, time-travel checkpoints.
 - 🧰 **141 static tools** — Ghidra headless, rizin/radare2, .NET CIL (dnfile) and ILSpy, jadx/apktool/adb, WASM + EVM, firmware, browser/HAR, UPX, PE/ELF/Mach-O readers, and more.
 - 🤝 **Honest by design** — a missing backend answers `capability_unsupported` with an install hint. Nothing fakes a result, errors come back as proper MCP `isError`, and mutating live-debug calls require `confirm:true`.
-- 🧩 **171 tools, 2 resources, 3 prompts** — the full generated catalog lives in [`docs/TOOLS.md`](docs/TOOLS.md); `REA_TOOLSETS` lets small-context clients load only a profile slice (see [Configuration](#-configuration)). Without an HTTP token, only a 44-tool read-only allowlist is registered instead of the full surface.
+- 🧩 **172 tools, 2 resources, 3 prompts** — the full generated catalog lives in [`docs/TOOLS.md`](docs/TOOLS.md); `REA_TOOLSETS` lets small-context clients load only a profile slice (see [Configuration](#-configuration)). Without an HTTP token, only a 44-tool read-only allowlist is registered instead of the full surface.
 - 🔌 **Two transports** — stdio for local agents, streamable HTTP (`/mcp` + `/health`, bearer token, localhost Host/Origin validation) for shared setups.
-- 🧪 **Proven, not promised** — a 70-file default test lane, Ubuntu CI for the released line, and protocol tests that drive the real compiled server.
+- 🧪 **Proven, not promised** — a 72-file default test lane, Ubuntu CI for the released line, and protocol tests that drive the real compiled server.
 
 ```console
 $ rea-plus-cli doctor            # what is installed on this machine, what is missing
@@ -187,7 +187,7 @@ analysis, the CLI, and both transports work.
 
 ## 🧰 Features
 
-The complete, generated reference — **171 tools + 2 resources (`rea-plus://server-info`, `rea-plus://capabilities-safety`) + 3 prompts (`packer-triage`, `dotnet-malware-triage`, `android-triage`)** — is in [`docs/TOOLS.md`](docs/TOOLS.md). The table below is only a domain summary.
+The complete, generated reference — **172 tools + 2 resources (`rea-plus://server-info`, `rea-plus://capabilities-safety`) + 3 prompts (`packer-triage`, `dotnet-malware-triage`, `android-triage`)** — is in [`docs/TOOLS.md`](docs/TOOLS.md). The table below is only a domain summary.
 
 | Domain | What you get | Engine / backend |
 |---|---|---|
@@ -222,11 +222,11 @@ flowchart LR
 - **Confirm gates.** Live operations that mutate a target require `confirm:true`; otherwise you get `confirmation_required`, never a silent side effect.
 - **One catalog.** `mergedCatalog()` (8 conduit + 16 rea prerequisite entries) is the single source `doctor` reads for versions and download links.
 - **Resources + prompts.** Two static, read-only resources (`rea-plus://server-info`, `rea-plus://capabilities-safety`) and three side-effect-free prompts (`packer-triage`, `dotnet-malware-triage`, `android-triage`) are registered alongside the tools; prompts only return text and never run a tool.
-- **Typed outputs (partial).** `structuredContent` mirrors the text JSON, and coverage is deliberately partial: 147 tools declare an `outputSchema` and 169 tools carry annotations. Tools outside the schema set return text JSON without a declared output schema — see [`docs/TOOLS.md`](docs/TOOLS.md) per tool.
-- **Toolset profiles.** `REA_TOOLSETS` filters registration to a profile slice (comma-separated union; unknown names fail startup instead of silently falling back to `all`). Resources and prompts are not filtered.
-- **Roots pilot (opt-in).** With `REA_ROOTS=1` on the legacy stdio path, client roots can only narrow `REA_WORKSPACE_ROOT`; they can never widen it. Modern-protocol Roots still needs the SDK's multi-round-trip flow and is not faked.
-- **Progress pilot.** `rea_process_run` emits paced `notifications/progress` (first immediately, then at most about 20/s) and kills the child process tree on `notifications/cancelled`. Other synchronous handlers are not mid-flight cancellable yet.
-- **Async job pilot (opt-in).** With `REA_ASYNC_JOBS=1`, five job tools (`rea_job_start/status/result/cancel/list`) run whitelisted tools through a bounded in-memory queue (2 concurrent). Only the AbortSignal-aware `rea_process_run` is whitelisted; cancelling a running job kills its process tree. Default surface stays 171 tools; opt-in surface is 176.
+- **Typed outputs (partial).** `structuredContent` mirrors the text JSON, and coverage is deliberately partial: 168 tools declare an `outputSchema` and 172 tools carry annotations. Tools outside the schema set return text JSON without a declared output schema — see [`docs/TOOLS.md`](docs/TOOLS.md) per tool.
+- **Toolset profiles.** `REA_TOOLSETS` filters registration to a profile slice (comma-separated union; unknown names fail startup instead of silently falling back to `all`). Resources and prompts are not filtered. New tools land in `all` only (fail-closed).
+- **Roots (legacy + modern).** With `REA_ROOTS=1` on the legacy stdio path, client roots can only narrow `REA_WORKSPACE_ROOT`; they can never widen it. Modern-protocol Roots uses the SDK multi-round-trip flow (`inputRequired` + `inputResponses`); `notifications/roots/list_changed` only exists pre-2026, so refresh happens on the next MRTR round.
+- **Progress (generalized).** Stage helpers (`createStageProgress`/`onAbort`) pace notifications (~20/s) and clean up on cancel; `rea_process_run` pilot unchanged, `rea_scan_repo` + `rea_jadx_full` staged. Other synchronous handlers remain out of scope.
+- **Async jobs (opt-in).** With `REA_ASYNC_JOBS=1`, five job tools (`rea_job_start/status/result/cancel/list`) run whitelisted tools (`rea_process_run`, `rea_scan_repo`, `rea_behavior_run`) through a bounded in-memory queue (2 concurrent). Default surface stays 172 tools; opt-in surface is 177.
 
 ## 💻 CLI
 
@@ -255,7 +255,7 @@ All configuration is environment variables — no config files to edit in the se
 | `REA_CORELIB_DLL` | Preferred .NET runtime DLL for CIL inspection |
 | `REA_WORKSPACE_ROOT` | Workspace root(s), path-delimiter separated. When set, `rea_*` path arguments, the conduit `open_target`/`debug_open` paths, and user-visible derived writes (`.unpacked`, `.extracted`, HAR output) must resolve inside a root; unset = no restriction. Operator temp/cache surfaces stay outside this boundary by design (browser artifacts dir, Ghidra tmp project/input dirs, the hopper tmp request file, the apktool framework cache) |
 | `REA_ROOTS` | Set to exactly `1` to enable the legacy-stdio Roots pilot. Client `file://` roots intersect with and can only narrow `REA_WORKSPACE_ROOT`; modern-protocol Roots is not enabled by this flag |
-| `REA_TOOLSETS` | Comma-separated tool profiles to register: `all` (default, 171), `minimal` (8), `static` (98), `android` (27), `dotnet` (20), `web` (26), `debug` (50). Combined profiles union; an unknown or empty name fails startup. Resources/prompts are unaffected |
+| `REA_TOOLSETS` | Comma-separated tool profiles to register: `all` (default, 172), `minimal` (8), `static` (98), `android` (27), `dotnet` (20), `web` (26), `debug` (50). Combined profiles union; an unknown or empty name fails startup. Resources/prompts are unaffected |
 | `REA_ASYNC_JOBS` | Set to exactly `1` to register the 5 async job tools (176 tools total). Jobs are in-memory only, at most 2 concurrent, and only `rea_process_run` is whitelisted |
 | `REA_AUDIT_LOG` | Path of a JSONL audit log (both transports). Each line carries only `ts`, `transport`, `tool`, `durationMs`, `isError` — never arguments, tokens, paths, or target content. A write error warns once and disables auditing instead of crashing the server |
 | `REA_HTTP_RATE_LIMIT_PER_MIN` | HTTP requests per client IP per minute (default 120); excess gets `429`. A non-positive-integer value fails startup |
@@ -278,10 +278,10 @@ rea-plus is a debugger: by design it can launch, attach to, and instrument local
 
 ## 🧪 Tests
 
-77 test files. The default lane (`npm test`) runs 70 files and excludes the live-injection/debugger, packet-capture, browser, e2e, and local-Ghidra suites — those touch real processes or machine-specific installs and belong to a VM or a dedicated CI job (`npm run test:live`). Every file is capped at 90s with process-tree kill, so a hung backend can never hang the lane. The released line's CI runs the default lane on Ubuntu (Node 20 + 22).
+77 test files. The default lane (`npm test`) runs 72 files and excludes the live-injection/debugger, packet-capture, browser, e2e, and local-Ghidra suites — those touch real processes or machine-specific installs and belong to a VM or a dedicated CI job (`npm run test:live`). Every file is capped at 90s with process-tree kill, so a hung backend can never hang the lane. The released line's CI runs the default lane on Ubuntu (Node 20 + 22).
 
 ```bash
-npm test                        # default lane: 70 files (live suites excluded)
+npm test                        # default lane: 72 files (live suites excluded)
 npm run test:live               # everything, incl. frida/sniff/browser/e2e/ghidra (VM/CI only)
 npm run test:e2e                # spawn -> /health -> tools/list
 node --test tests/evm.test.mjs # single-domain runs work too
@@ -294,7 +294,7 @@ Details: [`docs/VERIFY.md`](docs/VERIFY.md) · [`docs/MCP-CONTRACTS.md`](docs/MC
 Near the top of the list — the full, prioritized table lives in [`docs/ROADMAP.md`](docs/ROADMAP.md):
 
 - npm publish + MCP Registry listing (one-command `npx rea-plus`) — metadata and a manual, dry-run-by-default publish workflow are ready; the actual publish has not happened yet
-- Wider `outputSchema` coverage beyond the current 147 tools (169 already carry annotations), progress + cancellation beyond the `rea_process_run` pilot, and a wider async-job whitelist beyond that same pilot tool
+- Wider `outputSchema` coverage beyond the current 168 tools (172 already carry annotations), progress + cancellation beyond the `rea_process_run` pilot, and a wider async-job whitelist beyond that same pilot tool
 - Completing the golden binary corpus (expected-output hashes per provider) — including the still-open live Frida VM check and the DEX golden APK acceptance test
 - Syscall/file/registry behavior profiles, repo-scale scanning with a persistent worker
 - Signed releases + SBOM, and a documented VM sandbox profile for live work

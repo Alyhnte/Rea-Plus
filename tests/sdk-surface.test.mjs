@@ -1,13 +1,18 @@
 // sdk-surface.test.mjs: derlenmis sunucu uzerinde gercek stdio JSON-RPC yuzeyi.
 // Kos: npm run build sonrasi `node --test tests/sdk-surface.test.mjs`.
-// Kapsam: initialize, tools/list (171), outputSchema dalga 1+2+3+4+D/2 (137 rea
-// araci) + acik annotations kumeleri (rea: 79 readOnly, 24 destructive,
-// 59 openWorld; siniflandirilmamis yalniz process_compare + pwn_elf_layout),
-// tools/call'da structuredContent == text JSON. Yalniz deterministik/offline
+// Kapsam: initialize, tools/list (172), outputSchema dalga 1+2+3+4+D/2+E/1
+// (137 rea + 30 conduit = 167; semasiz yalniz 4 rea araci: string/dizi donen
+// best_motor + fallback ve hic ok:true uretmeyen process_compare +
+// pwn_elf_layout) + acik annotations kumeleri (rea: 81 readOnly, 24
+// destructive, 59 openWorld; conduit: 4 readOnly, 13 destructive, 26
+// openWorld; annotations tasiyan toplam 171/171), tools/call'da
+// structuredContent == text JSON. Yalniz deterministik/offline
 // araclar cagrilir; dosya gerektiren cagrilar tests/corpus fixture'larini
 // salt-okunur kullanir. Canli arac, ag, alt surec yoklamasi ve dosya yazma
 // yok (dotnet_metadata/browser_har_import yalniz tools/list'te dogrulanir).
-// Surec timeout'ta oldurulur.
+// Conduit motor araclari yalniz kapidan once donen dallarla cagrilir
+// (bilinmeyen session, confirm kapisi, acilmamis hedefin debug_state/static_info
+// basarisi); canli debugger/r2 acilmaz. Surec timeout'ta oldurulur.
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
@@ -92,7 +97,7 @@ describe("sdk yuzeyi (stdio JSON-RPC)", () => {
   before(async () => {
     const env = { ...process.env };
     delete env.REA_WORKSPACE_ROOT; // yol korumasi bu testin konusu degil
-    delete env.REA_TOOLSETS; // tam 171 arac yuzeyi bu testin konusu
+    delete env.REA_TOOLSETS; // tam 172 arac yuzeyi bu testin konusu
     cocuk = spawn(process.execPath, [join(kok, "dist", "server.js")], {
       cwd: kok,
       env,
@@ -130,9 +135,9 @@ describe("sdk yuzeyi (stdio JSON-RPC)", () => {
     }
   });
 
-  it("tools/list 171 arac dondurur", () => {
-    assert.equal(araclar.length, 171, `beklenen 171, gelen ${araclar.length}`);
-    assert.equal(new Set(araclar.map((a) => a.name)).size, 171, "arac adlari benzersiz olmali");
+  it("tools/list 172 arac dondurur", () => {
+    assert.equal(araclar.length, 172, `beklenen 172, gelen ${araclar.length}`);
+    assert.equal(new Set(araclar.map((a) => a.name)).size, 172, "arac adlari benzersiz olmali");
   });
 
   it("pilot araclar outputSchema ve readOnly annotations tasir", () => {
@@ -162,9 +167,9 @@ describe("sdk yuzeyi (stdio JSON-RPC)", () => {
     }
     const semasiz = araclar.find((t) => t.name === "rea_fallback");
     assert.equal(semasiz.outputSchema, undefined, "sema disi arac outputSchema almamali");
-    // Siniflandirilmamis (her zaman kapidan donen sablon) arac tahminle isaretlenmez.
+    // Dalga E/1: iki kapi araci da etkisiz kapi oldugu icin readOnly isaretlidir.
     const pc = araclar.find((t) => t.name === "rea_process_compare");
-    assert.equal(pc.annotations, undefined, "rea_process_compare annotations almamali");
+    assert.equal(pc.annotations?.readOnlyHint, true, "rea_process_compare etkisiz kapi, readOnly olmali");
     assert.equal(pc.outputSchema, undefined, "rea_process_compare outputSchema almamali");
     // String donen arac readOnly olabilir ama nesne semasi alamaz.
     const motor = araclar.find((t) => t.name === "rea_best_motor");
@@ -197,11 +202,11 @@ describe("sdk yuzeyi (stdio JSON-RPC)", () => {
       assert.equal(a.annotations?.idempotentHint, true, `${ad} idempotentHint true olmali`);
       assert.equal(a.annotations?.openWorldHint, false, `${ad} openWorldHint false olmali`);
     }
-    // Toplamlar dalga D/2 sonrasi degerlerdir; ayrinti dalga-4 ve dalga-D/2 testlerinde.
-    assert.equal(araclar.filter((a) => a.outputSchema).length, 147, "toplam outputSchema 147 olmali (137 rea + 10 conduit)");
-    assert.equal(araclar.filter((a) => a.annotations?.readOnlyHint === true).length, 83, "toplam readOnly 83 olmali (79 rea + 4 conduit)");
-    assert.equal(araclar.filter((a) => a.annotations?.destructiveHint === true).length, 37, "toplam destructive 37 olmali (24 rea + 13 conduit)");
-    assert.equal(araclar.filter((a) => a.annotations?.openWorldHint === true).length, 85, "toplam openWorld 85 olmali (59 rea + 26 conduit)");
+    // Toplamlar dalga E/1 sonrasi degerlerdir; ayrinti dalga-4, dalga-D/2 ve dalga-E/1 testlerinde.
+    assert.equal(araclar.filter((a) => a.outputSchema).length, 168, "toplam outputSchema 168 olmali (138 rea + 30 conduit)");
+    assert.equal(araclar.filter((a) => a.annotations?.readOnlyHint === true).length, 85, "toplam readOnly 85 olmali (81 rea + 4 conduit)");
+    assert.equal(araclar.filter((a) => a.annotations?.destructiveHint === true).length, 38, "toplam destructive 38 olmali (25 rea + 13 conduit)");
+    assert.equal(araclar.filter((a) => a.annotations?.openWorldHint === true).length, 86, "toplam openWorld 86 olmali (60 rea + 26 conduit)");
   });
 
   it("dalga-3 araclari outputSchema tasir; annotations kumeleri ayriktir", () => {
@@ -249,12 +254,17 @@ describe("sdk yuzeyi (stdio JSON-RPC)", () => {
     for (const ad of ["rea_crash_kayit_parse", "rea_crash_ozet"]) {
       assert.equal(araclar.find((t) => t.name === ad)?.annotations?.readOnlyHint, true, `${ad} dosya-okuyan readOnly olmali`);
     }
-    // Tartismali sablonlar metadata almaz; annotations'siz rea araci yalniz bunlardir.
+    // Dalga E/1: iki kapi araci da etkisiz kapi oldugu icin readOnly kumededir;
+    // annotations'siz arac kalmamistir (sema disi 4 rea araci da isaretlidir).
     const isaretsiz = araclar.filter((a) => a.name.startsWith("rea_") && !a.annotations).map((a) => a.name).sort();
-    assert.deepEqual(isaretsiz, ["rea_process_compare", "rea_pwn_elf_layout"]);
-    assert.equal(araclar.filter((a) => a.annotations).length, 169, "annotations tasiyan toplam 169 olmali (139 rea + 30 conduit)");
-    for (const ad of isaretsiz) {
-      assert.equal(araclar.find((t) => t.name === ad)?.outputSchema, undefined, `${ad} basari sekli yok, sema almamali`);
+    assert.deepEqual(isaretsiz, []);
+    assert.equal(araclar.filter((a) => a.annotations).length, 172, "annotations tasiyan toplam 172 olmali (142 rea + 30 conduit)");
+    for (const ad of ["rea_process_compare", "rea_pwn_elf_layout"]) {
+      const a = araclar.find((t) => t.name === ad);
+      assert.equal(a.annotations?.readOnlyHint, true, `${ad} etkisiz kapi, readOnly olmali`);
+      assert.equal(a.annotations?.destructiveHint, false, `${ad} destructiveHint false olmali`);
+      assert.equal(a.annotations?.openWorldHint, false, `${ad} openWorldHint false olmali`);
+      assert.equal(a.outputSchema, undefined, `${ad} basari sekli yok, sema almamali`);
     }
   });
 
@@ -282,8 +292,8 @@ describe("sdk yuzeyi (stdio JSON-RPC)", () => {
       assert.equal(a.annotations?.readOnlyHint, false, `${ad} harici arac/surec, readOnly olmamali`);
       assert.equal(a.annotations?.openWorldHint, true, `${ad} openWorld olmali`);
     }
-    assert.equal(araclar.filter((a) => a.outputSchema).length, 147, "toplam outputSchema 147 olmali (137 rea + 10 conduit)");
-    assert.equal(araclar.filter((a) => a.annotations).length, 169, "annotations toplami dalga D/2 ile degismemeli");
+    assert.equal(araclar.filter((a) => a.outputSchema).length, 168, "toplam outputSchema 168 olmali (138 rea + 30 conduit)");
+    assert.equal(araclar.filter((a) => a.annotations).length, 172, "annotations toplami 172 olmali");
   });
 
   it("dalga-D/2 kopru araclari outputSchema tasir; annotations kumeleri degismez", () => {
@@ -332,8 +342,77 @@ describe("sdk yuzeyi (stdio JSON-RPC)", () => {
     for (const ad of ["rea_best_motor", "rea_fallback", "rea_process_compare", "rea_pwn_elf_layout"]) {
       assert.equal(araclar.find((t) => t.name === ad)?.outputSchema, undefined, `${ad} outputSchema almamali`);
     }
-    assert.equal(araclar.filter((a) => a.outputSchema).length, 147, "toplam outputSchema 147 olmali (137 rea + 10 conduit)");
-    assert.equal(araclar.filter((a) => a.annotations).length, 169, "annotations toplami dalga D/2 ile degismemeli");
+    assert.equal(araclar.filter((a) => a.outputSchema).length, 168, "toplam outputSchema 168 olmali (138 rea + 30 conduit)");
+    assert.equal(araclar.filter((a) => a.annotations).length, 172, "annotations toplami 172 olmali");
+  });
+
+  it("dalga-E/1 conduit motor araclari outputSchema tasir; toplam 167 olur", () => {
+    // Onceki dalgalarda semasiz kalan 20 conduit araci: sekiller handler
+    // govdesindeki ok:true literali + paylasilan motor arayuzlerinden
+    // (x64dbg.ts ortak tipler, radare2.ts sonuc arayuzleri, dynamic_tools.ts
+    // yerel yardimcilari, snapshots.ts Checkpoint) birebirdir. Tumu motorla
+    // konusur (readOnly degil). Union semalar tools/list'te anyOf tasir
+    // (ust duzey type yoktur); nesne-lik iki sekilden biriyle dogrulanir.
+    const nesneSema = (s) =>
+      s?.type === "object" ||
+      (Array.isArray(s?.anyOf) && s.anyOf.length > 0 && s.anyOf.every((m) => m?.type === "object"));
+    const tumAlanlar = (s) => {
+      if (s?.type === "object") return Object.keys(s.properties ?? {});
+      if (Array.isArray(s?.anyOf)) return [...new Set(s.anyOf.flatMap((m) => Object.keys(m.properties ?? {})))];
+      return [];
+    };
+    const dalgaE = [
+      "static_info", "disassemble", "get_cfg", "xrefs", "strings", "dump",
+      "debug_open", "debug_attach", "debug_state", "debug_breakpoint",
+      "debug_continue", "debug_step", "debug_pause", "debug_registers",
+      "debug_callstack", "debug_memory", "debug_code", "debug_thread",
+      "debug_plugin", "debug_time",
+    ];
+    assert.equal(dalgaE.length, 20);
+    for (const ad of dalgaE) {
+      const a = araclar.find((t) => t.name === ad);
+      assert.ok(a, `${ad} listede olmali`);
+      assert.ok(nesneSema(a.outputSchema), `${ad} nesne/anyOf semasi tasimali`);
+      assert.equal(a.annotations?.readOnlyHint, false, `${ad} motorla konusur, readOnly olmamali`);
+    }
+    // Alan orneklemesi: tekil semalarda properties, unionlarda anyOf uyeleri.
+    const alanVar = (ad, ...alanlar) => {
+      const a = araclar.find((t) => t.name === ad);
+      const hepsi = tumAlanlar(a.outputSchema);
+      for (const alan of alanlar) assert.ok(hepsi.includes(alan), `${ad} semasi ${alan} icermeli`);
+    };
+    alanVar("static_info", "session_id", "engine", "capabilities", "r2", "target");
+    alanVar("disassemble", "session_id", "location", "count", "ops", "text");
+    alanVar("get_cfg", "session_id", "location", "function");
+    alanVar("xrefs", "session_id", "address", "to", "from");
+    alanVar("strings", "session_id", "total", "offset", "strings");
+    alanVar("dump", "session_id", "address", "length", "format");
+    alanVar("debug_open", "opened", "session_id", "engine", "mode", "attached", "path", "pid");
+    alanVar("debug_attach", "attached", "session_id", "engine", "mode", "path", "pid");
+    alanVar("debug_continue", "session_id", "reason", "address");
+    alanVar("debug_pause", "session_id", "reason", "address");
+    alanVar("debug_step", "session_id", "kind", "address");
+    alanVar("debug_registers", "session_id", "general", "flags");
+    alanVar("debug_callstack", "session_id", "threadId", "frames");
+    const unionUye = (ad, beklenen) => {
+      const s = araclar.find((t) => t.name === ad).outputSchema;
+      assert.ok(Array.isArray(s?.anyOf), `${ad} anyOf semasi olmali`);
+      assert.equal(s.anyOf.length, beklenen, `${ad} anyOf uye sayisi`);
+      assert.ok(s.anyOf.every((m) => m?.type === "object"), `${ad} uyeleri nesne olmali`);
+    };
+    unionUye("debug_state", 2);
+    unionUye("debug_breakpoint", 3);
+    unionUye("debug_memory", 2);
+    unionUye("debug_code", 3);
+    unionUye("debug_thread", 3);
+    unionUye("debug_plugin", 3);
+    unionUye("debug_time", 3);
+    // Sema disi kalan 4 rea araci degismez: string/dizi sonuc + ok:true uretmeyen kapilar.
+    for (const ad of ["rea_best_motor", "rea_fallback", "rea_process_compare", "rea_pwn_elf_layout"]) {
+      assert.equal(araclar.find((t) => t.name === ad)?.outputSchema, undefined, `${ad} outputSchema almamali`);
+    }
+    assert.equal(araclar.filter((a) => a.outputSchema).length, 168, "toplam outputSchema 168 olmali (138 rea + 30 conduit)");
+    assert.equal(araclar.filter((a) => a.annotations).length, 172, "annotations toplami 172 olmali (142 rea + 30 conduit)");
   });
 
   it("yazanlar destructive, ag/cihaz/surec/harici araclar openWorld isaretli", () => {
@@ -557,6 +636,65 @@ describe("sdk yuzeyi (stdio JSON-RPC)", () => {
     const { json } = textJson(av);
     assert.equal(json.ok, false);
     assert.deepEqual(av.structuredContent, json);
+  });
+
+  it("dalga-E/1 araclari semaya uygun doner (kapidan onceki dallar, canli motor yok)", async () => {
+    // Basari sekli kapidan once uretilebilen iki dal: acilmamis hedefin
+    // debug_state'i (kapali zarf) ve r2 yoklamasiz static_info. Diger 18
+    // motor aracinda basari canli hedef ister; onlar icin hata zarfinin iki
+    // kanalli dondugu dogrulanir (sema hata zarfina zorlanmaz -- desen).
+    const BILINMEYEN = "00000000-0000-4000-8000-000000000000";
+    const fridaAc = await istek("tools/call", { name: "session_open", arguments: { engine: "frida" } });
+    assert.notEqual(fridaAc.isError, true);
+    const fridaId = textJson(fridaAc).json.session_id;
+    const kapali = await istek("tools/call", { name: "debug_state", arguments: { session_id: fridaId } });
+    assert.notEqual(kapali.isError, true);
+    assert.deepEqual(kapali.structuredContent, textJson(kapali).json);
+    assert.deepEqual(kapali.structuredContent, { session_id: fridaId, engine: "frida", open: false, target: null });
+    const fridaKapat = await istek("tools/call", { name: "session_close", arguments: { session_id: fridaId } });
+    assert.deepEqual(textJson(fridaKapat).json, { closed: true, session_id: fridaId });
+
+    const r2Ac = await istek("tools/call", { name: "session_open", arguments: { engine: "radare2" } });
+    const r2Id = textJson(r2Ac).json.session_id;
+    const bilgi = await istek("tools/call", { name: "static_info", arguments: { session_id: r2Id } });
+    assert.notEqual(bilgi.isError, true);
+    assert.deepEqual(bilgi.structuredContent, textJson(bilgi).json);
+    assert.equal(bilgi.structuredContent.session_id, r2Id);
+    assert.equal(bilgi.structuredContent.engine, "radare2");
+    assert.equal(bilgi.structuredContent.capabilities.kind, "static");
+    assert.equal(bilgi.structuredContent.target, null);
+    assert.equal(typeof bilgi.structuredContent.r2.available, "boolean");
+    await istek("tools/call", { name: "session_close", arguments: { session_id: r2Id } });
+
+    // 20 motor aracinin tamami bilinmeyen oturumda kapi hatasi doner; iki kanal ayni.
+    const hataCagrilari = [
+      ["static_info", {}], ["disassemble", {}], ["get_cfg", {}],
+      ["xrefs", { address: "0x400200" }], ["strings", {}], ["dump", { address: "0x400200" }],
+      ["debug_open", { path: "yok.exe" }], ["debug_attach", { pid: 1 }],
+      ["debug_state", {}], ["debug_breakpoint", { action: "list" }],
+      ["debug_continue", {}], ["debug_step", {}], ["debug_pause", {}],
+      ["debug_registers", {}], ["debug_callstack", {}],
+      ["debug_memory", { action: "read", address: "0x0" }],
+      ["debug_code", { action: "disassemble" }], ["debug_thread", { action: "list" }],
+      ["debug_plugin", { action: "status" }], ["debug_time", { action: "timeline" }],
+    ];
+    assert.equal(hataCagrilari.length, 20);
+    for (const [ad, args] of hataCagrilari) {
+      const sonuc = await istek("tools/call", { name: ad, arguments: { session_id: BILINMEYEN, ...args } });
+      assert.equal(sonuc.isError, true, `${ad} bilinmeyen oturumda hata donmeli`);
+      const { json } = textJson(sonuc);
+      assert.equal(json.error, "session_not_found", `${ad} kapi hatasi session_not_found olmali`);
+      assert.deepEqual(sonuc.structuredContent, json, `${ad} iki kanal ayni JSON'u tasimali`);
+    }
+    // Confirm kapisi: gecerli oturumda bile onaysiz cagri debuggee'ye ulasmaz.
+    const frida2 = textJson(await istek("tools/call", { name: "session_open", arguments: { engine: "frida" } })).json.session_id;
+    const onaysiz = await istek("tools/call", {
+      name: "debug_memory", arguments: { session_id: frida2, action: "read", address: "0x0" },
+    });
+    assert.equal(onaysiz.isError, true);
+    assert.equal(textJson(onaysiz).json.error, "confirmation_required");
+    assert.deepEqual(onaysiz.structuredContent, textJson(onaysiz).json);
+    await istek("tools/call", { name: "session_close", arguments: { session_id: frida2 } });
   });
 
   it("nesne sonucu structuredContent alir, nesne disi sonuc almaz", async () => {

@@ -203,6 +203,34 @@ export function createStageProgress(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Dalga E/2: uzun araclarin gercek asama tablosu.
+// Her girdi, aracin disaridan gozlenebilen GERCEK kilometre tasidir; SAHTE
+// progress YOKTUR: bildirim yalniz cagran, gercekten biten bir asamayi
+// advance() ile isaretlediginde paced reporter uzerinden gider.
+//   - rea_scan_repo: girdi dogrulandi -> tarama cozumlendi -> rapor sekli dogrulandi.
+//   - rea_jadx_full: apk girdisi dogrulandi -> decompile cagrisi dondu ->
+//     sonuc seklin dogrulandi (bloklayan senkron kosu; asmasi kabaca gercek,
+//     ara-ilerleme uretmez).
+// Elenen: rea_behavior_run kayitli arac degildir (yeni kayit yuzeyi oynatirdi);
+// rea_behavior_full saf senkron birlestirmedir (uzun degil).
+// ---------------------------------------------------------------------------
+
+export const LONG_TOOL_STAGES = {
+  rea_scan_repo: ["girdi", "tarama", "rapor"],
+  rea_jadx_full: ["girdi", "decompile", "dogrula"],
+} as const;
+
+export type LongToolName = keyof typeof LONG_TOOL_STAGES;
+
+// Kayitli uzun arac icin asama ilerlemesi kurar (total = asama sayisi).
+// Bilinmeyen ad hizli patlar (sessiz yanlis kurulum yok).
+export function toolStageProgress(reporter: ProgressReporter, tool: string): StageProgress {
+  const stages = (LONG_TOOL_STAGES as Record<string, readonly string[]>)[tool];
+  if (!stages) throw new Error(`toolStageProgress: bilinmeyen uzun arac: ${String(tool)}`);
+  return createStageProgress(reporter, stages, stages.length);
+}
+
 // AbortSignal'e tek-seferlik temizlik baglar; donen fonksiyon dinleyiciyi sokup
 // atar (birakma sonrasi abort temizligi cagirmaz). Timer uretmez.
 // - Sinyal zaten iptalse temizlik HEMEN (senkron) calisir, noop doner.

@@ -6,7 +6,9 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync, realpathSyn
 import { tmpdir } from "node:os";
 import { join, delimiter, parse } from "node:path";
 import { applyWorkspaceRoot, getWorkspaceRoots, resolveWorkspacePath, WorkspaceRootError } from "../dist/server/workspaceRoot.js";
+import { clearClientRoots, MODERN_ROOTS_REQUEST_KEY, refreshRootsFromInputResponses, setClientRoots } from "../dist/server/roots.js";
 import { registerReaTools } from "../dist/server/registerReaTools.js";
+import { pathToFileURL } from "node:url";
 
 let base, kok, kardes, dis, kok2, baglantiHazir = false;
 const gercek = (p) => realpathSync.native(p);
@@ -170,6 +172,42 @@ describe("registerReaTools workspace zarfi", () => {
       assert.notEqual(r.isError, true);
     } finally {
       if (onceki !== undefined) process.env.REA_WORKSPACE_ROOT = onceki;
+    }
+  });
+});
+
+describe("roots daraltma baglantisi (modern MRTR deposu)", () => {
+  const href = (p) => pathToFileURL(p).href;
+
+  it("MRTR ile dolan depo workspace'i daraltir; ayrik kok sert siniri kaldirmaz", async () => {
+    const env = { REA_ROOTS: "1", REA_WORKSPACE_ROOT: kok };
+    try {
+      const alt = await refreshRootsFromInputResponses(
+        { [MODERN_ROOTS_REQUEST_KEY]: { roots: [{ uri: href(join(kok, "sub")) }] } },
+        { enabled: true },
+      );
+      assert.equal(alt.status, "ok");
+      assert.deepEqual(getWorkspaceRoots(env, kok), [gercek(join(kok, "sub"))]);
+      reddet(() => applyWorkspaceRoot("rea_pe_info", { path: join(kok, "kayit.json") }, env, kok));
+      const ayrik = await refreshRootsFromInputResponses(
+        { [MODERN_ROOTS_REQUEST_KEY]: { roots: [{ uri: href(dis) }] } },
+        { enabled: true },
+      );
+      assert.equal(ayrik.status, "ok");
+      assert.deepEqual(getWorkspaceRoots(env, kok), [gercek(kok)], "ayrik kok env sinirini dusuremez");
+      reddet(() => applyWorkspaceRoot("rea_pe_info", { path: join(dis, "dis.bin") }, env, kok));
+    } finally {
+      clearClientRoots();
+    }
+  });
+
+  it("opt-in kapaliyken MRTR deposu siniri degistirmez", async () => {
+    try {
+      setClientRoots([dis]);
+      assert.deepEqual(getWorkspaceRoots({}, kok), []);
+      assert.deepEqual(getWorkspaceRoots({ REA_WORKSPACE_ROOT: kok }, kok), [gercek(kok)]);
+    } finally {
+      clearClientRoots();
     }
   });
 });

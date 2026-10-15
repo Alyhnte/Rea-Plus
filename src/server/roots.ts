@@ -1,19 +1,24 @@
-// MCP Roots pilotu (legacy push): istemci kokleri REA_WORKSPACE_ROOT sinirini yalniz daraltir.
+// MCP Roots: legacy push (2025) + modern MRTR (2026-07-28) cok turlu akis.
 //
-// SDK 2.3.1 ile tip + runtime govdesinden yeniden dogrulanan sinir (2026-10-13):
+// SDK 2.3.1 ile tip + runtime govdesinden yeniden dogrulanan sinir (2026-10-14):
 // - Legacy (2025) yolda dusuk seviyeli Server.listRoots(params?, options?) calisir:
 //   govde dogrudan `roots/list` istegi gonderir; Root semasi uri'nin "file://" ile
 //   baslamasini sart kosar, istemci yetenegi `capabilities.roots` ({listChanged?}) ister.
-// - Modern 2026-07-28 yolunda ayni cagri, tel trafigi olmadan SdkError
-//   MethodNotSupportedByProtocolVersion firlatir ve inputRequired({...}) cok turlu
-//   (MRTR) akisa yonlendirir: handler `inputRequired({ inputRequests: { kokler:
-//   inputRequired.listRoots() } })` donmeli, istemci ListRootsResult'i inputResponses
-//   ile geri tasimali, requestState butunlugu ayrica korunmalidir.
-// Bu dilim MRTR akisini ZORLAMAZ: modern cagri sahte basari uretmez, yapilandirilmis
-// "modern-mrtr-required" durumu doner; tam MRTR entegrasyonu ayri istir. Kanit:
-// tests/roots.test.mjs (legacy InMemoryTransport ile gercek roots/list + modern dal).
+// - Modern (2026-07-28) cagda ayni push cagrisi tel trafigi olmadan SdkError
+//   MethodNotSupportedByProtocolVersion firlatir. Gercek akis MRTR'dir: handler
+//   `inputRequired({ inputRequests: { kokler: inputRequired.listRoots() } })`
+//   doner (resultType:"input_required"), istemci ListRootsResult'i inputResponses
+//   ile geri tasir, requestState butunlugu ayrica korunur. Tel kaydinda
+//   `notifications/roots/list_changed` YALNIZ 2025 kadrosundadir; 2026 kadrosunda
+//   yoktur — modern baglanti bu bildirim uzerinden push ile yeniden cekemez,
+//   sonraki MRTR turunda taze inputResponses ile gunceller.
+// Bu dosya iki yolu da SAHTE BASARI uretmeden sunar:
+// - refreshClientRoots / attachLegacyRoots: legacy push (degismedi).
+// - buildModernRootsRequest / refreshRootsFromInputResponses / attachModernRoots:
+//   modern MRTR (asagida). Destek yoksa status "unsupported"/"modern-mrtr-required"
+//   doner, depo degismez. Kanit: tests/roots.test.mjs (modern MRTR + legacy).
 //
-// Guvenlik sozlesmesi:
+// Guvenlik sozlesmesi (iki yolda da aynidir):
 // - Varsayilan KAPALI: yalniz REA_ROOTS=1 VE fabrika opsiyonu roots:true birlikte etkin
 //   (server.ts bunu yalniz startStdio'da gecirir; HTTP stateless fabrikasi gecirmez,
 //   surec geneli kok sizintisi olmaz).
@@ -305,6 +310,211 @@ export function attachLegacyRoots(target: unknown, options: AttachRootsOptions =
     lastResult: () => son,
     detach: () => {
       if (srv.oninitialized === bizimInit) srv.oninitialized = oncekiInit;
+      try { srv.removeNotificationHandler?.("notifications/roots/list_changed"); } catch { /* zaten yok */ }
+    },
+    clear: () => store.clear(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Modern MRTR roots akisi (2026-07-28 cagi).
+//
+// Handler tarifi (McpServer tools/call | prompts/get | resources/read icinde):
+//   1. tur: `return buildModernRootsRequest();`
+//   2. tur (istemci inputResponses ile retry eder):
+//     `await refreshRootsFromInputResponses(ctx.mcpReq.inputResponses, { enabled: true });`
+// Daraltma ayrica uygulanmaz: depo ham istemci koklerini tutar, sert sinir her
+// okumada workspaceRoot.ts (getWorkspaceRoots + intersectRoots) tarafindan
+// uygulanir — genisletme hicbir yolda mumkun degildir.
+
+/** MRTR inputRequests anahtari; tek anahtar, tek tur, tek kok listesi. */
+export const MODERN_ROOTS_REQUEST_KEY = "kokler";
+
+/** Handler'in 1. turda dondurdugu input_required literali. */
+export interface ModernRootsInputRequest {
+  resultType: "input_required";
+  inputRequests: Record<string, { method: "roots/list" }>;
+}
+
+/**
+ * SDK `inputRequired({ inputRequests: { [key]: inputRequired.listRoots() } })`
+ * cagrisinin birebir literali (SDK 2.3.1: buildInputRequired + listRoots()).
+ * El yapimi literal SDK seam'inde esit gecerlidir; tel trafigi baslatmaz.
+ */
+export function buildModernRootsRequest(key: string = MODERN_ROOTS_REQUEST_KEY): ModernRootsInputRequest {
+  return { resultType: "input_required", inputRequests: { [key]: { method: "roots/list" } } };
+}
+
+export type ModernRootsResponseKind = "roots" | "missing";
+
+export interface ModernRootsParsedRoots {
+  kind: "roots";
+  paths: string[];
+  rejected: { uri: unknown; reason: string }[];
+}
+
+export interface ModernRootsParsedMissing {
+  kind: "missing";
+  reason: string;
+}
+
+export type ModernRootsParsed = ModernRootsParsedRoots | ModernRootsParsedMissing;
+
+function duzNesneMi(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/**
+ * SDK `inputResponse(responses, key)` ayriminin roots izdusumu: BARE
+ * `{ roots: [...] }` disindaki her sey missing'dir. Sarmal `{method,result}`
+ * zarfi SDK partitionInputResponses ile ayni sekilde dusurulur (asla kok sayilmaz).
+ */
+export function parseModernRootsInputResponses(
+  inputResponses: unknown,
+  key: string = MODERN_ROOTS_REQUEST_KEY,
+): ModernRootsParsed {
+  if (!duzNesneMi(inputResponses)) return { kind: "missing", reason: "inputResponses nesne degil" };
+  const giris: unknown = inputResponses[key];
+  if (!duzNesneMi(giris)) return { kind: "missing", reason: `'${key}' yaniti yok` };
+  if ("method" in giris || "result" in giris) {
+    return { kind: "missing", reason: `'${key}' sarmal zarf tasiyor (bare ListRootsResult degil)` };
+  }
+  const kokler: unknown = giris["roots"];
+  if (!Array.isArray(kokler)) return { kind: "missing", reason: `'${key}' yanitinda roots dizisi yok` };
+  const { paths, rejected } = parseListRootsResult({ roots: kokler });
+  return { kind: "roots", paths, rejected };
+}
+
+export interface RefreshModernRootsOptions extends RefreshRootsOptions {
+  /** buildModernRootsRequest'e verilen anahtar; verilmezse "kokler". */
+  key?: string;
+}
+
+/**
+ * MRTR 2. tur: retry ile gelen inputResponses parse edilir, depo guncellenir.
+ * Destek yoksa (anahtar/zarf/bicim) status "unsupported", opt-in kapaliysa
+ * "disabled" doner; iki dalda da depo degismez, sahte kok uretilmez.
+ */
+export async function refreshRootsFromInputResponses(
+  inputResponses: unknown,
+  options: RefreshModernRootsOptions = {},
+): Promise<RootsRefreshResult> {
+  const store = options.store ?? clientRootsStore;
+  const etkin = options.enabled ?? isRootsOptIn(options.env);
+  if (!etkin) {
+    return { status: "disabled", detail: "REA_ROOTS opt-in kapali; inputResponses okunmadi", roots: store.get(), rejected: [] };
+  }
+  const anahtar = options.key ?? MODERN_ROOTS_REQUEST_KEY;
+  try {
+    const cozum = parseModernRootsInputResponses(inputResponses, anahtar);
+    if (cozum.kind === "missing") {
+      return {
+        status: "unsupported",
+        detail: `istemci MRTR destegi vermedi: ${cozum.reason}; sahte kok uretilmedi`,
+        roots: store.get(),
+        rejected: [],
+      };
+    }
+    store.set(cozum.paths);
+    return {
+      status: "ok",
+      detail: `${cozum.paths.length} istemci koku MRTR 2. turda alindi`,
+      roots: store.get(),
+      rejected: cozum.rejected,
+    };
+  } catch (e) {
+    const mesaj = e instanceof Error ? e.message : String(e);
+    return { status: "error", detail: mesaj, roots: store.get(), rejected: [] };
+  }
+}
+
+export interface ModernRootsAttachment {
+  enabled: boolean;
+  /** notifications/roots/list_changed baglanabildiyse true (2025 kadrosu + test yuzeyi). */
+  listChangedBound: boolean;
+  /** Bildirim geldi ama taze kok henuz cekilemedi (yalniz modern cag ara durumu). */
+  stale(): boolean;
+  /** Handler 1. tur donusu. */
+  rootsRequest(key?: string): ModernRootsInputRequest;
+  /** Handler 2. tur (retry): inputResponses ile depoyu gunceller. */
+  refreshFromResponses(inputResponses: unknown, key?: string): Promise<RootsRefreshResult>;
+  lastResult(): RootsRefreshResult | null;
+  detach(): void;
+  clear(): void;
+}
+
+export interface AttachModernRootsOptions extends AttachRootsOptions {
+  /** Varsayilan anahtar (her cagrida ezilebilir). */
+  key?: string;
+  onStaleChanged?: (stale: boolean) => void;
+}
+
+/**
+ * Modern baglanti omru: list_changed gelirse push ile hemen yeniden cekmeyi
+ * dener (legacy-uyumlu baglantida calisir); modern cagda push tel trafigi
+ * olmadan "modern-mrtr-required" doner ve bayrak stale'e duser — sonraki MRTR
+ * turu (refreshFromResponses) taze koklerle bayragi indirir. Depo hicbir dalda
+ * sahte kokle doldurulmaz. Kapaliyken hicbir handler degismez.
+ */
+export function attachModernRoots(target: unknown, options: AttachModernRootsOptions = {}): ModernRootsAttachment {
+  const store = options.store ?? clientRootsStore;
+  const etkin = options.enabled ?? isRootsOptIn(options.env);
+  let son: RootsRefreshResult | null = null;
+  let bayat = false;
+  const bayatKoy = (v: boolean): void => {
+    if (bayat !== v) {
+      bayat = v;
+      options.onStaleChanged?.(v);
+    }
+  };
+  const refreshFromResponses = async (inputResponses: unknown, key?: string): Promise<RootsRefreshResult> => {
+    son = await refreshRootsFromInputResponses(inputResponses, {
+      enabled: etkin,
+      env: options.env,
+      store,
+      key: key ?? options.key,
+    });
+    if (son.status === "ok") bayatKoy(false);
+    options.onResult?.(son);
+    return son;
+  };
+  const srv = etkin ? legacyServerOf(target) : null;
+  if (!etkin || !srv) {
+    return {
+      enabled: false,
+      listChangedBound: false,
+      stale: () => bayat,
+      rootsRequest: (key) => buildModernRootsRequest(key ?? options.key),
+      refreshFromResponses,
+      lastResult: () => son,
+      detach: () => {},
+      clear: () => store.clear(),
+    };
+  }
+  let listChangedBound = false;
+  try {
+    if (typeof srv.setNotificationHandler === "function") {
+      srv.setNotificationHandler("notifications/roots/list_changed", () => {
+        bayatKoy(true);
+        void refreshClientRoots(target, { enabled: etkin, store }).then((r) => {
+          son = r;
+          if (r.status === "ok") bayatKoy(false);
+          options.onResult?.(r);
+        });
+      });
+      listChangedBound = true;
+    }
+  } catch {
+    listChangedBound = false; // Baglanamazsa MRTR turu yine gecerli; sahte baglandi denmez.
+  }
+  return {
+    enabled: true,
+    listChangedBound,
+    stale: () => bayat,
+    rootsRequest: (key) => buildModernRootsRequest(key ?? options.key),
+    refreshFromResponses,
+    lastResult: () => son,
+    detach: () => {
       try { srv.removeNotificationHandler?.("notifications/roots/list_changed"); } catch { /* zaten yok */ }
     },
     clear: () => store.clear(),

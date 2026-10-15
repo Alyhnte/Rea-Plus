@@ -14,8 +14,9 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createPacedProgress, createStageProgress, onAbort, pilotContextFromCtx, PROGRESS_MIN_INTERVAL_MS } from "../dist/server/progress.js";
+import { createPacedProgress, createStageProgress, LONG_TOOL_STAGES, onAbort, pilotContextFromCtx, PROGRESS_MIN_INTERVAL_MS, toolStageProgress } from "../dist/server/progress.js";
 import { rea_process_run_async } from "../dist/rea-domains/firmware-browser/ProcessCapture.js";
+import { ASYNC_EXTRA_RUNNERS, reaJadxFullStaged, reaScanRepoStaged } from "../dist/server/registerReaTools.js";
 
 const kok = dirname(dirname(fileURLToPath(import.meta.url)));
 const bekle = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -295,6 +296,7 @@ describe("stdio JSON-RPC: progress + cancelled", () => {
     delete env.REA_WORKSPACE_ROOT;
     delete env.REA_TOOLSETS;
     delete env.REA_AUDIT_LOG;
+    delete env.REA_ASYNC_JOBS; // kapali yuzey deterministik: 171 arac beklenir
     env.NODE_OPTIONS = `--require ${sleepYol}`;
     env.REA_TEST_PIDFILE = pidYol;
     env.REA_TEST_GATE = gateYol;
@@ -356,6 +358,180 @@ describe("stdio JSON-RPC: progress + cancelled", () => {
     assert.equal(mesajlar.filter((m) => m.method === "notifications/progress").length, 0);
   });
 
+  it("kapaliyken yuzey 172 kalir (async job araclari yok)", async () => {
+    const sayfa = await istek("tools/list", {}, 10000).soz;
+    assert.equal(sayfa.tools.length, 172);
+    assert.ok(!sayfa.tools.some((t) => t.name.startsWith("rea_job_")));
+  });
+
+  it("rea_scan_repo: progressToken'li cagrida asama bildirimi sonuctan once gelir", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "rea-scanprog-"));
+    try {
+      writeFileSync(join(dir, "a.js"), "console.log(1);\n");
+      writeFileSync(join(dir, "b.mjs"), "export const x = 1;\n");
+      mesajlar.length = 0;
+      const cagri = istek("tools/call", {
+        name: "rea_scan_repo",
+        arguments: { path: dir },
+        _meta: { progressToken: "tok-scan" },
+      });
+      const sonuc = await cagri.soz;
+      assert.notEqual(sonuc.isError, true);
+      const metin = sonuc.content.find((c) => c.type === "text");
+      const govde = JSON.parse(metin.text);
+      assert.equal(govde.ok, true);
+      assert.equal(govde.tool, "rea_scan_repo");
+      const ilerlemeler = mesajlar.filter((m) => m.method === "notifications/progress");
+      assert.ok(ilerlemeler.length >= 1, "en az bir asama bildirimi gelmeli");
+      assert.ok(ilerlemeler.every((m) => m.params.progressToken === "tok-scan"));
+      assert.ok(ilerlemeler.every((m) => m.params.total === 3), "total asama sayisi olmali");
+      const degerler = ilerlemeler.map((m) => m.params.progress);
+      assert.ok(degerler.every((v, i) => i === 0 || v > degerler[i - 1]), "progress monoton artmali");
+      const siraBildirim = mesajlar.findIndex((m) => m.method === "notifications/progress");
+      const siraSonuc = mesajlar.findIndex((m) => m.id === cagri.id);
+      assert.ok(siraBildirim >= 0 && siraSonuc > siraBildirim, "bildirim sonuctan once gelmeli");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+describe("dalga-e/2 progress genelleme: rea_scan_repo + rea_jadx_full", () => {
+  // Secim gerekcesi: ikisi de kayitli uzun araclar; saf seklin disinda gercek
+  // kilometre taslari (girdi/tarama|decompile/rapor) vardir. Sahte progress YOK:
+  // bildirim yalniz gerceklesen asamada advance() ile gider (timer/otomatik emit yok).
+  // Elenen: rea_behavior_run (kayitli arac degil; yeni kayit yuzeyi 171'den
+  // oynatirdi + domain sinyal almaz) — negatif kanit async-jobs testinde.
+  function sahteCtx(token = "tok-e2", giden = []) {
+    const ac = new AbortController();
+    return {
+      ac,
+      giden,
+      ctx: { mcpReq: { signal: ac.signal, _meta: { progressToken: token }, notify: async (n) => { giden.push(n); } } },
+    };
+  }
+
+  it("LONG_TOOL_STAGES: iki aracin gercek asamalari kayitli; bilinmeyen arac hizli patlar", () => {
+    assert.deepEqual([...LONG_TOOL_STAGES.rea_scan_repo], ["girdi", "tarama", "rapor"]);
+    assert.deepEqual([...LONG_TOOL_STAGES.rea_jadx_full], ["girdi", "decompile", "dogrula"]);
+    const sessiz = () => Promise.resolve();
+    assert.throws(() => toolStageProgress(sessiz, "rea_coverage"), /asama|bilinmeyen/i);
+  });
+
+  it("toolStageProgress: sahte saatle hiz tavani + monotonluk kanitli", async () => {
+    let simdi = 9000;
+    const giden = [];
+    const paced = createPacedProgress(
+      async (n) => { giden.push({ t: simdi, progress: n.params.progress }); },
+      "tok-e2",
+      { now: () => simdi },
+    );
+    const is = toolStageProgress(paced, "rea_scan_repo");
+    assert.equal(is.stageCount, 3);
+    assert.equal(await is.advance("girdi"), true); // t=9000: ilk bildirim gecikmez
+    simdi += 10; assert.equal(await is.advance("tarama"), true); // gercek asama ama pacing atar
+    simdi += 60; assert.equal(await is.advance("rapor"), true);
+    assert.deepEqual(giden.map((g) => g.progress), [1, 3]);
+    for (let i = 1; i < giden.length; i += 1) {
+      assert.ok(giden[i].t - giden[i - 1].t >= PROGRESS_MIN_INTERVAL_MS, "pacing araligi korunmali");
+    }
+    assert.equal(is.reached, 3);
+  });
+
+  it("reaScanRepoStaged: gecerli dizinde ok:true + asama bildirimi + monotonluk", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "rea-staged-"));
+    const s = sahteCtx();
+    try {
+      writeFileSync(join(dir, "x.js"), "const a = 1;\n");
+      const r = await reaScanRepoStaged({ path: dir }, s.ctx);
+      assert.equal(r.ok, true);
+      assert.equal(r.tool, "rea_scan_repo");
+      assert.ok(s.giden.length >= 1, "en az ilk asama bildirimi gitmeli");
+      assert.ok(s.giden.every((n) => n.params.progressToken === "tok-e2" && n.params.total === 3));
+      const degerler = s.giden.map((n) => n.params.progress);
+      assert.ok(degerler.every((v, i) => i === 0 || v > degerler[i - 1]), "progress monoton artmali");
+      assert.ok(s.giden.some((n) => typeof n.params.message === "string" && n.params.message.length > 0));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reaScanRepoStaged: onceden iptalde tarama hic baslamadan cancelled doner", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "rea-staged-iptal-"));
+    const s = sahteCtx();
+    try {
+      writeFileSync(join(dir, "x.js"), "const a = 1;\n");
+      s.ac.abort(); // baslamadan iptal
+      const r = await reaScanRepoStaged({ path: dir }, s.ctx);
+      assert.equal(r.ok, false);
+      assert.equal(r.code, "cancelled");
+      assert.equal(s.giden.length, 0, "iptalde hicbir bildirim uretilmemeli");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reaScanRepoStaged: kosu sirasinda abort hizli cancelled doner, asili timer birakmaz", async () => {
+    // Deterministik kosu-sirasi abort: ilk asama bildirimi (girdi) flush olurken
+    // sinyal ateslenir; tarama henuz bitmemistir -> yarisi abort kazanir.
+    const dir = mkdtempSync(join(tmpdir(), "rea-staged-kosu-"));
+    const ac = new AbortController();
+    const giden = [];
+    const ctx = {
+      mcpReq: {
+        signal: ac.signal,
+        _meta: { progressToken: "tok-e2" },
+        notify: async (n) => {
+          giden.push(n);
+          if (n.params && n.params.progress === 1) ac.abort();
+        },
+      },
+    };
+    try {
+      for (let i = 0; i < 200; i += 1) writeFileSync(join(dir, `f${i}.js`), `const v${i} = ${i};\n`);
+      const t0 = Date.now();
+      const r = await Promise.race([
+        reaScanRepoStaged({ path: dir }, ctx),
+        bekle(8000).then(() => { throw new Error("iptal edilen tarama 8sn icinde donmedi"); }),
+      ]);
+      assert.equal(r.ok, false);
+      assert.equal(r.code, "cancelled");
+      assert.ok(Date.now() - t0 < 8000, "iptal hizli donmeli");
+      // girdi asamasi gercekten gerceklesmisti (1 bildirim), tarama/rapor uretilmedi.
+      assert.equal(giden.length, 1, "yalniz tamamlanan asama bildirilmeli");
+      assert.equal(giden[0].params.progress, 1);
+      await bekle(10); // gozlem disi asili timer birakma
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reaJadxFullStaged: olmayan APK hizli capability_unsupported + bildirim yok (sahte asama yok)", async () => {
+    const s = sahteCtx();
+    const r = await reaJadxFullStaged({ apk_path: join(tmpdir(), "yok-12345.apk"), out: join(tmpdir(), "yok-out-12345") }, s.ctx);
+    assert.equal(r.ok, false);
+    assert.equal(r.code, "capability_unsupported");
+    assert.equal(s.giden.length, 0, "gerceklesmeyen asama bildirilmemeli");
+  });
+
+  it("reaJadxFullStaged: onceden iptal, girdi dogrulamadan once cancelled doner (jadx dogmaz)", async () => {
+    const s = sahteCtx();
+    s.ac.abort();
+    const r = await reaJadxFullStaged({ apk_path: join(tmpdir(), "yok-12345.apk"), out: join(tmpdir(), "yok-out-12345") }, s.ctx);
+    assert.equal(r.ok, false);
+    assert.equal(r.code, "cancelled");
+    assert.equal(s.giden.length, 0);
+  });
+
+  it("ASYNC_EXTRA_RUNNERS: rea_behavior_run async-ozel kosucu kayitli, senkron yuzeyde yok", async () => {
+    assert.ok(typeof ASYNC_EXTRA_RUNNERS.rea_behavior_run === "function");
+    const ac = new AbortController();
+    ac.abort();
+    const r = await ASYNC_EXTRA_RUNNERS.rea_behavior_run({ cmd: process.execPath, timeout_ms: 3000 }, ac.signal);
+    const zarf = r.content ? JSON.parse(r.content.find((c) => c.type === "text").text) : r;
+    assert.equal(zarf.ok, false);
+    assert.equal(zarf.code, "cancelled");
+  });
+});
   it("notifications/cancelled uyuyan sureci oldurur; sunucu cevap vermeyi surdurur", async () => {
     writeFileSync(gateYol, "1");
     mesajlar.length = 0;

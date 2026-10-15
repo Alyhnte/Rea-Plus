@@ -25,7 +25,7 @@ import { rea_net_capture } from "../rea-domains/behavior/NetCapture.js";
 import { rea_behavior_timeline } from "../rea-domains/behavior/BehaviorTimeline.js";
 import { rea_browser_scenario, rea_browser_har_import, rea_browser_caps, rea_browser_nav, rea_browser_click, rea_browser_shot } from "../rea-domains/firmware-browser/BrowserBridge.js";
 import { rea_process_run_async, rea_process_compare, rea_process_caps } from "../rea-domains/firmware-browser/ProcessCapture.js";
-import { pilotContextFromCtx } from "./progress.js";
+import { pilotContextFromCtx, onAbort, toolStageProgress } from "./progress.js";
 import { rea_js_sourcemap, rea_js_bundle } from "../rea-domains/javascript/JsAnalyzer.js";
 import { rea_diff_match, rea_diff_summary } from "../rea-domains/javascript/BinaryDiff.js";
 import { rea_recon_funcs, rea_recon_harness, rea_recon_tag } from "../rea-domains/javascript/ReconHarness.js";
@@ -55,11 +55,15 @@ import { rea_js_require, rea_js_export_shape } from "../rea-domains/javascript/J
 import { rea_investigate } from "../facade/investigate.js";
 import { rea_dosya_izi, rea_registry_izi } from "../rea-domains/behavior/FileRegProfiles.js";
 import { rea_behavior_full } from "../rea-domains/behavior/BehaviorFull.js";
-import { rea_pdb_yolu } from "../rea-domains/typedef/PdbReader.js";
+import { rea_behavior_run } from "../rea-domains/behavior/BehaviorRun.js";
+import type { DavranışOlay } from "../rea-domains/behavior/BehaviorTimeline.js";
+import type { ApiOlay } from "../rea-domains/behavior/FileRegProfiles.js";
+import { rea_pdb_yolu, reaPdbIndirKayitHandler, REA_PDB_INDIR_ACIKLAMA } from "../rea-domains/typedef/PdbReader.js";
 import { rea_dwarf_ozet } from "../rea-domains/typedef/DwarfReader.js";
 import { rea_typedef_oner } from "../rea-domains/typedef/TypeSpread.js";
 import { rea_scan_repo } from "../rea-domains/reposcan/RepoScan.js";
 import { applyWorkspaceRoot } from "./workspaceRoot.js";
+import { existsSync } from "node:fs";
 import { reaToolMetadata } from "./toolMetadata.js";
 import { ASYNC_JOB_TOOLS, AsyncJobManager, asyncJobsEnabled } from "./asyncJobs.js";
 
@@ -137,10 +141,148 @@ function jsonParse<T>(tool: string, s: string): { v: T } | { err: ReturnType<typ
 }
 const b64 = (s: string): Uint8Array => Buffer.from(s, "base64");
 
+// ---------------------------------------------------------------------------
+// Dalga E/2: genellenen progress/iptal sarmalayicilari (kayit tablosu disi,
+// davranis degisikligi yok; yalniz bu uc nokta export edilir).
+// Kurallar: SAHTE progress YOK (timer/otomatik emit yok; advance yalniz gercek
+// kilometre tasinda), dinleyici sizintisi YOK (onAbort birakma finally'de),
+// iptal hukumleri: baslamadan-iptal hic ise baslamaz, kosu-sirasi abort is-yuzu
+// cancelled dondurur, geciken sonuc atilir.
+// ---------------------------------------------------------------------------
+
+// Iptal zarf govdesi (duz nesne): calistir()'daki zarf() bunu isError+MCP
+// icerigine cevirir; async job yoneticisi icerikteki code:"cancelled"i gorup
+// durumu cancelled isaretler (pilotla ayni sozlesme).
+function iptalGovde(tool: string, reason: string): Record<string, unknown> {
+  return { ok: false, code: "cancelled", reason, tool };
+}
+
+// rea_scan_repo: asenkron parcaki salt-okur tarama. Abort yarisi kazanirsa aninda
+// cancelled doner; artik tarama sozu kendi halinde biter (surec/timer/acik dosya
+// uretmez, yalniz bellek ici okuma).
+export async function reaScanRepoStaged(a: any, ctx?: ServerContext): Promise<unknown> {
+  const arac = "rea_scan_repo";
+  const pilot = pilotContextFromCtx(ctx);
+  const signal = pilot.signal;
+  const asama = toolStageProgress(pilot.onProgress, arac);
+  const IPTAL = { iptal: true } as const;
+  let iptalCoz!: (v: typeof IPTAL) => void;
+  const iptalSozu = new Promise<typeof IPTAL>((coz) => { iptalCoz = coz; });
+  const birak = onAbort(signal, () => { iptalCoz(IPTAL); });
+  try {
+    if (signal?.aborted) return iptalGovde(arac, "iptal edildi (baslamadan once)");
+    const yol = typeof a?.path === "string" ? (a.path as string) : "";
+    if (!yol || !existsSync(yol)) {
+      // Girdi dogrulanamadi: hicbir asama ilerlemez, domain kapisi aynen doner.
+      return rea_scan_repo(yol);
+    }
+    await asama.advance("girdi", "girdi dogrulandi");
+    const tarama = rea_scan_repo(yol);
+    const sonuc = signal ? await Promise.race([tarama, iptalSozu]) : await tarama;
+    if (sonuc === IPTAL || signal?.aborted) {
+      tarama.then(() => undefined, () => undefined);
+      return iptalGovde(arac, "iptal edildi");
+    }
+    await asama.advance("tarama", "tarama bitti");
+    const govde = sonuc as { ok?: unknown; details?: { dosyalar?: unknown } };
+    if (govde?.ok === true && Array.isArray(govde?.details?.dosyalar)) {
+      await asama.advance("rapor", "rapor dogrulandi");
+    }
+    if (signal?.aborted) return iptalGovde(arac, "iptal edildi (sonuc atildi)");
+    return sonuc;
+  } finally {
+    birak();
+  }
+}
+
+// rea_jadx_full: senkron bloklayan kosu (jadx spawnSync). Abort ORTADA islenemez
+// (event-loop kilitli, cocuk handle'i disarida yok): iptal yalniz oncesinde
+// (jadx hic dogmaz) ve sonrasinda (geciken sonuc atilir) hukum giyer. Bu yuzden
+// async whitelist'e GIRMEZ; yalniz kaba gercek-asama progress baglanir.
+export async function reaJadxFullStaged(a: any, ctx?: ServerContext): Promise<unknown> {
+  const arac = "rea_jadx_full";
+  const pilot = pilotContextFromCtx(ctx);
+  const signal = pilot.signal;
+  const asama = toolStageProgress(pilot.onProgress, arac);
+  let iptal = false;
+  const birak = onAbort(signal, () => { iptal = true; });
+  try {
+    if (signal?.aborted || iptal) return iptalGovde(arac, "iptal edildi (baslamadan once)");
+    const apk = typeof a?.apk_path === "string" ? (a.apk_path as string) : "";
+    const out = typeof a?.out === "string" ? (a.out as string) : "";
+    if (!apk || !existsSync(apk)) {
+      // Girdi yok: hizli kapi, bildirim uretilmez (gerceklesmeyen asama yok).
+      return rea_jadx_full(apk, out);
+    }
+    await asama.advance("girdi", "girdi dogrulandi");
+    const sonuc = rea_jadx_full(apk, out); // bloklayan cagri: ara-ilerleme uretmez
+    await asama.advance("decompile", "decompile dondu");
+    if ((sonuc as { ok?: unknown })?.ok === true) {
+      await asama.advance("dogrula", "cikti dogrulandi");
+    }
+    if (iptal || signal?.aborted) return iptalGovde(arac, "iptal edildi (sonuc atildi)");
+    return sonuc;
+  } finally {
+    birak();
+  }
+}
+
+// rea_behavior_run: async-OZEL kosucu (senkron yuzeyde kayit YOK: kapaliyken 171
+// korunur). Argumanlar job arguments'tan alinir; abort yarisini kazanirsa aninda
+// cancelled doner, artik hedef surec kosunun kendi zaman asimi temizligiyle olur.
+export async function reaBehaviorJob(girdi: unknown, signal: AbortSignal | undefined): Promise<unknown> {
+  const arac = "rea_behavior_run";
+  const a = (girdi ?? {}) as Record<string, unknown>;
+  const cmd = typeof a.cmd === "string" ? a.cmd : "";
+  if (!cmd.trim()) {
+    return { ok: false, code: "capability_unsupported", reason: "komut bos", tool: arac };
+  }
+  if (signal?.aborted) return iptalGovde(arac, "iptal edildi (baslamadan once)");
+  let args: string[] | undefined;
+  if (a.args !== undefined) {
+    if (!Array.isArray(a.args) || !(a.args as unknown[]).every((x) => typeof x === "string")) {
+      return { ok: false, code: "capability_unsupported", reason: "args string dizisi olmali", tool: arac };
+    }
+    args = [...(a.args as string[])];
+  }
+  const timeout_ms = typeof a.timeout_ms === "number" && Number.isFinite(a.timeout_ms)
+    ? (a.timeout_ms as number)
+    : undefined;
+  const api = Array.isArray(a.api) ? (a.api as ApiOlay[]) : undefined;
+  const net = Array.isArray(a.net) ? (a.net as DavranışOlay[]) : undefined;
+  const IPTAL = { iptal: true } as const;
+  let iptalCoz!: (v: typeof IPTAL) => void;
+  const iptalSozu = new Promise<typeof IPTAL>((coz) => { iptalCoz = coz; });
+  const birak = onAbort(signal, () => { iptalCoz(IPTAL); });
+  try {
+    const kosu = rea_behavior_run(cmd, {
+      ...(args ? { args } : {}),
+      ...(timeout_ms !== undefined ? { timeout_ms } : {}),
+      ...(api ? { apiOlaylari: api } : {}),
+      ...(net ? { netOlaylari: net } : {}),
+    });
+    const sonuc = signal ? await Promise.race([kosu, iptalSozu]) : await kosu;
+    if (sonuc === IPTAL || signal?.aborted) {
+      kosu.then(() => undefined, () => undefined);
+      return iptalGovde(arac, "iptal edildi");
+    }
+    return sonuc;
+  } finally {
+    birak();
+  }
+}
+
+// Senkron yuzeyde kaydi OLMAYAN async-ozel kosucular (ad -> handler-tipi deger).
+// Whitelist disi ad buraya da giremez: job_start once ASYNC_JOB_TOOLS'a bakar.
+export const ASYNC_EXTRA_RUNNERS: Record<string, (girdi: unknown, signal: AbortSignal) => Promise<unknown>> = {
+  rea_behavior_run: (girdi, signal) => reaBehaviorJob(girdi, signal),
+};
+
 // Ikinci arguman yalniz pilot araca gecirilir (PILOT_CTX); diger handler'lar tek argumanla cagrilir.
 type H = (a: any, ctx?: ServerContext) => Promise<unknown> | unknown;
-// Progress/cancel pilotu: SDK ctx (AbortSignal + paced progress) yalniz bu araca ulasir.
-const PILOT_CTX = new Set(["rea_process_run"]);
+// Progress/cancel pilotu + Dalga E/2'de baglanan uzun araclar: SDK ctx
+// (AbortSignal + paced progress) yalniz PILOT_CTX uyelerine ulasir; pilot satiri degismez.
+const PILOT_CTX = new Set(["rea_process_run", "rea_scan_repo", "rea_jadx_full"]);
 const R: Array<[string, string, any, H]> = [
   ["rea_evm_selector", "EVM 4-byte selector (keccak, offline).", z.object({ sig: z.string().min(1) }), (a) => rea_evm_selector(a.sig)],
   ["rea_wasm_exports", "WAT export listesi (offline).", z.object({ wat: z.string().min(1) }), (a) => rea_wasm_exports(a.wat)],
@@ -169,7 +311,7 @@ const R: Array<[string, string, any, H]> = [
   ["rea_jadx_manifest", "APK manifest özeti.", z.object({ apk_path: z.string().min(1) }), (a) => rea_jadx_manifest(a.apk_path)],
   ["rea_jadx_classes", "APK sınıf listesi.", z.object({ apk_path: z.string().min(1) }), (a) => rea_jadx_classes(a.apk_path)],
   ["rea_jadx_decompile", "APK tek sınıf decompile.", z.object({ apk_path: z.string().min(1), sinif: z.string().min(1), out: z.string().min(1) }), (a) => rea_jadx_decompile(a.apk_path, a.sinif, a.out)],
-  ["rea_jadx_full", "APK tam decompile.", z.object({ apk_path: z.string().min(1), out: z.string().min(1) }), (a) => rea_jadx_full(a.apk_path, a.out)],
+  ["rea_jadx_full", "APK tam decompile.", z.object({ apk_path: z.string().min(1), out: z.string().min(1) }), (a, ctx) => reaJadxFullStaged(a, ctx)],
   ["rea_jadx_methods", "Decompile çıktıda method listesi.", z.object({ dir: z.string().min(1) }), (a) => rea_jadx_methods(a.dir)],
   ["rea_jadx_xrefs", "Decompile çıktıda terim arama.", z.object({ dir: z.string().min(1), terim: z.string().min(1) }), (a) => rea_jadx_xrefs(a.dir, a.terim)],
   ["rea_jadx_read", "Decompile sınıf okuma (400 satır).", z.object({ dir: z.string().min(1), sinif: z.string().min(1) }), (a) => rea_jadx_read(a.dir, a.sinif)],
@@ -331,9 +473,10 @@ const R: Array<[string, string, any, H]> = [
     return rea_behavior_full(pa.v, pn ? pn.v : undefined);
   }],
   ["rea_pdb_yolu", "PE debug dizininden PDB yolu.", P, (a) => rea_pdb_yolu(a.path)],
+  ["rea_pdb_indir", REA_PDB_INDIR_ACIKLAMA, P, (a) => reaPdbIndirKayitHandler(a)],
   ["rea_dwarf_ozet", "ELF DWARF özeti.", P, (a) => rea_dwarf_ozet(a.path)],
   ["rea_typedef_oner", "Argüman adı önerisi + yayılım.", J, (a) => rea_typedef_oner(a.text)],
-  ["rea_scan_repo", "Repo taraması (tip+plan).", P, (a) => rea_scan_repo(a.path)],
+  ["rea_scan_repo", "Repo taraması (tip+plan).", P, (a, ctx) => reaScanRepoStaged(a, ctx)],
 ];
 
 export function registerReaTools(server: McpServer): void {
@@ -377,7 +520,13 @@ export function registerReaTools(server: McpServer): void {
   };
   jobAraci("rea_job_start", "Whitelist'teki araci async job olarak baslatir (REA_ASYNC_JOBS=1).", z.object({ tool: z.string().min(1), arguments: z.record(z.string(), z.unknown()).optional() }), (a) => {
     if (!ASYNC_JOB_TOOLS.has(a.tool)) return { ok: false, code: "async_job_tool_not_whitelisted", tool: a.tool, reason: `async job whitelist disi: ${a.tool}. Whitelist: ${[...ASYNC_JOB_TOOLS].join(", ")}` };
-    const job = jobs.start(a.tool, (signal) => calistir(a.tool, a.arguments ?? {}, undefined, signal));
+    // Kayitli arac ayni zarf/workspace yolundan (sinyal tasiyan sentetik ctx ile),
+    // async-ozel arac kendi kosucusuyla (sonuc ayni zarf kurucusundan gecer) kosar.
+    const ekstra = ASYNC_EXTRA_RUNNERS[a.tool];
+    const kosucu = ekstra
+      ? ((signal: AbortSignal) => (async () => zarf(await ekstra(a.arguments ?? {}, signal)))())
+      : ((signal: AbortSignal) => calistir(a.tool, a.arguments ?? {}, undefined, signal));
+    const job = jobs.start(a.tool, kosucu);
     return { ok: true, job };
   });
   jobAraci("rea_job_status", "Async job durumu.", z.object({ job_id: z.string().min(1) }), (a) => {

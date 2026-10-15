@@ -1,21 +1,25 @@
-// roots.test.mjs: MCP Roots pilotu (legacy push) — URI donusumu, env+istemci
-// kesimi/genisletme reddi, sahte legacy sunucu dallari ve gercek protokol kaniti.
+// roots.test.mjs: MCP Roots — legacy push + modern MRTR (2026-07-28) dilimi.
 // Kos: npm run build sonrasi `node --test tests/roots.test.mjs` (tsc emit sart).
 // Canli arac cagrilmaz; InMemoryTransport ham istemcisi yalniz roots/list yanitlar.
-// Fizibilite kaydi: legacy listRoots calisir (asagida kanitli); modern 2026 push
-// cagrisi MethodNotSupportedByProtocolVersion -> "modern-mrtr-required" (sahte
-// basari yok), tam MRTR akisi bu dilimin disindadir (src/server/roots.ts basligi).
+// SDK 2.3.1 dogrulamasi: modern cagda push `listRoots()` SdkError
+// MethodNotSupportedByProtocolVersion firlatir; gercek akis MRTR'dir: handler
+// `inputRequired({inputRequests:{kokler: inputRequired.listRoots()}})` doner,
+// istemci `inputResponses` ile retry eder (ctx.mcpReq.inputResponses).
+// 2026 tel kaydinda `notifications/roots/list_changed` YOKTUR (yalniz 2025);
+// modern baglanti bu bildirimi push ile yeniden cekemez, sonraki MRTR
+// turunda taze inputResponses ile gunceller (stale bayragi + durust status).
 import { describe, it, before, after, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join, relative, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import {
-  attachLegacyRoots, clearClientRoots, createClientRootsStore, fileUriToLocalPath,
-  getClientRoots, intersectRoots, isRootsOptIn, refreshClientRoots, resolveRootsEnabled,
-  setClientRoots,
+  attachLegacyRoots, attachModernRoots, buildModernRootsRequest, clearClientRoots,
+  createClientRootsStore, fileUriToLocalPath, getClientRoots, intersectRoots, isRootsOptIn,
+  MODERN_ROOTS_REQUEST_KEY, refreshClientRoots, refreshRootsFromInputResponses,
+  resolveRootsEnabled, setClientRoots,
 } from "../dist/server/roots.js";
 import { applyWorkspaceRoot, getWorkspaceRoots, WorkspaceRootError } from "../dist/server/workspaceRoot.js";
 import { createReaPlusMcpServer } from "../dist/server.js";
@@ -328,6 +332,227 @@ describe("gercek protokol (InMemoryTransport, legacy roots/list)", () => {
       clearClientRoots();
       if (oncekiRoots === undefined) delete process.env.REA_ROOTS; else process.env.REA_ROOTS = oncekiRoots;
       if (oncekiWs === undefined) delete process.env.REA_WORKSPACE_ROOT; else process.env.REA_WORKSPACE_ROOT = oncekiWs;
+    }
+  });
+});
+
+describe("modern MRTR roots akisi (inputRequired/inputResponses)", () => {
+  const envDar = () => ({ REA_ROOTS: "1", REA_WORKSPACE_ROOT: kok });
+  // 2. tur retry govdesi: istisnasiz BARE ListRootsResult (SDK partitionInputResponses
+  // sarmal {method,result} zarfini dusurur; burada da desteklenmez).
+  const tur2 = (paths, anahtar = MODERN_ROOTS_REQUEST_KEY) =>
+    ({ [anahtar]: uriSonuc(paths) });
+
+  it("(a) istek literali SDK inputRequired()+inputRequired.listRoots() bicimindedir", () => {
+    assert.equal(MODERN_ROOTS_REQUEST_KEY, "kokler");
+    assert.deepEqual(buildModernRootsRequest(), {
+      resultType: "input_required",
+      inputRequests: { kokler: { method: "roots/list" } },
+    });
+    assert.deepEqual(buildModernRootsRequest("ozel"), {
+      resultType: "input_required",
+      inputRequests: { ozel: { method: "roots/list" } },
+    });
+  });
+
+  it("(a) MRTR 2. tur: daraltma uygulanir, depo taze koklerle dolar", async () => {
+    const store = createClientRootsStore();
+    const r = await refreshRootsFromInputResponses(tur2([sub]), { enabled: true, store });
+    assert.equal(r.status, "ok");
+    assert.deepEqual(store.get(), [gercek(sub)]);
+    assert.deepEqual(r.roots, [gercek(sub)]);
+    // Ayni tura ozel anahtar da tasinir.
+    const r2 = await refreshRootsFromInputResponses(tur2([kok], "ozel"), { enabled: true, store, key: "ozel" });
+    assert.equal(r2.status, "ok");
+    assert.deepEqual(store.get(), [gercek(kok)]);
+  });
+
+  it("(a) genisletme reddedilir: genis kok kirpilir, ayrik kok siniri kaldirmaz", async () => {
+    const store = createClientRootsStore();
+    await refreshRootsFromInputResponses(tur2([base]), { enabled: true, store });
+    setClientRoots(store.get());
+    try {
+      // Istemci env kokunu kapsayan kok verdi: etkin sinir env kokunde kalir.
+      assert.deepEqual(getWorkspaceRoots(envDar(), kok), [gercek(kok)]);
+      assert.throws(
+        () => applyWorkspaceRoot("rea_pe_info", { path: join(dis, "dis.bin") }, envDar(), kok),
+        WorkspaceRootError,
+      );
+      // Ayrik kok: sert sinir dusmez, ic dosya erisimi surer.
+      await refreshRootsFromInputResponses(tur2([dis]), { enabled: true, store });
+      setClientRoots(store.get());
+      assert.deepEqual(getWorkspaceRoots(envDar(), kok), [gercek(kok)]);
+      assert.throws(
+        () => applyWorkspaceRoot("rea_pe_info", { path: join(dis, "dis.bin") }, envDar(), kok),
+        WorkspaceRootError,
+      );
+      assert.equal(
+        applyWorkspaceRoot("rea_pe_info", { path: join(sub, "ic.bin") }, envDar(), kok).path,
+        gercek(join(sub, "ic.bin")),
+      );
+    } finally {
+      clearClientRoots();
+    }
+  });
+
+  it("(a) cevrilemeyen URI rejected'a duser, gecerli kok yine depolanir (sahte basari yok)", async () => {
+    const store = createClientRootsStore();
+    const govde = { [MODERN_ROOTS_REQUEST_KEY]: { roots: [{ uri: href(sub) }, { uri: "https://ornek.invalid/x" }] } };
+    const r = await refreshRootsFromInputResponses(govde, { enabled: true, store });
+    assert.equal(r.status, "ok");
+    assert.deepEqual(store.get(), [gercek(sub)]);
+    assert.equal(r.rejected.length, 1);
+  });
+
+  it("(c) destek yoksa durust status: anahtar yok, zarf sarmalli, kapaliyken hic dokunulmaz", async () => {
+    const store = createClientRootsStore();
+    store.set([sub]);
+    // inputResponses'ta beklenen anahtar yok: istemci kok vermedi.
+    const yok = await refreshRootsFromInputResponses({ baska: uriSonuc([kok]) }, { enabled: true, store });
+    assert.equal(yok.status, "unsupported");
+    assert.match(yok.detail, /MRTR destegi vermedi/);
+    assert.deepEqual(store.get(), [gercek(sub)], "unsupported dalinda depo korunur");
+    // Sarmal {method,result} zarfi: SDK ile ayni sekilde dusurulur, basari sayilmaz.
+    const zarf = await refreshRootsFromInputResponses(
+      { [MODERN_ROOTS_REQUEST_KEY]: { method: "roots/list", result: uriSonuc([kok]) } },
+      { enabled: true, store },
+    );
+    assert.equal(zarf.status, "unsupported");
+    assert.deepEqual(store.get(), [gercek(sub)]);
+    // Opt-in kapali: girdi hic okunmaz.
+    const kapali = await refreshRootsFromInputResponses(tur2([kok]), { enabled: false, store });
+    assert.equal(kapali.status, "disabled");
+    assert.deepEqual(store.get(), [gercek(sub)]);
+    const kapaliEnv = await refreshRootsFromInputResponses(tur2([kok]), { env: {}, store });
+    assert.equal(kapaliEnv.status, "disabled");
+  });
+
+  it("(c) bicim bozuk govde error verir, depo korunur", async () => {
+    const store = createClientRootsStore();
+    store.set([sub]);
+    // roots dizisi sart: dizi disi govde SDK inputResponse ile ayni sekilde missing->unsupported.
+    const kotu = await refreshRootsFromInputResponses(
+      { [MODERN_ROOTS_REQUEST_KEY]: { roots: "kok-degil" } }, { enabled: true, store });
+    assert.equal(kotu.status, "unsupported");
+    assert.deepEqual(store.get(), [gercek(sub)]);
+  });
+});
+
+describe("attachModernRoots (bildirim omru + MRTR yenileme)", () => {
+  it("(b) legacy-uyumlu hedefte list_changed push ile yeniden ceker, daraltma guncellenir", async () => {
+    const store = createClientRootsStore();
+    let guncel = [sub];
+    const sahte = {
+      handlers: {},
+      setNotificationHandler(m, h) { this.handlers[m] = h; },
+      removeNotificationHandler(m) { delete this.handlers[m]; },
+      getClientCapabilities: () => ({ roots: { listChanged: true } }),
+      listRoots: async () => ({ roots: guncel.map((p) => ({ uri: pathToFileURL(p).href })) }),
+    };
+    const bag = attachModernRoots(sahte, { enabled: true, store });
+    assert.equal(bag.enabled, true);
+    assert.equal(bag.listChangedBound, true);
+    assert.equal(bag.stale(), false);
+    // 1. tur: handler'a dondurulecek literal.
+    assert.deepEqual(bag.rootsRequest(), buildModernRootsRequest());
+    // 2. tur: retry ile gelen kokler depoya girer.
+    const r = await bag.refreshFromResponses({ [MODERN_ROOTS_REQUEST_KEY]: { roots: guncel.map((p) => ({ uri: pathToFileURL(p).href })) } });
+    assert.equal(r.status, "ok");
+    assert.deepEqual(store.get(), [gercek(sub)]);
+    assert.equal(bag.stale(), false);
+    // Bildirim: istemci kokleri degisti (kok'a cikti) -> push yeniden ceker.
+    guncel = [kok];
+    sahte.handlers["notifications/roots/list_changed"]({});
+    await bekle(() => store.get()[0] === gercek(kok), "list_changed push yenilemesi depoya yansimadi");
+    assert.equal(bag.lastResult().status, "ok");
+    assert.equal(bag.stale(), false);
+    bag.detach();
+    assert.deepEqual(sahte.handlers, {});
+    bag.clear();
+    assert.deepEqual(store.get(), []);
+  });
+
+  it("(b) modern cag hedefte push durust modern-mrtr-required + stale; sonraki MRTR turu gunceller", async () => {
+    const store = createClientRootsStore();
+    store.set([sub]);
+    const modern = {
+      handlers: {},
+      setNotificationHandler(m, h) { this.handlers[m] = h; },
+      removeNotificationHandler(m) { delete this.handlers[m]; },
+      getClientCapabilities: () => ({ roots: {} }),
+      listRoots: async () => {
+        throw Object.assign(
+          new Error("Server-to-client requests are not available on protocol revision 2026-07-28: 'roots/list' cannot be sent. Return inputRequired({ ... }) instead (multi round-trip requests)."),
+          { code: "MethodNotSupportedByProtocolVersion" },
+        );
+      },
+    };
+    const bag = attachModernRoots(modern, { enabled: true, store });
+    assert.equal(bag.listChangedBound, true);
+    modern.handlers["notifications/roots/list_changed"]({});
+    await bekle(() => bag.lastResult() !== null, "list_changed islenmedi");
+    assert.equal(bag.lastResult().status, "modern-mrtr-required");
+    assert.equal(bag.stale(), true, "modern cagda bildirim sonraki MRTR turunu beklemeli");
+    assert.deepEqual(store.get(), [gercek(sub)], "hata dalinda depo korunur");
+    // Sonraki MRTR turu (taze inputResponses): daraltma guncellenir, stale duser.
+    const r = await bag.refreshFromResponses({ [MODERN_ROOTS_REQUEST_KEY]: { roots: [{ uri: pathToFileURL(kok).href }] } });
+    assert.equal(r.status, "ok");
+    assert.deepEqual(store.get(), [gercek(kok)]);
+    assert.equal(bag.stale(), false);
+    bag.detach();
+  });
+
+  it("kapaliyken hicbir handler degismez", () => {
+    const sahte = { listRoots: async () => ({ roots: [] }) };
+    const bag = attachModernRoots(sahte, { enabled: false, store: createClientRootsStore() });
+    assert.equal(bag.enabled, false);
+    assert.equal(bag.listChangedBound, false);
+    assert.equal(sahte.oninitialized, undefined);
+  });
+});
+
+describe("guvenlik invarianti (e): hicbir yolda workspace genislemez", () => {
+  const envDar = () => ({ REA_ROOTS: "1", REA_WORKSPACE_ROOT: kok });
+  const icindeMi = (aday) => {
+    const fark = relative(gercek(kok), aday);
+    return fark === "" || (fark !== ".." && !fark.startsWith(`..${sep}`) && !isAbsolute(fark));
+  };
+
+  it("legacy push, modern MRTR, kirpma, ayrik, stale-sonrasi: etkin kok hep env icinde", async () => {
+    const senaryolar = [
+      { ad: "legacy-push-sub", tur: "legacy", kokler: [sub] },
+      { ad: "modern-sub", tur: "modern", kokler: [sub] },
+      { ad: "modern-genis-base", tur: "modern", kokler: [base] },
+      { ad: "modern-ayrik-dis", tur: "modern", kokler: [dis] },
+      { ad: "modern-kok", tur: "modern", kokler: [kok] },
+    ];
+    for (const s of senaryolar) {
+      const store = createClientRootsStore();
+      if (s.tur === "legacy") {
+        const sahte = { listRoots: async () => ({ roots: s.kokler.map((p) => ({ uri: pathToFileURL(p).href })) }) };
+        const r = await refreshClientRoots(sahte, { enabled: true, store });
+        assert.equal(r.status, "ok", s.ad);
+      } else {
+        const r = await refreshRootsFromInputResponses(
+          { [MODERN_ROOTS_REQUEST_KEY]: { roots: s.kokler.map((p) => ({ uri: pathToFileURL(p).href })) } },
+          { enabled: true, store },
+        );
+        assert.equal(r.status, "ok", s.ad);
+      }
+      setClientRoots(store.get());
+      try {
+        const etkin = getWorkspaceRoots(envDar(), kok);
+        assert.ok(etkin.length > 0, `${s.ad}: etkin kok bos kalmamali (env sert sinir duser)`);
+        for (const e of etkin) assert.ok(icindeMi(e), `${s.ad}: etkin kok env disina tasti: ${e}`);
+        // Kok disi her yolda reddedilir.
+        assert.throws(
+          () => applyWorkspaceRoot("rea_pe_info", { path: join(dis, "dis.bin") }, envDar(), kok),
+          WorkspaceRootError,
+          s.ad,
+        );
+      } finally {
+        clearClientRoots();
+      }
     }
   });
 });

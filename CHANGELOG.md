@@ -3,6 +3,26 @@
 Tüm önemli değişiklikler bu dosyada tutulur. Format: Keep a Changelog + SemVer.
 All notable changes are documented here (Türkçe özet + English detail).
 
+## [Unreleased]
+
+Dalga E kapanışları (v0.8.2 adayı): 168 `outputSchema` (4 araç kalıcı şemasız),
+172 annotations (sıfır işaretsiz), PDB kaydı (`rea_pdb_indir`, 172. araç),
+oturum TTL, Roots modern MRTR, progress genelleme + async whitelist genişlemesi.
+Varsayılan yüzey 172 araç; opt-in yüzeyler: async +5 (177), kuyruk +1 (173).
+
+### Eklendi / Added
+
+- 20 conduit `outputSchema` (motor araçları) + `rea_pdb_indir` şeması ve kaydı.
+- Oturum TTL (`REA_SESSION_TTL_MS`, varsayılan 30dk, 0=kapalı).
+- Roots modern MRTR akışı (`inputRequired`/`inputResponses`, list_changed legacy'de).
+- Progress stage yardımcıları 2 ek araca bağlandı (`rea_scan_repo`, `rea_jadx_full`).
+- Async whitelist: `rea_scan_repo` + `rea_behavior_run` eklendi (3'lü).
+
+### Henüz yapılmadı / Not yet done
+
+- Frida canlı VM onayı; self-hosted Windows runner; kalıcı DEX korpusu (repo içi fixture).
+- P2 dağıtım kolaylığı; analiz derinliği; P3 araştırma.
+
 ## [0.8.1] — 2026-10-14
 
 Sürüm 0.8.1: motor sağlamlığı (oturum kuyruğu, Frida timeout, cdb async, x64dbg

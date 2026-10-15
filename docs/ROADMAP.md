@@ -7,16 +7,16 @@
 > **Ölçütler:** Etki = kullanıcı/ajan değerine katkı · Efor = S (günler) / M (1-2 hafta) / L (ay+)
 > · Öncelik = P0 (sıradaki sürüm) → P3 (uzun vade).
 
-## Unreleased tabanıyla kapananlar (özet)
+## v0.8.1 tabanıyla kapananlar (özet)
 
-- MCP yüzeyi: 171 araç + 2 resource + 3 prompt; üretilmiş tam referans [`TOOLS.md`](TOOLS.md).
-- `REA_TOOLSETS` profilleri: `all` 171 (varsayılan), `minimal` 8, `static` 98, `android` 27, `dotnet` 20, `web` 26, `debug` 50; virgüllü birleşim, bilinmeyen profil açılış hatası.
+- MCP yüzeyi: 172 araç + 2 resource + 3 prompt; üretilmiş tam referans [`TOOLS.md`](TOOLS.md).
+- `REA_TOOLSETS` profilleri: `all` 172 (varsayılan), `minimal` 8, `static` 98, `android` 27, `dotnet` 20, `web` 26, `debug` 50; virgüllü birleşim, bilinmeyen profil açılış hatası. Yeni araç yalnız `all`'da (fail-closed).
 - `REA_WORKSPACE_ROOT`: `rea_*` + conduit yolları + kullanıcıya görünür türev yazmalar kök içinde; operatör temp/cache yüzeyleri bilinçli istisna.
 - Tokensiz HTTP: 44 salt-okunur araçlık allowlist (toolset ile kesişim) + `REA_AUDIT_LOG` (argümansız JSONL) + `REA_HTTP_RATE_LIMIT_PER_MIN` (varsayılan 120) ve `REA_HTTP_MAX_CONCURRENT` (varsayılan 16).
-- Kısmi tip tabanı: 147 `outputSchema`, 169 annotations; şema kapsamı 171'in tamamı değildir (aşağıda açık kalan kısım işaretli).
-- Async job pilotu: `REA_ASYNC_JOBS=1` ile 5 job aracı (176 yüzey); kuyruk tavanı 2, whitelist yalnız `rea_process_run`, kayıtlar süreç-içi.
-- Yayın hazırlığı: Registry adı `io.github.Alyhnte/rea-plus` + `mcpName` hazır, publish workflow'u manuel/dry-run varsayılanlı. **npm/Registry yayını yapılmadı** — desteklenen kurulum `npx github` ve GHCR olarak kalır.
-- Frida agent exception ve jadx ayrıştırma kod tabanı geldi; **Frida canlı VM onayı ve DEX golden APK kabul testi açık kapı olarak durur** (aşağıda kapatılmadı).
+- Tip tabanı: 168 `outputSchema`, 172 annotations (4 araç kalıcı şemasız: string/dizi dönenler + hep-kapıdan-dönenler).
+- Async job: `REA_ASYNC_JOBS=1` ile 5 job aracı (177 yüzey); kuyruk tavanı 2, whitelist `rea_process_run` + `rea_scan_repo` + `rea_behavior_run`, kayıtlar süreç-içi.
+- Oturum kuyruğu (`REA_SESSION_QUEUE=1` opt-in, FIFO-32), oturum TTL (30dk varsayılan), Roots modern MRTR, progress genelleme, PDB indirme kaydı, golden korpus manifesti.
+- Yayın: `rea-plus@0.8.1` npm'de, `io.github.Alyhnte/rea-plus` MCP Registry'de. **Frida canlı VM onayı açık kapı olarak durur** (aşağıda kapatılmadı).
 
 ## 0.7.2 + 0.7.3 ile kapananlar (özet)
 
@@ -45,11 +45,11 @@
 | ✅ Toolset profilleri (`REA_TOOLSETS=static,debug`) | KAPANDI (Unreleased): `all` 171, `minimal` 8, `static` 98, `android` 27, `dotnet` 20, `web` 26, `debug` 50; virgüllü birleşim, bilinmeyen profil açılış hatası, resources/prompts filtresiz | Araç listesi bağlamı küçülür, isabet artar | S | — |
 | ✅ Resources | KAPANDI (Unreleased): 2 statik salt-okunur resource (`rea-plus://server-info`, `rea-plus://capabilities-safety`); keyfi dosya/env açılmaz, subscribe yok | Sunucu kimliği + güvenlik kuralları URI ile okunur | M | — |
 | ✅ Prompts | KAPANDI (Unreleased): 3 yan etkisiz prompt (`packer-triage`, `dotnet-malware-triage`, `android-triage`); prompt araç çalıştırmaz, yalnız sıralı akış metni döner | Hazır triage akışları tek seçimde | S | — |
-| ◐ `outputSchema` + `structuredContent` | KISMEN KAPANDI (Unreleased taban): 147 araç `outputSchema` taşıyor, düz nesne sonuçlarda `structuredContent` metin JSON'uyla aynı değeri taşır; kalan araçlar şemasız — araç başına durum [`TOOLS.md`](TOOLS.md)'de | Kapsanan araçlarda tip güvenli tüketim; kapsamın 171'e genişlemesi açık iş | M | P1 (kalan kapsam) |
-| ◐ Progress bildirimi + iptal | PİLOT KAPANDI (Unreleased): `rea_process_run` paced progress gönderir ve `notifications/cancelled` süreç ağacını öldürür; senkron handler'lar ve uzun motor işleri hâlâ kapsam dışı | Pilot araçta ajan ilerlemeyi görür, vazgeçebilir; genelleme açık iş | M | P1 (genişleme) |
-| ◐ Tool annotation'ları | KISMEN KAPANDI (Unreleased taban): 169 araç annotations taşıyor; yalnız iki kapı aracı tahminî sınıflandırma almıyor | Kapsanan araçlarda `destructiveHint`/`readOnlyHint` ile istemci onay UX'i düzelir | S | P1 (kalan kapsam) |
-| ◐ Async job modeli (başlat → poll) | PİLOT KAPANDI (Unreleased): `REA_ASYNC_JOBS=1` ile `rea_job_start/status/result/cancel/list`; en fazla 2 eşzamanlı, süreç-içi kayıt (en fazla 50 terminal kayıt), iptal süreç ağacını öldürür; whitelist bugün yalnız `rea_process_run` — diğer araçların eklenmesi ve kalıcılık açık iş | Uzun pilot işler çağrıyı kilitlemeden poll edilir; whitelist genişlemesi açık iş | M | P2 (genişleme) |
-| ◐ Roots desteği | PİLOT (Unreleased): `REA_ROOTS=1` + legacy stdio'da istemci kökleri çekilir ve `REA_WORKSPACE_ROOT` yalnız daraltılabilir; modern protokol MRTR akışı ayrı iş, sahte başarı yok | Legacy istemcide çalışma alanı otomatik daralır | S | P2 (modern MRTR) |
+| ✅ `outputSchema` + `structuredContent` | KAPANDI (v0.8.1): 168 araç `outputSchema` taşıyor (4 araç kalıcı şemasız: string/dizi dönenler + hep-kapıdan-dönenler); düz nesne sonuçlarda `structuredContent` metin JSON'uyla aynı — araç başına durum [`TOOLS.md`](TOOLS.md)'de | Tip güvenli tüketim | M | — |
+| ✅ Progress bildirimi + iptal | KAPANDI (v0.8.1): stage yardımcıları (`createStageProgress`/`onAbort`) paced emit + temizlik; `rea_process_run` pilotu + `rea_scan_repo` + `rea_jadx_full` staged | Ajan ilerlemeyi görür, vazgeçebilir | M | — |
+| ✅ Tool annotation'ları | KAPANDI (v0.8.1): 172 araç annotations taşıyor (sıfır işaretsiz); `destructiveHint`/`readOnlyHint` ile istemci onay UX'i | Onay UX'i düzelir | S | — |
+| ✅ Async job modeli (başlat → poll) | KAPANDI (v0.8.1): `REA_ASYNC_JOBS=1` ile `rea_job_start/status/result/cancel/list` (177 yüzey); en fazla 2 eşzamanlı, süreç-içi kayıt, iptal süreç ağacını öldürür; whitelist `rea_process_run` + `rea_scan_repo` + `rea_behavior_run` | Uzun işler çağrıyı kilitlemeden poll edilir | M | — |
+| ✅ Roots desteği | KAPANDI (v0.8.1): legacy stdio pilotu + modern MRTR akışı (`inputRequired`/`inputResponses`); `REA_WORKSPACE_ROOT` hiçbir yolda genişlemez | Çalışma alanı otomatik daralır | S | — |
 
 ## C) Güvenlik
 
@@ -58,7 +58,7 @@
 | ✅ Çalışma kökü kısıtı (`REA_WORKSPACE_ROOT`) | KAPANDI (Unreleased): `rea_*` yolları + conduit `open_target`/`debug_open` + türev yazmalar (`.unpacked`/`.extracted`/HAR) realpath ile kök içinde; operatör temp/cache yüzeyleri (browser artifacts, Ghidra tmp, hopper tmp isteği, apktool framework cache) bilinçli istisna | Prompt-injection ile rastgele dosya okuma/yazma yüzeyi kapanır | M | — |
 | ✅ Token'sız HTTP'de salt-okunur kip | KAPANDI (Unreleased): token yokken HTTP yalnız 44 araçlık, yol almayan allowlist'i kaydeder; sonuç `REA_TOOLSETS` ile kesişimdir, liste dışı/yeni araç görünmez | Yanlışlıkla açık bırakılan port zararsızlaşır | S | — |
 | ✅ Audit log (JSONL) | KAPANDI (Unreleased): `REA_AUDIT_LOG`, iki transportta da satır başına yalnız `ts`/`transport`/`tool`/`durationMs`/`isError`; argüman/token/yol/içerik yazılmaz, yazma hatası sunucuyu çökertmez | Olay incelemesi ve kurumsal kabul | S | — |
-| ◐ Rate limit + eşzamanlı istek tavanı | KISMEN KAPANDI (Unreleased): `REA_HTTP_RATE_LIMIT_PER_MIN` (varsayılan 120/IP/dk) + `REA_HTTP_MAX_CONCURRENT` (varsayılan 16), aşımda `429`, geçersiz değer açılış hatası. Oturum registry TTL'i hâlâ yok | HTTP kaynak tüketimi/DoS dayanımı geldi; oturum TTL'i açık iş | S | P2 (TTL) |
+| ✅ Rate limit + eşzamanlı istek tavanı + oturum TTL | KAPANDI (v0.8.1): `REA_HTTP_RATE_LIMIT_PER_MIN` (varsayılan 120/IP/dk) + `REA_HTTP_MAX_CONCURRENT` (varsayılan 16), aşımda `429`, geçersiz değer açılış hatası; oturum TTL `REA_SESSION_TTL_MS` (varsayılan 30dk, 0=kapalı) | HTTP dayanımı + oturum hijyeni | S | — |
 | Sandbox reçetesi (VM profili dokümanı) | "VM'de çalıştır" demekle kalınıyor | Hazır izole ortam tarifi (ağsız snapshot'lı VM) | S | P2 |
 
 ## D) Debugger motorları
@@ -131,7 +131,9 @@
 
 ---
 
-**Önerilen sıra (açık kalanlar):** npm + Registry yayını (dış kapı) → Frida canlı VM onayı → DEX golden APK kabulü →
-golden korpus → canlı CI → kalan `outputSchema`/annotations kapsamı → progress/iptal → davranış profilleri.
-Workspace kökü, toolset profilleri ve resources/prompts Unreleased tabanında kapandı; dağıtımı fiilen açan adım artık yalnız npm + Registry yayınıdır.
+**Önerilen sıra (açık kalanlar):** Frida canlı VM onayı → self-hosted Windows runner →
+kalıcı DEX korpusu (repo içi fixture) → P2 dağıtım kolaylığı (`setup` sihirbazı,
+`doctor --fix`, SEA exe, paket yöneticileri, SBOM) → analiz derinliği (Mach-O,
+IL2CPP, binary diff, PCAP/TLS) → P3 araştırma (LLDB, TTD, angr/Triton, fuzzing).
+npm + Registry + DEX kabulü + golden korpus + şema kapsamı + progress v0.8.1'de kapandı.
 

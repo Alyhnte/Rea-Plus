@@ -26,7 +26,7 @@ function sahteSunucu() {
 }
 
 const INFO = { name: "rea-plus", version: "0.8.1" };
-delete process.env.REA_TOOLSETS; // gercek protokol bolumu tam 171 arac bekler
+delete process.env.REA_TOOLSETS; // gercek protokol bolumu tam 172 arac bekler
 
 describe("registerResourcesPrompts kayit sekilleri", () => {
   const s = sahteSunucu();
@@ -75,7 +75,7 @@ describe("resource callback icerikleri", () => {
     const { json } = await oku(REA_SERVER_INFO_URI);
     assert.equal(json.name, INFO.name);
     assert.equal(json.version, INFO.version);
-    assert.deepEqual(json.tools, { total: 171, conduit: 30, rea: 141 });
+    assert.deepEqual(json.tools, { total: 172, conduit: 30, rea: 142 });
     assert.deepEqual(json.resources, [REA_SERVER_INFO_URI, REA_CAPABILITIES_SAFETY_URI]);
     assert.deepEqual(json.prompts, [...REA_PROMPT_NAMES]);
   });
@@ -195,9 +195,9 @@ describe("gercek protokol (InMemoryTransport)", () => {
     await clientT.send({ jsonrpc: "2.0", method: "notifications/initialized", params: {} });
   });
 
-  it("tools/list 171 araci korur", async () => {
+  it("tools/list 172 araci korur", async () => {
     const r = await gonder("tools/list", {});
-    assert.equal(r.tools.length, 171);
+    assert.equal(r.tools.length, 172);
   });
 
   it("resources/list + resources/read gercek protokolden calisir", async () => {

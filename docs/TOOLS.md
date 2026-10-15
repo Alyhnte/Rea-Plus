@@ -6,12 +6,12 @@
 
 ## Özet
 
-- Sunucu: `rea-plus` 0.8.0
-- Toplam araç: 171
+- Sunucu: `rea-plus` 0.8.1
+- Toplam araç: 172
 - Toplam resource: 2
 - Toplam prompt: 3
-- outputSchema taşıyan araç: 147
-- annotations taşıyan araç: 169
+- outputSchema taşıyan araç: 168
+- annotations taşıyan araç: 172
 
 ## Araçlar
 
@@ -36,7 +36,7 @@ Attach by pid, or, on a frida session, connect to a listening Frida Gadget (gadg
   - `pid` (integer, opsiyonel) — Live process id. Required unless gadget or usb is set.
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
   - `usb` (boolean, opsiyonel) — Use the USB Frida device (phone or tablet) instead of a host:port Gadget.
-- outputSchema: yok
+- outputSchema: var (alanlar: architecture, attached, engine, entry_point, mode, module_base, module_entry, path, pid, session_id)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `debug_breakpoint`
@@ -51,7 +51,7 @@ Set, remove, or list breakpoints. Address may be hex, a number, or an x64dbg exp
   - `name` (string, opsiyonel) — Breakpoint name (set only).
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
   - `type` (enum, opsiyonel)
-- outputSchema: yok
+- outputSchema: var
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `debug_callstack`
@@ -61,7 +61,7 @@ Read the current thread's call stack (address, module, function per frame).
 - Girdi alanları:
   - `max_frames` (integer, opsiyonel) — Max frames returned (default 50).
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: frames, session_id, threadId)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `debug_close`
@@ -84,7 +84,7 @@ Live code: disassemble at an address (default: the stopped instruction pointer),
   - `count` (integer, opsiyonel) — Instruction count for disassemble (default 12).
   - `instruction` (string, opsiyonel) — Single instruction for assemble.
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `debug_continue`
@@ -93,7 +93,7 @@ Resume the debuggee until the next breakpoint, single-step, or exit. The stop po
 
 - Girdi alanları:
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: address, reason, session_id)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `debug_memory`
@@ -111,7 +111,7 @@ Live process memory: read, search, or dump. Requires confirm:true. Without it th
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
   - `size` (integer, opsiyonel) — Byte count for read (default 64) or dump (default 256).
   - `start_address` (string | number, opsiyonel) — Address as hex ("0x140001000"), decimal, or an engine expression ("cip").
-- outputSchema: yok
+- outputSchema: var
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `debug_open`
@@ -124,7 +124,7 @@ Open a PE target for live debugging on this session's debug engine. Auto-detects
   - `command_line_args` (string, opsiyonel) — Command line arguments for the debuggee.
   - `path` (string, zorunlu) — Filesystem path of the PE binary to debug.
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: architecture, attached, engine, entry_point, mode, module_base, module_entry, opened, path, pid, session_id)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `debug_pause`
@@ -133,7 +133,7 @@ Asynchronously break a running debuggee. Idempotent when already paused.
 
 - Girdi alanları:
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: address, reason, session_id)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `debug_plugin`
@@ -144,7 +144,7 @@ x64dbg Scylla and ScyllaHide. status reports files on disk. dump and hide do not
   - `action` (enum, zorunlu)
   - `confirm` (boolean, opsiyonel) — Must be true or the tool returns confirmation_required and does not touch the debuggee.
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `debug_registers`
@@ -155,7 +155,7 @@ Read debuggee registers (general + flags; segment/debug optionally).
   - `include_debug` (boolean, opsiyonel) — Include debug registers.
   - `include_segment` (boolean, opsiyonel) — Include segment registers.
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: debug, flags, general, segment, session_id)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `debug_state`
@@ -164,7 +164,7 @@ Report live debug state (running/paused/terminated + pause reason) and the open 
 
 - Girdi alanları:
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `debug_step`
@@ -175,7 +175,7 @@ Single-step the debuggee (into or over calls) and report the new location.
   - `count` (integer, opsiyonel) — Steps to take (default 1).
   - `kind` (enum, opsiyonel)
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: address, disassembly, function, kind, module, registers, session_id)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `debug_thread`
@@ -187,7 +187,7 @@ Live threads: list, select, freeze, thaw, or read one thread's context. The id i
   - `confirm` (boolean, opsiyonel) — Must be true or the tool returns confirmation_required and does not touch the debuggee.
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
   - `thread_id` (integer, opsiyonel)
-- outputSchema: yok
+- outputSchema: var
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `debug_time`
@@ -200,7 +200,7 @@ Checkpoint snapshot, the checkpoint timeline, and rewind of one checkpoint. A ch
   - `confirm` (boolean, opsiyonel) — Must be true or the tool returns confirmation_required and does not touch the debuggee.
   - `memory_size` (integer, opsiyonel) — Bytes captured at the instruction pointer (default 64).
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `disassemble`
@@ -212,7 +212,7 @@ Disassemble instructions at an address (linear, `count` ops) or a whole function
   - `count` (integer, opsiyonel) — Ops for address mode (default 32).
   - `function` (string, opsiyonel) — Function name or address, e.g. "entry0".
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: count, location, ops, session_id, text)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `dump`
@@ -224,7 +224,7 @@ Read raw bytes at an address as hexdump text or a JSON byte array.
   - `format` (enum, opsiyonel)
   - `length` (integer, opsiyonel) — Bytes to read (default 128).
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: address, bytes, format, length, session_id, text)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `events_pull`
@@ -260,7 +260,7 @@ Control-flow graph of a function as JSON and/or Graphviz DOT. Defaults to the en
   - `format` (enum, opsiyonel)
   - `function` (string, opsiyonel) — Function name or address, e.g. "entry0".
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: dot, function, json, location, session_id)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `health`
@@ -1334,6 +1334,15 @@ Zincir doğrulama.
 - outputSchema: var (alanlar: eksik, ok)
 - annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
 
+### `rea_pdb_indir`
+
+PE debug dizinindeki CodeView RSDS kaydından Microsoft symbol server'dan PDB indirme + bütünlük + önbellek.
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: arac, cache, dosya, guid, ok, pdb, url, yas, yol)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
 ### `rea_pdb_yolu`
 
 PE debug dizininden PDB yolu.
@@ -1385,7 +1394,7 @@ Pipe/PTY karşılaştırma.
 - Girdi alanları:
   - `cmd` (string, zorunlu)
 - outputSchema: yok
-- annotations: yok
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
 
 ### `rea_process_run`
 
@@ -1403,7 +1412,7 @@ ELF layout + mitigation.
 - Girdi alanları:
   - `path` (string, zorunlu)
 - outputSchema: yok
-- annotations: yok
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
 
 ### `rea_pwn_gadgets`
 
@@ -1637,7 +1646,7 @@ Report radare2 static-engine capabilities, r2 availability, and the open target 
 
 - Girdi alanları:
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: capabilities, engine, r2, session_id, target)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `strings`
@@ -1650,7 +1659,7 @@ Strings found in the binary (address, section, length, text).
   - `offset` (integer, opsiyonel) — Skip this many matches (default 0).
   - `section` (string, opsiyonel) — Only strings from this section, e.g. ".rodata".
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: offset, session_id, strings, total)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ### `xrefs`
@@ -1661,7 +1670,7 @@ Cross-references to and/or from an address (code and data).
   - `address` (string | number, zorunlu) — Target address as hex ("0x400200"), decimal, or flag name ("entry0").
   - `direction` (enum, opsiyonel)
   - `session_id` (string, zorunlu) — Application session id. Not an MCP protocol session.
-- outputSchema: yok
+- outputSchema: var (alanlar: address, from, session_id, to)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
 ## Resources

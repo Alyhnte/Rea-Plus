@@ -267,9 +267,9 @@ describe("stdio: (e) kuyruk devre disiyken mevcut davranis degismez", () => {
   before(async () => { istemci = await stdioIstemci(temizEnv({})).baslat(); });
   after(async () => { await istemci.kapat(); });
 
-  it("arac sayisi 171 kalir, status araci yoktur", async () => {
+  it("arac sayisi 172 kalir, status araci yoktur", async () => {
     const sayfa = await istemci.istek("tools/list", {}).soz;
-    assert.equal(sayfa.tools.length, 171);
+    assert.equal(sayfa.tools.length, 172);
     assert.ok(!sayfa.tools.some((t) => t.name === "session_queue_status"), "devre disiyken status araci olmamali");
   });
 
@@ -286,9 +286,9 @@ describe("stdio: kuyruk acikken (REA_SESSION_QUEUE=1)", () => {
   before(async () => { istemci = await stdioIstemci(temizEnv({ REA_SESSION_QUEUE: "1" })).baslat(); });
   after(async () => { await istemci.kapat(); });
 
-  it("arac sayisi 172 olur, status araci vardir", async () => {
+  it("arac sayisi 173 olur, status araci vardir", async () => {
     const sayfa = await istemci.istek("tools/list", {}).soz;
-    assert.equal(sayfa.tools.length, 172);
+    assert.equal(sayfa.tools.length, 173);
     assert.ok(sayfa.tools.some((t) => t.name === "session_queue_status"), "status araci listede olmali");
   });
 
@@ -386,10 +386,10 @@ describe("stdio: (d) iptal bekleyen isi dusurur, kuyruk devam eder", () => {
     const sid = await oturumAc(istemci);
     istemci.mesajlar.length = 0;
     // Birinci static_info kosarken (kuyrukta tutar), ikinci kuyruga girer.
+    // static_info hizli bitebilir; iptalin kuyruktaki isi yakalamasi icin
+    // c2 hemen arkasindan gonderilip cancel gecikmeden verilir.
     const c1 = istemci.istek("tools/call", { name: "static_info", arguments: { session_id: sid } }, 20000);
-    await bekle(25);
     const c2 = istemci.istek("tools/call", { name: "static_info", arguments: { session_id: sid } }, 20000);
-    await bekle(25);
     istemci.bildirim("notifications/cancelled", { requestId: c2.id, reason: "test iptali" });
     // Kuyruk devam etmeli: ucuncu cagri basariyla doner.
     await bekle(50);

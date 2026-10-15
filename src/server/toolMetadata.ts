@@ -1,12 +1,15 @@
 // rea araclari icin SDK yuzeyi metadata'si: outputSchema (dalga 1+2+3+4+D/2) +
-// annotations. Kapsam bilincli olarak sinirli: yalniz gercek donus sekli
+// annotations (dalga E/1 ile 141/141: iki kapi araci da salt-okunur kumede).
+// Kapsam bilincli olarak sinirli: yalniz gercek donus sekli
 // handler govdesinde dogrulanmis araclar sema alir; surec-ici saf hesaplar ve
 // (dalga 3) alt surec/ag/yazma etkisi olmayan salt dosya okuyan kopruler
 // readOnly isaretlenir. Dosya okusa da alt surec yoklayan araclar
 // (dotnet_metadata, browser_har_import) readOnly degil openWorld'dur. Yazan
 // araclar destructive, ag/browser/cihaz/surec ve harici arac calistiranlar
 // openWorld kumelerindedir. Her zaman kapidan donen sablonlar
-// (process_compare, pwn_elf_layout) tartismali sayilir: metadata almazlar.
+// (process_compare, pwn_elf_layout) etkisiz kapidir: annotations alir ama
+// ok:true uretmedigi icin outputSchema almaz. String/dizi donenler
+// (best_motor, fallback) nesne semasi alamaz.
 // Listede olmayan arac metadata almaz (tahmini siniflandirma yok).
 // NOT: annotations, httpPolicy.ts'nin tokensiz-HTTP allowlist'ini beslemez;
 // o liste ayri ve aciktir (dosya okuyan araclar oraya sizmaz).
@@ -23,6 +26,8 @@ export interface ReaToolMetadata {
 // birebirdir; girdi yankisi ya da degisken alanlarda cekirdek alanlar sabitlenir,
 // sahte kesinlik (orn. her zaman dolu sandigimiz opsiyonel alan) yapilmaz.
 // String/dizi donen araca (rea_best_motor, rea_fallback) nesne semasi verilmez.
+// Hic ok:true uretmeyen kapi araci (rea_process_compare, rea_pwn_elf_layout)
+// basari sekli olmadigi icin sema almaz (dalga E/1 teyidi).
 const OUTPUT_SCHEMAS: Readonly<Record<string, StandardSchemaWithJSON>> = {
   // Dalga 1 (pilot)
   rea_evm_selector: z.object({
@@ -623,6 +628,17 @@ const OUTPUT_SCHEMAS: Readonly<Record<string, StandardSchemaWithJSON>> = {
     guid: z.string(),
     yas: z.number(),
   }),
+  rea_pdb_indir: z.object({
+    ok: z.literal(true),
+    arac: z.string(),
+    dosya: z.string(),
+    pdb: z.string(),
+    guid: z.string(),
+    yas: z.number(),
+    yol: z.string(),
+    url: z.string(),
+    cache: z.boolean(),
+  }),
   rea_dwarf_ozet: z.object({
     ok: z.literal(true),
     arac: z.string(),
@@ -831,7 +847,14 @@ const OUTPUT_SCHEMAS: Readonly<Record<string, StandardSchemaWithJSON>> = {
 // Salt-okunur kume: saf, surec-icinde hesap; dosya okumaz/yazmaz, surec
 // calistirmaz, aga cikmaz. Hepsi ayni girdide ayni ciktiyi verir (idempotent)
 // ve dis dunyaya acilmaz (closed world). Dosya yolu okuyan araclar dalga 3'te
-// ayri FILE_READ_ONLY_TOOLS kumesindedir (asagida).
+// ayri FILE_READ_ONLY_TOOLS kumesindedir (asagida). Dalga E/1 notu: her zaman
+// kapidan donen iki sablon (process_compare, pwn_elf_layout) da buradadir --
+// ikisi de dosya/surec/ag'a dokunmaz, ciktiyi yalniz sabit nedenden ve
+// platform/env'den turetir; readOnly saptamasi bu yuzden durusttur. Ikisinin
+// de ok:true dali hicbir kosulda uretilemedigi (handler govdelerinde basari
+// literali yoktur) ve string/dizi donenler (best_motor, fallback) nesne
+// olmadigi icin bu dort arac outputSchema almaz; gerekce handler bazinda
+// sabittir, tahmin degildir.
 const READ_ONLY_TOOLS: ReadonlySet<string> = new Set([
   // Dalga 1
   "rea_evm_selector",
@@ -890,6 +913,12 @@ const READ_ONLY_TOOLS: ReadonlySet<string> = new Set([
   "rea_managed_import", // path argumani JSON metnidir, dosya okunmaz
   "rea_fs_diff", // iki snapshot JSON'unu karsilastirir, fs'e cikmaz
   "rea_behavior_full",
+  // Dalga E/1: her zaman kapidan donen sablonlar. process_compare girdiyi yok
+  // sayar, pwn_elf_layout dosyayi acmadan REA_PYTHON_BIN yoklamasiyla eler;
+  // ikisi de yazmaz/surec kosmaz/aga cikmaz (readOnly durusttur). ok:true
+  // uretmedikleri icin outputSchema almazlar (ustteki OUTPUT_SCHEMAS notu).
+  "rea_process_compare",
+  "rea_pwn_elf_layout",
 ]);
 
 // Salt dosya/dizin okuyan kume (dalga 3): handler yalniz readFile/readdir/
@@ -959,6 +988,7 @@ const DESTRUCTIVE_TOOLS: ReadonlySet<string> = new Set([
   "rea_process_run", // verilen komutu gercekten calistirir
   "rea_r2_debug", // hedefi r2 -d ile calistirir
   "rea_net_capture",
+  "rea_pdb_indir", // önbelleğe PDB yazar
 ]);
 
 // Dis dunya kume (salt-okunur degil): ag/browser/cihaz/hedef surec ile
@@ -1033,6 +1063,8 @@ const OPEN_WORLD_TOOLS: ReadonlySet<string> = new Set([
   // Dalga 3: alt surec yetenek yoklamasi yapan okuyucular
   "rea_dotnet_metadata",
   "rea_browser_har_import",
+  // PDB indirici: ağa çıkar (sembol sunucusu)
+  "rea_pdb_indir",
 ]);
 
 const READ_ONLY_ANNOTATIONS: ToolAnnotations = {

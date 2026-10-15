@@ -1,11 +1,14 @@
 // conduit-surface.test.mjs: conduit 30 aracinin MCP sozlesmesinin gercek
 // protokol kaniti (InMemoryTransport). Kos: npm run build sonrasi
 // `node --test tests/conduit-surface.test.mjs`.
-// Kapsam: toplam 171 korunur; 30 conduit adinin tamami annotations tasir;
-// tehlikeli araclar readOnly degildir; outputSchema yalniz sabit sekilli 10
-// aracta; tools/call'da structuredContent == text JSON (basari + isError).
+// Kapsam: toplam 172 korunur; 30 conduit adinin tamami annotations tasir;
+// tehlikeli araclar readOnly degildir; outputSchema 30 conduit aracinin
+// tamaminda (dalga E/1: motor cevabi paylasilan arayuzde sabit olan 20 arac
+// eklendi); tools/call'da structuredContent == text JSON (basari + isError).
 // Canli motor/hedef ACILMAZ: cagrilan conduit araclari yalniz surec-ici
-// registry'ye dokunur (health/session_*/events_pull) veya bilinmeyen
+// registry'ye dokunur (health/session_*/events_pull), kapidan once donen
+// dallarla sinanir (bilinmeyen session, confirm kapisi, acilmamis hedefin
+// debug_state/static_info basarisi) veya bilinmeyen
 // session_id ile motor cagrisindan ONCE hata zarfi doner (debug_state).
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -34,9 +37,15 @@ const DESTRUCTIVE_13 = [
   "debug_pause", "debug_code", "debug_thread", "debug_time",
 ];
 const KAPALI_4 = ["health", "session_open", "session_list", "events_pull"]; // openWorld olmayanlar
-const SEMALI_10 = [
+const SEMALI_30 = [
   "health", "session_list", "session_open", "session_close", "close_target",
   "open_target", "debug_close", "events_pull", "prerequisites", "explain",
+  // Dalga E/1: motor cevabi paylasilan arayuzde sabit 20 arac.
+  "static_info", "disassemble", "get_cfg", "xrefs", "strings", "dump",
+  "debug_open", "debug_attach", "debug_state", "debug_breakpoint",
+  "debug_continue", "debug_step", "debug_pause", "debug_registers",
+  "debug_callstack", "debug_memory", "debug_code", "debug_thread",
+  "debug_plugin", "debug_time",
 ];
 const BILINMEYEN_UUID = "00000000-0000-4000-8000-000000000000";
 
@@ -125,10 +134,11 @@ describe("conduit metadata (birim)", () => {
     }
   });
 
-  it("30 aracin tamami annotations tasir; sayilar sabittir; sema 10 aracta", () => {
+  it("30 aracin tamami annotations tasir; sayilar sabittir; sema 30 aracta", () => {
     const metal = BEKLENEN_30.map((ad) => [ad, conduitToolMetadata(ad)]);
     for (const [ad, m] of metal) assert.ok(m?.annotations, `${ad} annotations tasimali`);
-    assert.deepEqual(metal.filter(([, m]) => m.outputSchema).map(([ad]) => ad).sort(), [...SEMALI_10].sort());
+    assert.deepEqual(metal.filter(([, m]) => m.outputSchema).map(([ad]) => ad).sort(), [...SEMALI_30].sort());
+    assert.equal(SEMALI_30.length, 30);
     assert.deepEqual(metal.filter(([, m]) => m.annotations.readOnlyHint === true).map(([ad]) => ad).sort(), [...READ_ONLY_4].sort());
     assert.deepEqual(metal.filter(([, m]) => m.annotations.destructiveHint === true).map(([ad]) => ad).sort(), [...DESTRUCTIVE_13].sort());
     assert.equal(metal.filter(([, m]) => m.annotations.openWorldHint === true).length, 26);
@@ -228,9 +238,9 @@ describe("conduit yuzeyi (gercek protokol, InMemoryTransport)", () => {
     await bag?.kapat();
   });
 
-  it("tools/list toplam 171 araci korur; conduit 30'un tamami vardir", () => {
-    assert.equal(araclar.length, 171, `beklenen 171, gelen ${araclar.length}`);
-    assert.equal(new Set(araclar.map((a) => a.name)).size, 171);
+  it("tools/list toplam 172 araci korur; conduit 30'un tamami vardir", () => {
+    assert.equal(araclar.length, 172, `beklenen 172, gelen ${araclar.length}`);
+    assert.equal(new Set(araclar.map((a) => a.name)).size, 172);
     assert.deepEqual(conduitAraclar.map((a) => a.name).sort(), BEKLENEN_30);
   });
 
@@ -268,10 +278,13 @@ describe("conduit yuzeyi (gercek protokol, InMemoryTransport)", () => {
     });
   });
 
-  it("outputSchema yalniz sabit sekilli 10 conduit araci uzerindedir", () => {
-    assert.deepEqual(conduitAraclar.filter((a) => a.outputSchema).map((a) => a.name).sort(), [...SEMALI_10].sort());
-    for (const ad of SEMALI_10) {
-      assert.equal(araclar.find((t) => t.name === ad)?.outputSchema?.type, "object", `${ad} outputSchema nesne olmali`);
+  it("outputSchema 30 conduit aracinin tamaminda; alan orneklemesi", () => {
+    assert.deepEqual(conduitAraclar.filter((a) => a.outputSchema).map((a) => a.name).sort(), [...SEMALI_30].sort());
+    for (const ad of SEMALI_30) {
+      const s = araclar.find((t) => t.name === ad)?.outputSchema;
+      const nesneMi = s?.type === "object" ||
+        (Array.isArray(s?.anyOf) && s.anyOf.length > 0 && s.anyOf.every((m) => m?.type === "object"));
+      assert.ok(nesneMi, `${ad} nesne/anyOf semasi tasimali`);
     }
     const health = araclar.find((t) => t.name === "health");
     for (const alan of ["status", "name", "protocol", "sessions"]) {
@@ -302,14 +315,49 @@ describe("conduit yuzeyi (gercek protokol, InMemoryTransport)", () => {
     for (const alan of ["kaynak", "dil", "ozet", "satirlar", "atlamalar", "cagrilar", "bildirimler", "komut_sayisi", "gosterilen"]) {
       assert.ok(aciklama.properties[alan], `explain semasi ${alan} icermeli`);
     }
+    // Dalga E/1: tekil semalarda properties, unionlarda anyOf uyeleri.
+    const alanVar = (ad, ...alanlar) => {
+      const s = araclar.find((t) => t.name === ad)?.outputSchema;
+      const hepsi = s?.type === "object"
+        ? Object.keys(s.properties ?? {})
+        : [...new Set((s.anyOf ?? []).flatMap((m) => Object.keys(m.properties ?? {})))];
+      for (const alan of alanlar) assert.ok(hepsi.includes(alan), `${ad} semasi ${alan} icermeli`);
+    };
+    alanVar("static_info", "session_id", "engine", "capabilities", "r2", "target");
+    alanVar("disassemble", "session_id", "location", "count", "ops", "text");
+    alanVar("get_cfg", "session_id", "location", "function");
+    alanVar("xrefs", "session_id", "address", "to", "from");
+    alanVar("strings", "session_id", "total", "offset", "strings");
+    alanVar("dump", "session_id", "address", "length", "format");
+    alanVar("debug_open", "opened", "session_id", "engine", "mode", "attached", "path", "pid");
+    alanVar("debug_attach", "attached", "session_id", "engine", "mode", "path", "pid");
+    alanVar("debug_continue", "session_id", "reason", "address");
+    alanVar("debug_pause", "session_id", "reason", "address");
+    alanVar("debug_step", "session_id", "kind", "address");
+    alanVar("debug_registers", "session_id", "general", "flags");
+    alanVar("debug_callstack", "session_id", "threadId", "frames");
+    const unionUye = (ad, beklenen) => {
+      const s = araclar.find((t) => t.name === ad)?.outputSchema;
+      assert.ok(Array.isArray(s?.anyOf), `${ad} anyOf semasi olmali`);
+      assert.equal(s.anyOf.length, beklenen, `${ad} anyOf uye sayisi`);
+    };
+    unionUye("debug_state", 2);
+    unionUye("debug_breakpoint", 3);
+    unionUye("debug_memory", 2);
+    unionUye("debug_code", 3);
+    unionUye("debug_thread", 3);
+    unionUye("debug_plugin", 3);
+    unionUye("debug_time", 3);
   });
 
-  it("sarmalayici rea yuzune sizmaz: rea isaretleri ve isaretsizligi aynen durur", async () => {
+  it("sarmalayici rea yuzune sizmaz: rea isaretleri aynen durur", async () => {
     const selector = araclar.find((t) => t.name === "rea_evm_selector");
     assert.equal(selector.annotations?.readOnlyHint, true);
     assert.equal(selector.outputSchema?.type, "object");
+    // Dalga E/1: pwn_elf_layout rea tarafindan readOnly isaretlidir (etkisiz
+    // kapi); conduit sarmalayicisi ona sema/isaret EKLEMEZ (sema yoklugu aynidir).
     const pe = araclar.find((t) => t.name === "rea_pwn_elf_layout");
-    assert.equal(pe.annotations, undefined, "rea_pwn_elf_layout conduit sarmalayicisindan isaret almamali");
+    assert.equal(pe.annotations?.readOnlyHint, true, "rea_pwn_elf_layout rea readOnly isaretini korumali");
     assert.equal(pe.outputSchema, undefined);
     const kapsama = await bag.gonder("tools/call", { name: "rea_coverage", arguments: { incelenen: 1, toplam: 4 } });
     assert.equal(ikiKanalAyni(kapsama, "rea_coverage").oran, 0.25);
@@ -360,6 +408,68 @@ describe("conduit yuzeyi (gercek protokol, InMemoryTransport)", () => {
     assert.equal(s.dil, "tr");
     assert.equal(s.komut_sayisi, 2);
     assert.equal(s.satirlar.length, 2);
+  });
+
+  it("dalga-E/1: static_info ve debug_state kapali zarfi semaya uygun doner", async () => {
+    // Canli motor acilmaz: radare2 oturumu r2 sureci baslatmaz (static_info
+    // r2 yoklamasini try/catch ile karsilar, hedef null'dur); frida oturumu
+    // debug_state'te acilmamis hedef dalina duser.
+    const r2Ac = await bag.gonder("tools/call", { name: "session_open", arguments: { engine: "radare2" } });
+    const r2Id = ikiKanalAyni(r2Ac, "session_open(r2)").session_id;
+    const bilgi = await bag.gonder("tools/call", { name: "static_info", arguments: { session_id: r2Id } });
+    assert.notEqual(bilgi.isError, true);
+    const bS = ikiKanalAyni(bilgi, "static_info");
+    assert.equal(bS.session_id, r2Id);
+    assert.equal(bS.engine, "radare2");
+    assert.equal(bS.capabilities.kind, "static");
+    assert.equal(bS.target, null);
+    assert.equal(typeof bS.r2.available, "boolean");
+    if (bS.r2.available === true) {
+      assert.equal(typeof bS.r2.binary, "string");
+      assert.equal(typeof bS.r2.version, "string");
+    } else {
+      assert.equal(typeof bS.r2.detail, "string");
+    }
+    const r2Kapat = await bag.gonder("tools/call", { name: "session_close", arguments: { session_id: r2Id } });
+    assert.deepEqual(ikiKanalAyni(r2Kapat, "static_info(temizlik)"), { closed: true, session_id: r2Id });
+
+    const frAc = await bag.gonder("tools/call", { name: "session_open", arguments: { engine: "frida" } });
+    const frId = ikiKanalAyni(frAc, "session_open(frida)").session_id;
+    const kapali = await bag.gonder("tools/call", { name: "debug_state", arguments: { session_id: frId } });
+    assert.notEqual(kapali.isError, true);
+    assert.deepEqual(ikiKanalAyni(kapali, "debug_state(kapali)"), {
+      session_id: frId, engine: "frida", open: false, target: null,
+    });
+    // Confirm kapisi: gecerli oturumda bile onaysiz cagri debuggee'ye ulasmaz.
+    const onaysiz = await bag.gonder("tools/call", {
+      name: "debug_memory", arguments: { session_id: frId, action: "read", address: "0x0" },
+    });
+    assert.equal(onaysiz.isError, true);
+    assert.equal(ikiKanalAyni(onaysiz, "debug_memory(onaysiz)").error, "confirmation_required");
+    const frKapat = await bag.gonder("tools/call", { name: "session_close", arguments: { session_id: frId } });
+    assert.deepEqual(ikiKanalAyni(frKapat, "debug_state(temizlik)"), { closed: true, session_id: frId });
+  });
+
+  it("dalga-E/1: 20 motor aracinda kapi hatasi iki kanalli doner", async () => {
+    // Tum dallar motor cagrisindan once doner (session_not_found); sema hata
+    // zarfina zorlanmaz ama iki kanal sozlesmesi her aracta gecerlidir.
+    const hataCagrilari = [
+      ["static_info", {}], ["disassemble", {}], ["get_cfg", {}],
+      ["xrefs", { address: "0x400200" }], ["strings", {}], ["dump", { address: "0x400200" }],
+      ["debug_open", { path: "yok.exe" }], ["debug_attach", { pid: 1 }],
+      ["debug_state", {}], ["debug_breakpoint", { action: "list" }],
+      ["debug_continue", {}], ["debug_step", {}], ["debug_pause", {}],
+      ["debug_registers", {}], ["debug_callstack", {}],
+      ["debug_memory", { action: "read", address: "0x0" }],
+      ["debug_code", { action: "disassemble" }], ["debug_thread", { action: "list" }],
+      ["debug_plugin", { action: "status" }], ["debug_time", { action: "timeline" }],
+    ];
+    assert.equal(hataCagrilari.length, 20);
+    for (const [ad, args] of hataCagrilari) {
+      const sonuc = await bag.gonder("tools/call", { name: ad, arguments: { session_id: BILINMEYEN_UUID, ...args } });
+      assert.equal(sonuc.isError, true, `${ad} bilinmeyen oturumda hata donmeli`);
+      assert.equal(ikiKanalAyni(sonuc, `${ad}(hata)`).error, "session_not_found", `${ad} kapi hatasi`);
+    }
   });
 
   it("bilinmeyen session hatasinda isError kalir; structuredContent text ile tutarlidir", async () => {

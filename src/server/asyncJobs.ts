@@ -5,7 +5,22 @@
 // kalicilik/dagitim bu pilotun kapsami disidir.
 import { randomUUID } from "node:crypto";
 
-export const ASYNC_JOB_TOOLS: ReadonlySet<string> = new Set(["rea_process_run"]);
+// Dalga E/2 whitelist: yalniz gercek AbortSignal alip isi durduran (veya is-yuzu
+// iptali hizli + artik isi sinirli/kendiliginden temizlenen) guvenli uzun araclar.
+//   - rea_process_run: pilot; sinyal cocuk surec agacini oldurur (genuine kill).
+//   - rea_scan_repo: asenkron, parcaki (4'lu grup) salt-okur tarama; kosucu abort
+//     yarisini kazanirsa aninda cancelled doner, arka planda surec/timer kalmaz
+//     (acik dosya/cocuk surec uretmez; tarama sozu kendi halinde biter).
+//   - rea_behavior_run: async-ozel (senkron yuzeyde kayitli degil); kosucu abortta
+//     aninda cancelled doner, artik hedef surec kosunun kendi zaman asimi
+//     temizligiyle olur (sinirli, kendiliginden).
+// Girmeyenler: rea_jadx_full (senkron spawnSync event-loop'u kilitler, abort
+// ortada islenemez), rea_behavior_full (saf senkron, uzun degil).
+export const ASYNC_JOB_TOOLS: ReadonlySet<string> = new Set([
+  "rea_process_run",
+  "rea_scan_repo",
+  "rea_behavior_run",
+]);
 
 export type AsyncJobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 

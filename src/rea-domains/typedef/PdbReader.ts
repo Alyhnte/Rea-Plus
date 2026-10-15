@@ -4,6 +4,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import * as z from "zod/v4";
 import { peBaslikOku, peCstr, peGuidBicim, peHamOku, peRvaCev } from "../winpe/PeReader.js";
 // Facade uyumu: rea_ prefix zorunlu.
 export const TYPEDEF_PDB_TOOLS = ["rea_pdb_yolu"] as const;
@@ -117,4 +118,46 @@ export async function rea_pdb_indir(peYolu: string, sec: PdbIndirSecenek = {}) {
   }
   if (agHatasi) return indirEngel("ag_hatasi", `PDB indirilemedi (ağ: ${agHatasi}): ${url} — sahte dosya yazılmadı`);
   return indirEngel("butunluk_hatasi", `PDB bütünlüğü tutmadı (2 deneme): MSF imzası veya GUID+yaş deseni yok — önbelleğe yazılmadı`);
+}
+
+// --- rea_pdb_indir MCP kayıt taslağı (Dalga E/3: KAYIT YOK, yalnız hazırlık) ---
+// Gerçek kayıt (registerReaTools.ts R tablosu + toolMetadata.ts) entegrasyon
+// dalgasında yapılacak; burası kaydın birebir kullanacağı ad/açıklama/şemaları
+// dondurur. tests/pdb-register-ready.test.mjs sahte sunucuya kaydedip doğrular.
+export const REA_PDB_INDIR_ARAC = "rea_pdb_indir" as const;
+export const REA_PDB_INDIR_ACIKLAMA =
+  "PE debug dizinindeki CodeView RSDS kaydından Microsoft symbol server'dan PDB indirme + bütünlük + önbellek.";
+// Girdi, mevcut rea kayıt desenidir (P): yalnız path; handler (a) => rea_pdb_indir(a.path).
+export const reaPdbIndirInputSchema = z.object({ path: z.string().min(1) });
+// Başarı (ok:true) şekli: handler gövdesindeki ok:true dönüşleriyle birebir;
+// ok:false kapıları SDK tarafında şemayla doğrulanmaz (toolMetadata.ts kuralı).
+export const reaPdbIndirOutputSchema = z.object({
+  ok: z.literal(true),
+  arac: z.string(),
+  dosya: z.string(),
+  pdb: z.string(),
+  guid: z.string(),
+  yas: z.number(),
+  yol: z.string(),
+  url: z.string(),
+  cache: z.boolean(),
+});
+// Önbelleğe dosya yazar + ağa çıkar: salt-okunur değil, yıkıcı + açık dünya.
+// Yıkıcı/açık-dünya araçlarda idempotent bilerek boş bırakılır (toolMetadata.ts
+// ile aynı kural: yanlış güvence vermekten kaçınılır).
+export const REA_PDB_INDIR_ANNOTATIONS = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  openWorldHint: true,
+} as const;
+export const REA_PDB_INDIR_KAYIT_TASLAGI = {
+  name: REA_PDB_INDIR_ARAC,
+  description: REA_PDB_INDIR_ACIKLAMA,
+  inputSchema: reaPdbIndirInputSchema,
+  outputSchema: reaPdbIndirOutputSchema,
+  annotations: REA_PDB_INDIR_ANNOTATIONS,
+} as const;
+// Kayıtla birebir uyumlu handler gövdesi: entegrasyonda R tablosuna girecek form.
+export function reaPdbIndirKayitHandler(girdi: { path: string }) {
+  return rea_pdb_indir(girdi.path);
 }

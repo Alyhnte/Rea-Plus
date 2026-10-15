@@ -115,17 +115,17 @@ describe("parseToolsets (birim)", () => {
 });
 
 describe("toolsetler (gercek protokol, InMemoryTransport)", () => {
-  it("varsayilan (tanimsiz/bos/all) mevcut 171 araci aynen korur", async () => {
+  it("varsayilan (tanimsiz/bos/all) mevcut 172 araci aynen korur", async () => {
     const tam = await listeleriAl(undefined);
-    assert.equal(tam.araclar.length, 171);
-    assert.equal(new Set(tam.araclar).size, 171, "arac adlari benzersiz olmali");
+    assert.equal(tam.araclar.length, 172);
+    assert.equal(new Set(tam.araclar).size, 172, "arac adlari benzersiz olmali");
     for (const v of ["", "all"]) {
       const r = await listeleriAl(v);
       assert.deepEqual(r.araclar, tam.araclar, `REA_TOOLSETS=${JSON.stringify(v)} varsayilandan sapiyor`);
     }
   });
 
-  it("profil listelerindeki her isim gercek bir aractir; birlesimleri 171'i kapsar", async () => {
+  it("profil listelerindeki her isim gercek bir aractir; yeni arac yalniz all'dadir (fail-closed)", async () => {
     const tam = new Set((await listeleriAl(undefined)).araclar);
     const birlesim = new Set();
     for (const [ad, liste] of Object.entries(TOOLSETS)) {
@@ -134,7 +134,9 @@ describe("toolsetler (gercek protokol, InMemoryTransport)", () => {
         birlesim.add(arac);
       }
     }
-    assert.equal(birlesim.size, 171, "adlandirilmis profillerin birlesimi tum araclari kapsamali");
+    assert.ok(birlesim.size <= 171, "adlandirilmis profiller en fazla 171 araci kapsamali (yeni arac yalniz all'da)");
+    assert.ok(tam.has("rea_pdb_indir"), "rea_pdb_indir tools/list'te olmali");
+    assert.ok(!birlesim.has("rea_pdb_indir"), "rea_pdb_indir ozel profilde olmamali (fail-closed)");
   });
 
   for (const ad of Object.keys(TOOLSETS)) {
@@ -160,7 +162,7 @@ describe("toolsetler (gercek protokol, InMemoryTransport)", () => {
     assert.ok(sd.araclar.includes("rea_ghidra_decompile") && sd.araclar.includes("debug_open"));
     assert.ok(!sd.araclar.includes("rea_jadx_manifest") && !sd.araclar.includes("rea_browser_nav"));
     const hepsi = await listeleriAl("minimal,static,android,dotnet,web,debug");
-    assert.equal(hepsi.araclar.length, 171);
+    assert.equal(hepsi.araclar.length, 171); // pdb yalniz all'da, birlesim 171 kalir
   });
 
   it("resources/prompts listesi toolset'ten etkilenmez", async () => {
@@ -177,7 +179,7 @@ describe("toolsetler (gercek protokol, InMemoryTransport)", () => {
     });
     // Sarmalayici prototipi kirletmemeli: filtreli ve filtresiz kurulumlar birbirini etkilemez.
     assert.equal((await listeleriAl("minimal")).araclar.length, 8);
-    assert.equal((await listeleriAl(undefined)).araclar.length, 171);
+    assert.equal((await listeleriAl(undefined)).araclar.length, 172);
     assert.equal((await listeleriAl("web")).araclar.length, 26);
   });
 });
