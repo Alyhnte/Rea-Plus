@@ -43,6 +43,21 @@ jobs:
       - name: server.json dogrula
         run: ./mcp-publisher validate
 
+      - name: npm surumunun yayinlanmasini bekle
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          for i in $(seq 1 60); do
+            if npm view "${NAME}@${VERSION}" version >/dev/null 2>&1; then
+              echo "${NAME}@${VERSION} npm'de bulundu."
+              exit 0
+            fi
+            echo "(${i}/60) ${NAME}@${VERSION} henuz npm'de yok, 30sn bekleniyor..."
+            sleep 30
+          done
+          echo "::error::${NAME}@${VERSION} 30 dk icinde npm'de gorunmedi."
+          exit 1
+
       - name: Registry girisi (GitHub OIDC)
         run: ./mcp-publisher login github-oidc
 
