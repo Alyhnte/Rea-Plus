@@ -358,9 +358,9 @@ describe("stdio JSON-RPC: progress + cancelled", () => {
     assert.equal(mesajlar.filter((m) => m.method === "notifications/progress").length, 0);
   });
 
-  it("kapaliyken yuzey 172 kalir (async job araclari yok)", async () => {
+  it("kapaliyken yuzey 183 kalir (async job araclari yok)", async () => {
     const sayfa = await istek("tools/list", {}, 10000).soz;
-    assert.equal(sayfa.tools.length, 172);
+    assert.equal(sayfa.tools.length, 183);
     assert.ok(!sayfa.tools.some((t) => t.name.startsWith("rea_job_")));
   });
 

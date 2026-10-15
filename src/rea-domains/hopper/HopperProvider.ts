@@ -1,6 +1,7 @@
 // Hopper statik provider iskeleti (WP4a): hedef ASLA çalıştırılmaz.
 // Conduit StaticEngine şekline uyar: id + capabilities + open/close.
-import { execFileSync } from "node:child_process";
+// NOT: bu provider alt süreç AÇMAZ (child_process yok); Hopper'ın headless
+// CLI'si olmadığı için açılacak bir şey de yoktur (bkz. HOPPER_HEADLESS_ARASTIRMA).
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -32,13 +33,42 @@ export function hopperYolu(env = process.env): string | null {
   return null;
 }
 
+// Dalga G/4 gerçek-köprü araştırması (resmi kaynak: https://www.hopperapp.com/):
+// Hopper Disassembler'ın komut-satırı/headless disassembly API'si YOKTUR.
+// Resmi yüzey yalnız GUI + GUI-içi Python betikleri (Scripts menüsü) + dosya/
+// CPU SDK'sı + yapay-zekâ destekli MCP sunucusu belgeler; `hopper -e` benzeri
+// toplu (batch) koşum ve makine-okunur CLI çıktısı yoktur. Topluluk dışa-aktarım
+// iş-akışı da Hopper İÇİNDE koşar (Scripts → Run Script, ör. hopper_export_*.py).
+// Hopper v4+ MCP sunucusu yapay-zekâ desteğidir, toplu sorgu API'si değildir.
+// Bu yüzden rea_hopper_istek Hopper KOŞMAZ: yalnız istek-hazırlama dosyası yazar.
+export const HOPPER_HEADLESS_ARASTIRMA = {
+  headless: false as const,
+  komut: null,
+  ciktiFormati: null,
+  neden: "Hopper Disassembler resmi yüzeyinde (hopperapp.com) komut-satırı/headless disassembly modu belgelenmemiştir; otomasyon yalnız GUI-içi Python betikleriyle yapılır, toplu CLI çıktısı yoktur.",
+  kaynaklar: [
+    "https://www.hopperapp.com/",
+    "https://github.com/HendrikReh/hopper_reverse_toolkit",
+  ],
+} as const;
+
+// Lisans yoksa edinme bilgisi (anahtar/kişisel yol yazılmaz):
+export const HOPPER_EDINME = {
+  site: "https://www.hopperapp.com/",
+  platform: "macOS 12.4+ uygulaması; Linux sürümü mevcut",
+  demo: "demo sürümde kayıt/dışa-aktarım kısıtlıdır",
+  env: "REA_HOPPER_PATH",
+} as const;
+
+const EDINME_NOTU = `Hopper edinme: ${HOPPER_EDINME.site} (${HOPPER_EDINME.platform}, lisanslı; ${HOPPER_EDINME.demo}), yol: ${HOPPER_EDINME.env}`;
+
 // Ortak kapı: eksikse çalıştırma, capability_unsupported nedeni dön.
 export function hopperDurumu(env = process.env) {
   if (!platformDesteklenir())
-    return { tamam: false as const, neden: `Bu platformda yok: ${process.platform}` };
+    return { tamam: false as const, neden: `Bu platformda yok: ${process.platform} — ${EDINME_NOTU}` };
   const yol = hopperYolu(env);
   if (!yol || !existsSync(yol))
-    return { tamam: false as const, neden: "REA_HOPPER_PATH yok ya da dosya bulunamadı" };
+    return { tamam: false as const, neden: `REA_HOPPER_PATH yok ya da dosya bulunamadı — ${EDINME_NOTU}` };
   return { tamam: true as const, yol };
 }
 
@@ -64,16 +94,17 @@ export class HopperProvider implements StatikSaglayici {
     if (!existsSync(hedefYol)) throw new Error(`capability_unsupported: hedef yok: ${hedefYol}`);
   }
 
-  // Kapatma: harici Hopper süreci bizde yaşamaz, no-op.
+  // Kapatma: harici Hopper süreci bizde yaşamaz (headless API yok), no-op.
   async close(oturumId: string): Promise<void> {
     void oturumId;
-    void execFileSync; // ileride headless sürüm sorgusu burada yapılır
   }
 }
 
-// Hopper'da headless CLI yoktur (`hopper -e` diye batch koşumu yok).
-// Bu yüzden otomasyon istek dosyası üretir: hedef + adresler JSON olarak
-// yazılır, kullanıcı bu dosyayı Hopper v4 içinde açıp adreslere gider.
+// Hopper'da headless CLI yoktur (`hopper -e` diye batch koşumu yok; bkz.
+// HOPPER_HEADLESS_ARASTIRMA). Bu yüzden otomasyon istek dosyası üretir:
+// hedef + adresler JSON olarak yazılır (Hopper KOŞULMAZ, alt süreç YOK),
+// kullanıcı bu dosyayı Hopper v4 içinde açıp adreslere gider ya da Scripts
+// menüsünden dışa-aktarım betiği koşar.
 export function rea_hopper_istek(hedef: string, adresler: string[] = [], cikti?: string) {
   if (!hedef || !existsSync(hedef))
     return { ok: false as const, code: "capability_unsupported" as const, neden: `hedef yok: ${hedef}` };
@@ -82,7 +113,7 @@ export function rea_hopper_istek(hedef: string, adresler: string[] = [], cikti?:
     return { ok: false as const, code: "capability_unsupported" as const, neden: `${durum.neden} — fallback: dosyayı rizin/cutter (rea_cutter_*) ya da Ghidra (rea_ghidra_*) ile açın; Hopper için REA_HOPPER_PATH tanımlayın` };
   try {
     const dosya = cikti?.trim() ? cikti : join(tmpdir(), `rea-hopper-istek-${Date.now()}.json`);
-    const icerik = JSON.stringify({ arac: "rea_hopper_istek", hedef, adresler, hopper: durum.yol, not: "Hopper CLI yok; bu dosyayı Hopper v4 içinde açıp adreslere gidin", uretildi: new Date().toISOString() }, null, 2);
+    const icerik = JSON.stringify({ arac: "rea_hopper_istek", hedef, adresler, hopper: durum.yol, not: "Hopper headless API yok (bkz. HOPPER_HEADLESS_ARASTIRMA); bu dosya yalnız istek-hazırlamadır, Hopper koşulmadı. Hopper v4+ içinde açıp adreslere gidin ya da Scripts menüsünden dışa-aktarım betiği koşun", uretildi: new Date().toISOString() }, null, 2);
     writeFileSync(dosya, icerik, "utf8");
     return { ok: true as const, arac: "rea_hopper_istek", hedef, adresler, istekDosyasi: dosya, hopper: durum.yol };
   } catch (e) {

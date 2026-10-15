@@ -1,6 +1,8 @@
 // Managed (.NET) denetçi: metadata + CIL okuma iskeleti (hedef ASLA çalıştırılmaz).
-import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, readFileSync, mkdtempSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 // Facade prefix kuralı: rea_ öneki zorunlu.
 export const DOTNET_TOOLS = ["rea_dotnet_metadata", "rea_dotnet_cil"] as const;
@@ -72,5 +74,68 @@ export function rea_dotnet_cil(dllYolu: string, tipFiltre?: string) {
     return { ok: true as const, arac: "rea_dotnet_cil", dosya: dllYolu, filtre: tipFiltre ?? null, assembly: veri.assembly, method_sayisi: veri.method_sayisi, methods: veri.methods, not: "CIL salt-okunur, yürütme yok" };
   } catch (e) {
     return { ok: false as const, code: "capability_unsupported", neden: `CIL okunamadı: ${(e as Error)?.message ?? e}` };
+  }
+}
+
+// --- Unity IL2CPP derinliği: global-metadata.dat saf TS başlık okuma (yürütme yok) ---
+// Başlık düzeni (v16+ sabit ofsetler, LE u32): sürüm@4, methods sayı@52,
+// typeDefinitions sayı@164, images sayı@172, assemblies sayı@180.
+const IL2CPP_SIHIR = 0xfab11baf;
+const IL2CPP_BASLIK_ENAZ = 216;
+function il2cppKapi(neden: string) {
+  return { ok: false as const, code: "capability_unsupported" as const, neden };
+}
+// Dış araç kapısı: önce env yolu, yoksa PATH (where/which). Çalıştırma yok, yalnız konum.
+function disAracBul(envAd: string, adaylar: string[]): string | null {
+  const ozel = process.env[envAd];
+  if (ozel) return existsSync(ozel) ? ozel : null;
+  const prob = process.platform === "win32" ? "where" : "which";
+  for (const bin of adaylar) {
+    try {
+      const r = spawnSync(prob, [bin], { stdio: "ignore", timeout: 5000 });
+      if (r.status === 0) return bin;
+    } catch { /* sonraki aday */ }
+  }
+  return null;
+}
+// Metadata sayımı: sınıf (TypeDefinition) + metod (MethodDef) başlık sayıları.
+export function rea_il2cpp_metadata(datYolu: string) {
+  if (!existsSync(datYolu)) return il2cppKapi(`Dosya yok: ${datYolu}`);
+  let buf: Buffer;
+  try { buf = readFileSync(datYolu); }
+  catch { return il2cppKapi(`Dosya okunamadı: ${datYolu}`); }
+  if (buf.length < IL2CPP_BASLIK_ENAZ) return il2cppKapi("başlık çok kısa (global-metadata.dat değil?)");
+  if (buf.readUInt32LE(0) !== IL2CPP_SIHIR) return il2cppKapi("global-metadata.dat sihri yok (FAB11BAF bulunamadı)");
+  const surum = buf.readUInt32LE(4);
+  const metodOfset = buf.readUInt32LE(48);
+  const metodSayisi = buf.readUInt32LE(52);
+  const sinifOfset = buf.readUInt32LE(160);
+  const sinifSayisi = buf.readUInt32LE(164);
+  const goruntuSayisi = buf.readUInt32LE(172);
+  const assemblySayisi = buf.readUInt32LE(180);
+  // Tutarlılık: ofsetler dosya içinde, sayılar makul aralıkta olmalı.
+  const sayilar = [metodSayisi, sinifSayisi, goruntuSayisi, assemblySayisi];
+  if (!sayilar.every((n) => n <= 50_000_000)) return il2cppKapi("sayılar tutarsız (aşırı büyük sayaç)");
+  if (metodOfset >= buf.length || sinifOfset >= buf.length) return il2cppKapi("ofsetler tutarsız (dosya dışında)");
+  return {
+    ok: true as const, arac: "rea_il2cpp_metadata", dosya: datYolu, surum,
+    sinifSayisi, metodSayisi, goruntuSayisi, assemblySayisi,
+    ozet: `v${surum} sinif=${sinifSayisi} metod=${metodSayisi}`,
+    not: "salt-okunur başlık sayımı, yürütme yok",
+  };
+}
+// Il2CppDumper: araç yoksa dürüst kapı + kurulum ipucu; varsa timeout'lu gerçek çağrı.
+export function rea_il2cpp_dump(metaYolu: string, assemblyYolu?: string) {
+  if (!existsSync(metaYolu)) return il2cppKapi(`Dosya yok: ${metaYolu}`);
+  const arac = disAracBul("REA_IL2CPPDUMPER_BIN", ["Il2CppDumper", "il2cppdumper"]);
+  if (!arac) return il2cppKapi("Il2CppDumper yok (kurulum: https://github.com/Perfare/Il2CppDumper ; bulunan exe yolunu REA_IL2CPPDUMPER_BIN ile ver)");
+  if (!assemblyYolu || !existsSync(assemblyYolu)) return il2cppKapi("GameAssembly gerekli (libil2cpp.so/GameAssembly.dll yolu ikinci argüman olmalı)");
+  const cikti = mkdtempSync(join(tmpdir(), "il2cpp-dump-"));
+  try {
+    const log = execFileSync(arac, [assemblyYolu, metaYolu, cikti], { encoding: "utf8", timeout: 60000, maxBuffer: 8 * 1024 * 1024 });
+    const dosyalar = readdirSync(cikti);
+    return { ok: true as const, arac: "rea_il2cpp_dump", dosya: metaYolu, cikti, dosyaSayisi: dosyalar.length, ozet: `${dosyalar.length} döküm dosyası`, log: String(log).slice(-2000) };
+  } catch (e) {
+    return il2cppKapi(`Il2CppDumper çalışmadı: ${(e as Error)?.message ?? e}`);
   }
 }

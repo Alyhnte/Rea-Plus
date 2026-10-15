@@ -1,6 +1,7 @@
 // rea-domains/wasm-evm: Go + pwn iskeleti
 // Go modül/version metin taraması; ELF layout için pwntools/python gerekir.
 import { existsSync, readFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
 export type ReaGpResult =
   | { ok: true; tool: string; summary: string; details?: unknown }
   | { ok: false; code: "capability_unsupported"; reason: string };
@@ -74,4 +75,62 @@ export function rea_go_vendor(yol: string): ReaGpResult {
   const yollar = [...new Set(ham)].slice(0, 100);
   if (!yollar.length) return { ok: false, code: "capability_unsupported", reason: "vendor/modül yolu yok" };
   return { ok: true, tool: "rea_go_vendor", summary: `${yollar.length} yol`, details: { yollar, sayi: yollar.length } };
+}
+
+// --- Go derinliği: pclntab fonksiyon + dosya:satır eşlemesi (saf TS, yürütme yok) ---
+// Go sinyali: go1.x dizesi ya da pclntab/funcnametab tablo adları.
+function goSinyalVarMi(metin: string): boolean {
+  return /go1\.\d+/.test(metin) || metin.includes("gopclntab") || metin.includes("pclntab") || metin.includes("funcnametab");
+}
+// Dış araç kapısı: önce env yolu, yoksa PATH (where/which). Çalıştırma yok, yalnız konum.
+function goAracBul(envAd: string, adaylar: string[]): string | null {
+  const ozel = process.env[envAd];
+  if (ozel) return existsSync(ozel) ? ozel : null;
+  const prob = process.platform === "win32" ? "where" : "which";
+  for (const bin of adaylar) {
+    try {
+      const r = spawnSync(prob, [bin], { stdio: "ignore", timeout: 5000 });
+      if (r.status === 0) return bin;
+    } catch { /* sonraki aday */ }
+  }
+  return null;
+}
+export interface GoEsleme { fonksiyon: string | null; dosya: string; satir: number }
+// Fonksiyon + dosya:satır: ofsetli tarama, her satır en yakın önceki func ile eşlenir
+// (4KB yakınlık heuristic; sembol tablosu çözümü değil, notta belirtilir).
+export function rea_go_funclines(yol: string): ReaGpResult {
+  if (!yol || !existsSync(yol)) return { ok: false, code: "capability_unsupported", reason: "dosya yok" };
+  const metin = readFileSync(yol).toString("latin1");
+  if (!goSinyalVarMi(metin)) return { ok: false, code: "capability_unsupported", reason: "go sinyali yok (go1.x/pclntab bulunamadı)" };
+  const funclar: { ad: string; at: number }[] = [];
+  for (const m of metin.matchAll(/[A-Za-z0-9_/.@-]+\.func[A-Za-z0-9_.]*/g)) funclar.push({ ad: m[0], at: m.index ?? 0 });
+  const satirlar: { dosya: string; satir: number; at: number }[] = [];
+  for (const m of metin.matchAll(/([A-Za-z0-9_/.@-]+\.go):(\d+)/g))
+    satirlar.push({ dosya: m[1] as string, satir: Number(m[2]), at: m.index ?? 0 });
+  if (!funclar.length && !satirlar.length) return { ok: false, code: "capability_unsupported", reason: "go satır izi yok" };
+  const fonksiyonlar = [...new Set(funclar.map((f) => f.ad))].slice(0, 200);
+  const dosyaSatir = [...new Set(satirlar.map((s) => `${s.dosya}:${s.satir}`))].slice(0, 200);
+  const esleme: GoEsleme[] = satirlar.slice(0, 200).map((s) => {
+    let once: { ad: string; at: number } | null = null;
+    for (const f of funclar) if (f.at <= s.at && s.at - f.at <= 4096 && (!once || f.at > once.at)) once = f;
+    return { fonksiyon: once?.ad ?? null, dosya: s.dosya, satir: s.satir };
+  });
+  return {
+    ok: true, tool: "rea_go_funclines", summary: `${fonksiyonlar.length} func ${esleme.length} eşleme`,
+    details: { fonksiyonlar, dosyaSatir, esleme, eslemeNotu: "yakınlık heuristic (4KB pencere), sembol tablosu çözümü değil" },
+  };
+}
+// GoReSym: araç yoksa dürüst kapı + kurulum ipucu; varsa timeout'lu gerçek çağrı.
+export function rea_go_goresym(yol: string): ReaGpResult {
+  if (!yol || !existsSync(yol)) return { ok: false, code: "capability_unsupported", reason: "dosya yok" };
+  const metin = readFileSync(yol).toString("latin1");
+  if (!goSinyalVarMi(metin)) return { ok: false, code: "capability_unsupported", reason: "go sinyali yok (go1.x/pclntab bulunamadı)" };
+  const arac = goAracBul("REA_GORESYM_BIN", ["GoReSym", "goresym"]);
+  if (!arac) return { ok: false, code: "capability_unsupported", reason: "GoReSym yok (kurulum: https://github.com/mandiant/GoReSym ; bulunan exe yolunu REA_GORESYM_BIN ile ver)" };
+  try {
+    const cikti = execFileSync(arac, ["-f", yol], { encoding: "utf8", timeout: 60000, maxBuffer: 8 * 1024 * 1024 });
+    return { ok: true, tool: "rea_go_goresym", summary: "goresym çıktısı", details: { cikti: String(cikti).slice(0, 4000) } };
+  } catch (e) {
+    return { ok: false, code: "capability_unsupported", reason: `GoReSym çalışmadı: ${(e as Error)?.message ?? e}` };
+  }
 }

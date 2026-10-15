@@ -15,7 +15,7 @@ import { rea_ghidra_analyze, rea_ghidra_funcs, rea_ghidra_decompile, rea_ghidra_
 import { rea_jadx_manifest, rea_jadx_classes, rea_jadx_decompile, rea_jadx_full, rea_jadx_methods, rea_jadx_xrefs, rea_jadx_read } from "../rea-domains/android/JadxBridge.js";
 import { rea_apktool_decode, rea_apktool_info, rea_apktool_build, rea_apktool_framework, rea_apktool_caps } from "../rea-domains/android/ApktoolBridge.js";
 import { rea_adb_devices, rea_adb_packages, rea_adb_install, rea_adb_logcat, rea_adb_screencap } from "../rea-domains/android/AdbBridge.js";
-import { rea_dotnet_metadata, rea_dotnet_cil } from "../rea-domains/dotnet/ManagedInspector.js";
+import { rea_dotnet_metadata, rea_dotnet_cil, rea_il2cpp_metadata, rea_il2cpp_dump } from "../rea-domains/dotnet/ManagedInspector.js";
 import { rea_r2_callgraph, rea_r2_esil, rea_r2_debug } from "../rea-domains/r2plus/R2Plus.js";
 import { rea_frida_pause, rea_frida_resume, rea_frida_step, rea_frida_cond, rea_frida_stalker } from "../rea-domains/frida-plus/FridaPlus.js";
 import { rea_frida_api } from "../rea-domains/frida-plus/ApiTracer.js";
@@ -32,12 +32,14 @@ import { rea_recon_funcs, rea_recon_harness, rea_recon_tag } from "../rea-domain
 import { rea_crash_append, rea_crash_timeline, rea_crash_hint } from "../rea-domains/wasm-evm/CrashTimeline.js";
 import { rea_dos_mz, rea_dos_int21, rea_mips_funcs, rea_mips_psp_profile } from "../rea-domains/wasm-evm/DosMipsBridge.js";
 import { rea_aot_detect, rea_aot_objc, rea_aot_swift, rea_aot_profile } from "../rea-domains/wasm-evm/NativeAotBridge.js";
-import { rea_go_module, rea_go_version, rea_pwn_elf_layout, rea_pwn_gadgets } from "../rea-domains/wasm-evm/GoPwnBridge.js";
+import { rea_go_module, rea_go_version, rea_go_funclines, rea_go_goresym, rea_pwn_elf_layout, rea_pwn_gadgets } from "../rea-domains/wasm-evm/GoPwnBridge.js";
 import { rea_firmware_extract, rea_firmware_handoff, rea_firmware_caps } from "../rea-domains/firmware-browser/FirmwareBridge.js";
 import { buildEvidenceBundle, verifyEvidenceBundle } from "../facade/evidenceBundle.js";
 import { build_reconstruction_obligation_ledger, advanceObligation, verifyObligationChain, closeObligationLedger } from "../facade/obligationLedger.js";
-import { rea_flutter_scan, rea_flutter_payload } from "../rea-domains/flutter/Flutter.js";
+import { rea_flutter_scan, rea_flutter_payload, rea_flutter_snapshot, rea_flutter_blutter } from "../rea-domains/flutter/Flutter.js";
 import { rea_apple_macho, rea_apple_plist, rea_apple_bundle } from "../rea-domains/apple/Apple.js";
+import { rea_macho_info, rea_macho_loads, rea_macho_otool } from "../rea-domains/apple/MachoBridge.js";
+import { rea_bindiff_fonksiyonlar, rea_bindiff_karsilastir } from "../rea-domains/diff/BinaryDiff.js";
 import { rea_hap_liste, rea_hap_manifest } from "../rea-domains/harmony/Harmony.js";
 import { rea_pe_info, rea_pe_imports, rea_pe_sections } from "../rea-domains/winpe/PeReader.js";
 import { rea_wasm_sections, rea_wasm_imports } from "../rea-domains/wasm-evm/WasmInfo.js";
@@ -396,6 +398,12 @@ const R: Array<[string, string, any, H]> = [
   ["rea_aot_profile", "AOT profili.", z.object({ b64dosya: z.string().min(1), metin: z.string().optional() }), (a) => rea_aot_profile(b64(a.b64dosya), a.metin ?? "")],
   ["rea_go_module", "Go modül bilgisi.", J, (a) => rea_go_module(a.text)],
   ["rea_go_version", "Go sürüm izi.", J, (a) => rea_go_version(a.text)],
+  ["rea_go_funclines", "Go fonksiyon + dosya:satır eşlemesi.", P, (a) => rea_go_funclines(a.path)],
+  ["rea_go_goresym", "GoReSym analizi (yoksa dürüst hata).", P, (a) => rea_go_goresym(a.path)],
+  ["rea_il2cpp_metadata", "IL2CPP global-metadata sınıf/metod sayımı.", P, (a) => rea_il2cpp_metadata(a.path)],
+  ["rea_il2cpp_dump", "Il2CppDumper ile döküm (yoksa dürüst hata).", P, (a) => rea_il2cpp_dump(a.path)],
+  ["rea_bindiff_fonksiyonlar", "Binary fonksiyon listesi (ad/adres + hash).", P, (a) => rea_bindiff_fonksiyonlar(a.path)],
+  ["rea_bindiff_karsilastir", "İki sürüm arası fonksiyon farkı.", J, (a) => { const p = JSON.parse(a.text); return rea_bindiff_karsilastir(p.eski, p.yeni); }],
   ["rea_pwn_elf_layout", "ELF layout + mitigation.", P, (a) => rea_pwn_elf_layout(a.path)],
   ["rea_pwn_gadgets", "Gadget ipucu.", J, (a) => rea_pwn_gadgets(a.text)],
   ["rea_firmware_extract", "Firmware çıkarma.", P, (a) => rea_firmware_extract(a.path)],
@@ -425,9 +433,14 @@ const R: Array<[string, string, any, H]> = [
   }],
   ["rea_flutter_scan", "Flutter/Dart izi tarama.", P, (a) => rea_flutter_scan(a.path)],
   ["rea_flutter_payload", "Flutter payload izleri.", P, (a) => rea_flutter_payload(a.path)],
+  ["rea_flutter_snapshot", "Flutter AOT snapshot bilgisi (Dart magic + sürüm).", P, (a) => rea_flutter_snapshot(a.path)],
+  ["rea_flutter_blutter", "Blutter ile Dart analizi (yoksa dürüst hata).", P, (a) => rea_flutter_blutter(a.path)],
   ["rea_apple_macho", "Mach-O sihir + dyld listesi.", P, (a) => rea_apple_macho(a.path)],
   ["rea_apple_plist", "Info.plist anahtar okuma.", P, (a) => rea_apple_plist(a.path)],
   ["rea_apple_bundle", "Bundle anatomisi.", P, (a) => rea_apple_bundle(a.path)],
+  ["rea_macho_info", "Mach-O başlık (mimari + dosya tipi).", P, (a) => rea_macho_info(a.path)],
+  ["rea_macho_loads", "Mach-O load komutları (segment/dylib).", P, (a) => rea_macho_loads(a.path)],
+  ["rea_macho_otool", "otool çıktısı (yoksa dürüst hata).", P, (a) => rea_macho_otool(a.path)],
   ["rea_hap_liste", "HAP dosya listesi.", P, (a) => rea_hap_liste(a.path)],
   ["rea_hap_manifest", "HAP manifest (bundle/version).", P, (a) => rea_hap_manifest(a.path)],
   ["rea_pe_info", "PE başlık bilgisi.", P, (a) => rea_pe_info(a.path)],

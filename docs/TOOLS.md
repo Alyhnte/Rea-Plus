@@ -6,12 +6,12 @@
 
 ## Özet
 
-- Sunucu: `rea-plus` 0.8.1
-- Toplam araç: 172
+- Sunucu: `rea-plus` 0.8.2
+- Toplam araç: 183
 - Toplam resource: 2
 - Toplam prompt: 3
-- outputSchema taşıyan araç: 168
-- annotations taşıyan araç: 172
+- outputSchema taşıyan araç: 179
+- annotations taşıyan araç: 183
 
 ## Araçlar
 
@@ -476,6 +476,24 @@ Hedef tip için en iyi motor (skor).
 - outputSchema: yok
 - annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
 
+### `rea_bindiff_fonksiyonlar`
+
+Binary fonksiyon listesi (ad/adres + hash).
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: arac, bicim, dosya, fonksiyonlar, istatistik, ok, sayi, sembollu)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
+### `rea_bindiff_karsilastir`
+
+İki sürüm arası fonksiyon farkı.
+
+- Girdi alanları:
+  - `text` (string, zorunlu)
+- outputSchema: var (alanlar: arac, aynen, cikarilan, degisen, eklenen, eski, istatistik, ok, ozet, yeni)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
 ### `rea_browser_caps`
 
 Browser yetenek yoklaması.
@@ -846,6 +864,15 @@ Firmware handoff notu.
 - outputSchema: var (alanlar: handoff, ok, summary, tool)
 - annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
 
+### `rea_flutter_blutter`
+
+Blutter ile Dart analizi (yoksa dürüst hata).
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: izler, ok, summary, tool)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
 ### `rea_flutter_payload`
 
 Flutter payload izleri.
@@ -862,6 +889,15 @@ Flutter/Dart izi tarama.
 - Girdi alanları:
   - `path` (string, zorunlu)
 - outputSchema: var (alanlar: buildId, dartMi, motor, ok, summary, tool, tur)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
+### `rea_flutter_snapshot`
+
+Flutter AOT snapshot bilgisi (Dart magic + sürüm).
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: dartMi, dartSurumu, izolasyon, magic, ok, summary, tool, tur)
 - annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
 
 ### `rea_frida_api`
@@ -1019,6 +1055,24 @@ Ghidra xref listesi.
 - outputSchema: var (alanlar: addr, arac, hedef, ok, xrefs)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
+### `rea_go_funclines`
+
+Go fonksiyon + dosya:satır eşlemesi.
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: details, ok, summary, tool)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
+### `rea_go_goresym`
+
+GoReSym analizi (yoksa dürüst hata).
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: details, ok, summary, tool)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
 ### `rea_go_module`
 
 Go modül bilgisi.
@@ -1092,6 +1146,24 @@ IDB batch üretimi (idat).
   - `path` (string, zorunlu)
 - outputSchema: var (alanlar: arac, hedef, idat, idb, ok)
 - annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
+
+### `rea_il2cpp_dump`
+
+Il2CppDumper ile döküm (yoksa dürüst hata).
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: arac, cikti, dosya, dosyaSayisi, log, ok, ozet)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
+### `rea_il2cpp_metadata`
+
+IL2CPP global-metadata sınıf/metod sayımı.
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: arac, assemblySayisi, dosya, goruntuSayisi, metodSayisi, not, ok, ozet, sinifSayisi, surum)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
 
 ### `rea_ilspy_decompile`
 
@@ -1228,6 +1300,33 @@ Source-map çözümleme.
 - outputSchema: var (alanlar: ok, summary, tool)
 - annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
 
+### `rea_macho_info`
+
+Mach-O başlık (mimari + dosya tipi).
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: details, ok, summary, tool)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
+### `rea_macho_loads`
+
+Mach-O load komutları (segment/dylib).
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: details, ok, summary, tool)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
+### `rea_macho_otool`
+
+otool çıktısı (yoksa dürüst hata).
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: details, ok, summary, tool)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
 ### `rea_managed_compare`
 
 Managed üye diff.
@@ -1341,7 +1440,7 @@ PE debug dizinindeki CodeView RSDS kaydından Microsoft symbol server'dan PDB in
 - Girdi alanları:
   - `path` (string, zorunlu)
 - outputSchema: var (alanlar: arac, cache, dosya, guid, ok, pdb, url, yas, yol)
-- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+- annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)
 
 ### `rea_pdb_yolu`
 

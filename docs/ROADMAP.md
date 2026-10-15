@@ -13,7 +13,7 @@
 - `REA_TOOLSETS` profilleri: `all` 172 (varsayılan), `minimal` 8, `static` 98, `android` 27, `dotnet` 20, `web` 26, `debug` 50; virgüllü birleşim, bilinmeyen profil açılış hatası. Yeni araç yalnız `all`'da (fail-closed).
 - `REA_WORKSPACE_ROOT`: `rea_*` + conduit yolları + kullanıcıya görünür türev yazmalar kök içinde; operatör temp/cache yüzeyleri bilinçli istisna.
 - Tokensiz HTTP: 44 salt-okunur araçlık allowlist (toolset ile kesişim) + `REA_AUDIT_LOG` (argümansız JSONL) + `REA_HTTP_RATE_LIMIT_PER_MIN` (varsayılan 120) ve `REA_HTTP_MAX_CONCURRENT` (varsayılan 16).
-- Tip tabanı: 168 `outputSchema`, 172 annotations (4 araç kalıcı şemasız: string/dizi dönenler + hep-kapıdan-dönenler).
+- Tip tabanı: 179 `outputSchema`, 183 annotations (4 araç kalıcı şemasız: string/dizi dönenler + hep-kapıdan-dönenler).
 - Async job: `REA_ASYNC_JOBS=1` ile 5 job aracı (177 yüzey); kuyruk tavanı 2, whitelist `rea_process_run` + `rea_scan_repo` + `rea_behavior_run`, kayıtlar süreç-içi.
 - Oturum kuyruğu (`REA_SESSION_QUEUE=1` opt-in, FIFO-32), oturum TTL (30dk varsayılan), Roots modern MRTR, progress genelleme, PDB indirme kaydı, golden korpus manifesti.
 - Yayın: `rea-plus@0.8.1` npm'de, `io.github.Alyhnte/rea-plus` MCP Registry'de. **Frida canlı VM onayı açık kapı olarak durur** (aşağıda kapatılmadı).

@@ -276,12 +276,12 @@ describe("fabrika yuzeyleri (gercek protokol, InMemoryTransport)", () => {
     });
   });
 
-  it("token'li fabrika (readOnlyOnly:false) ve varsayilan fabrika 172 araci korur; allowlist gercek altkumedir", async () => {
+  it("token'li fabrika (readOnlyOnly:false) ve varsayilan fabrika 183 araci korur; allowlist gercek altkumedir", async () => {
     await envIle({ REA_TOOLSETS: undefined, REA_AUDIT_LOG: undefined }, async () => {
       for (const opts of [{ readOnlyOnly: false, transport: "http" }, {}]) {
         await oturumda(opts, async (gonder) => {
           const araclar = await aracAdlari(gonder);
-          assert.equal(araclar.length, 172, `opts: ${JSON.stringify(opts)}`);
+          assert.equal(araclar.length, 183, `opts: ${JSON.stringify(opts)}`);
           const kume = new Set(araclar);
           for (const ad of HTTP_READ_ONLY_TOOLS) assert.ok(kume.has(ad), `allowlist ismi gercek arac degil: ${ad}`);
           for (const ad of ["debug_open", "rea_frida_api", "rea_browser_nav"]) assert.ok(kume.has(ad), `tam yuzeyde olmali: ${ad}`);

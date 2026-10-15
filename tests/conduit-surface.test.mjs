@@ -1,7 +1,7 @@
 // conduit-surface.test.mjs: conduit 30 aracinin MCP sozlesmesinin gercek
 // protokol kaniti (InMemoryTransport). Kos: npm run build sonrasi
 // `node --test tests/conduit-surface.test.mjs`.
-// Kapsam: toplam 172 korunur; 30 conduit adinin tamami annotations tasir;
+// Kapsam: toplam 183 korunur; 30 conduit adinin tamami annotations tasir;
 // tehlikeli araclar readOnly degildir; outputSchema 30 conduit aracinin
 // tamaminda (dalga E/1: motor cevabi paylasilan arayuzde sabit olan 20 arac
 // eklendi); tools/call'da structuredContent == text JSON (basari + isError).
@@ -238,9 +238,9 @@ describe("conduit yuzeyi (gercek protokol, InMemoryTransport)", () => {
     await bag?.kapat();
   });
 
-  it("tools/list toplam 172 araci korur; conduit 30'un tamami vardir", () => {
-    assert.equal(araclar.length, 172, `beklenen 172, gelen ${araclar.length}`);
-    assert.equal(new Set(araclar.map((a) => a.name)).size, 172);
+  it("tools/list toplam 183 araci korur; conduit 30'un tamami vardir", () => {
+    assert.equal(araclar.length, 183, `beklenen 183, gelen ${araclar.length}`);
+    assert.equal(new Set(araclar.map((a) => a.name)).size, 183);
     assert.deepEqual(conduitAraclar.map((a) => a.name).sort(), BEKLENEN_30);
   });
 
