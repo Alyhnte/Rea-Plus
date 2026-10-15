@@ -2,7 +2,7 @@
 // Conduit StaticEngine şekline uyar: id + capabilities + open/close.
 // NOT: bu provider alt süreç AÇMAZ (child_process yok); Hopper'ın headless
 // CLI'si olmadığı için açılacak bir şey de yoktur (bkz. HOPPER_HEADLESS_ARASTIRMA).
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, accessSync, constants as fsSabitleri, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Capabilities } from "../../conduit-core/engines/types.js";
@@ -62,6 +62,27 @@ export const HOPPER_EDINME = {
 
 const EDINME_NOTU = `Hopper edinme: ${HOPPER_EDINME.site} (${HOPPER_EDINME.platform}, lisanslı; ${HOPPER_EDINME.demo}), yol: ${HOPPER_EDINME.env}`;
 
+// Kurulum yolu: önce env, sonra bilinen varsayılanlar.
+// Yolun Hopper'a benzemesi gerekir: POSIX'te çalıştırılabilir bit yoksa
+// (sıradan metin dosyası gibi) Hopper sayılmaz — lisanslı Hopper çalıştırılabilirdir.
+// Windows'ta X_OK anlamsızdır, orada boyut eşiği kullanılır (Hopper MB'larcadır).
+function hopperYoluHopperaBenzerMi(yol: string): boolean {
+  let boy: number;
+  try {
+    boy = statSync(yol).size;
+  } catch {
+    return false;
+  }
+  if (boy < 1024 * 1024) return false;
+  if (process.platform === "win32") return true;
+  try {
+    accessSync(yol, fsSabitleri.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Ortak kapı: eksikse çalıştırma, capability_unsupported nedeni dön.
 export function hopperDurumu(env = process.env) {
   if (!platformDesteklenir())
@@ -69,6 +90,8 @@ export function hopperDurumu(env = process.env) {
   const yol = hopperYolu(env);
   if (!yol || !existsSync(yol))
     return { tamam: false as const, neden: `REA_HOPPER_PATH yok ya da dosya bulunamadı — ${EDINME_NOTU}` };
+  if (!hopperYoluHopperaBenzerMi(yol))
+    return { tamam: false as const, neden: `Hopper'a benzemeyen dosya (${yol}) — ${EDINME_NOTU}` };
   return { tamam: true as const, yol };
 }
 
