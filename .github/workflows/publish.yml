@@ -1,25 +1,14 @@
-# rea-plus publish — yalniz elle tetiklenir (workflow_dispatch), varsayilan dry-run.
-# Gercek publish: mode=publish + confirm_publish=PUBLISH acik onayi + npm Trusted
-# Publishing (OIDC, token yok) ile --provenance. Trusted publisher, npm paket
-# ayarlarindan bu repo + publish.yml dosyasina tanimlanmis olmalidir (dis kapi).
+# rea-plus publish zinciri — TEK tetikleyici: v* tag push.
+# Sira: kapilar (typecheck/build/test) -> npm publish (NPM_TOKEN secret) ->
+# npm'de surum gorunene kadar yoklama -> MCP Registry publish (GitHub OIDC).
+# Manuel publish-registry workflow'u emeklidir; cift-kosucu yarisi bitti,
+# duplicate-version gürültüsü olmaz. Kuru prova için: tag açmadan önce yerelde
+# `npm publish` provası koşulur (CI'da prova job'u yoktur).
 name: publish
 
 on:
-  workflow_dispatch:
-    inputs:
-      mode:
-        description: "dry-run (varsayilan, yayinlamaz) veya publish (gercek yayin)"
-        required: true
-        type: choice
-        default: dry-run
-        options:
-          - dry-run
-          - publish
-      confirm_publish:
-        description: "Gercek publish icin tam olarak PUBLISH yazin; dry-run icin bos birakin"
-        required: false
-        type: string
-        default: ""
+  push:
+    tags: ["v*"]
 
 permissions:
   contents: read
@@ -30,15 +19,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  publish-npm:
     runs-on: ubuntu-latest
     steps:
-      - name: Gercek publish acik onay guardi
-        if: ${{ inputs.mode == 'publish' && inputs.confirm_publish != 'PUBLISH' }}
-        run: |
-          echo "::error::mode=publish icin confirm_publish girdisi tam olarak PUBLISH olmalidir; yayin durduruldu."
-          exit 1
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -48,9 +31,6 @@ jobs:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
           cache: npm
-
-      - name: npm guncelle (Trusted Publishing icin guncel npm CLI gerekir)
-        run: npm install -g npm@latest
 
       - name: Temiz kurulum (npm ci)
         run: npm ci
@@ -69,10 +49,43 @@ jobs:
           node --test tests/publish.test.mjs tests/version-sync.test.mjs tests/publish-workflow.test.mjs
           node scripts/publish-kontrol.mjs
 
-      - name: Publish dry-run (yayinlamaz)
-        if: ${{ inputs.mode == 'dry-run' }}
-        run: npm publish --dry-run
+      - name: npm publish (NPM_TOKEN secret)
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish (provenance, Trusted Publishing)
-        if: ${{ inputs.mode == 'publish' && inputs.confirm_publish == 'PUBLISH' }}
-        run: npm publish --provenance
+  publish-registry:
+    needs: publish-npm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: npm gorunurluk bekleme
+        run: |
+          SURUM="${GITHUB_REF#refs/tags/v}"
+          echo "Beklenen npm surumu: $SURUM"
+          for i in $(seq 1 30); do
+            GORUNEN="$(npm view rea-plus version 2>/dev/null || true)"
+            if [ "$GORUNEN" = "$SURUM" ]; then
+              echo "npm'de gorundu: $GORUNEN (deneme $i)"
+              exit 0
+            fi
+            echo "deneme $i: henuz yok (gorunen: $GORUNEN), 20sn bekleniyor..."
+            sleep 20
+          done
+          echo "::error::npm'de $SURUM 10dk icinde gorunmedi; registry yayini durduruldu."
+          exit 1
+
+      - name: mcp-publisher kur
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      - name: server.json dogrula
+        run: ./mcp-publisher validate
+
+      - name: Registry girisi (GitHub OIDC)
+        run: ./mcp-publisher login github-oidc
+
+      - name: Registry yayini
+        run: ./mcp-publisher publish
