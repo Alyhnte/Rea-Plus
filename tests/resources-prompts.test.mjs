@@ -25,7 +25,7 @@ function sahteSunucu() {
   };
 }
 
-const INFO = { name: "rea-plus", version: "0.8.2" };
+const INFO = { name: "rea-plus", version: "0.9.0" };
 delete process.env.REA_TOOLSETS; // gercek protokol bolumu tam 187 arac bekler
 
 describe("registerResourcesPrompts kayit sekilleri", () => {

@@ -1,6 +1,6 @@
 // Jadx köprüsü: headless decompile (throw etmez; her başarısızlık ok:false döner).
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
-import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { accessSync, constants as fsSabitleri, existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 
@@ -50,6 +50,26 @@ function windowsJarBul(): { jar: string | null; launcher: string | null } {
   }
 }
 
+// POSIX `jadx` keşfi: PATH dizinlerinde çalıştırılabilir dosya arar.
+// Bulunamazsa null (Windows `where` dalıyla aynı dürüstlük).
+function posixJadxBul(env: NodeJS.ProcessEnv): JadxCommand | null {
+  const pathEnv = (env.PATH ?? "").trim();
+  if (!pathEnv) return null;
+  for (const ham of pathEnv.split(":")) {
+    const dir = (ham ?? "").trim();
+    if (!dir) continue;
+    const aday = join(dir, "jadx");
+    try {
+      if (!existsSync(aday)) continue;
+      accessSync(aday, fsSabitleri.X_OK);
+      return { komut: "jadx", onEkArgs: [], kaynak: "PATH" };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 // jadx keşfi (sıra): REA_JADX_JAR → REA_JADX_BIN → Windows where+jar → POSIX jadx.
 // Env değişkeni tanımlıysa otoritatif sayılır: gösterdiği dosya yoksa sessizce
 // başka keşfe düşülmez, null döner (bozuk yapılandırma açıkça görünsün).
@@ -77,8 +97,11 @@ export function resolveJadxCommand(env: NodeJS.ProcessEnv = process.env, platfor
     if (launcher) return { komut: "cmd.exe", onEkArgs: ["/d", "/c", launcher], kaynak: "where jadx" };
     return null;
   }
-  // POSIX: launcher script PATH'te aranır (yoksa spawn ENOENT → capability_unsupported).
-  return { komut: "jadx", onEkArgs: [], kaynak: "PATH" };
+  // POSIX: launcher PATH'te GERÇEKTEN aranır (Windows `where` karşılığı).
+  // Körü körüne non-null dönülmez; yoksa null → dürüst "jadx bulunamadı"
+  // kapısı (docs-examples gate'i de buradan beslenir; CI/offline yeşil kalır).
+  // Salt fs taramasıdır: spawn/timer yok, asılı kaynak bırakmaz.
+  return posixJadxBul(env);
 }
 
 // ---------------------------------------------------------------- koşucu ---

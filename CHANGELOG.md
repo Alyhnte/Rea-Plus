@@ -3,6 +3,44 @@
 Tüm önemli değişiklikler bu dosyada tutulur. Format: Keep a Changelog + SemVer.
 All notable changes are documented here (Türkçe özet + English detail).
 
+## [0.9.0] — 2026-10-15
+
+Sürüm 0.9.0: 15 yeni araçla varsayılan yüzey 172→187 (30 conduit + 157 rea),
+183 `outputSchema` + 187 annotations korunur, kurulum kolaylığı (`setup`
+sihirbazı, `doctor --fix`) ve kalite platformu (parser fuzz smoke, HTTP e2e
+varsayılanı, performans bütçeleri, örnek oturumlar + CONTRIBUTING) geldi.
+86/86 varsayılan test yeşil.
+
+### Eklendi / Added
+
+- 15 yeni araç (172→187): `rea_go_funclines`, `rea_go_goresym`,
+  `rea_il2cpp_metadata`, `rea_il2cpp_dump`, `rea_bindiff_fonksiyonlar`,
+  `rea_bindiff_karsilastir`, `rea_flutter_snapshot`, `rea_flutter_blutter`,
+  `rea_macho_info`, `rea_macho_loads`, `rea_macho_otool`, `rea_pcap_oku`,
+  `rea_scan_repo_paralel`, `rea_android_dinamik_recete`,
+  `rea_android_recete_dogrula`.
+- `rea-plus-cli setup` sihirbazı (istemci algılama + config yazma) ve
+  `doctor --fix` (onaylı kurulum önerisi/çalıştırması).
+- Parser fuzz smoke (`scripts/fuzz-parsers.mjs` + `parser-fuzz.test.mjs`;
+  tohumlar salt-okunur korpustan, yazma yalnız tmpdir'e).
+- HTTP e2e varsayılan kulvara alındı (`tests/e2e.http.mjs`).
+- Performans bütçeleri (`perf-budget.test.mjs`: tools/list + açılış).
+- Örnek oturumlar (`docs/EXAMPLES.md` + `docs-examples.test.mjs`) ve
+  `CONTRIBUTING.md` (korpus kuralları dahil).
+
+### Düzeltildi / Fixed
+
+- Hopper POSIX benzerlik kapısı: çalıştırılabilir bite/boyuta benzemeyen
+  sahte dosya Hopper sayılmaz, dürüst `capability_unsupported` döner.
+- cdb async CI-Linux dalı ve korpus satır-sonu normalizesi (0.8.2'den gelen
+  düzeltmeler) 187-araç yüzeyinde regresyon testleriyle kilitlendi.
+
+### Henüz yapılmadı / Not yet done
+
+- Frida canlı VM onayı; self-hosted Windows runner.
+- Tek dosya Windows exe (Node SEA); winget/scoop/homebrew manifesti; SBOM.
+- P3 araştırma: LLDB motoru, WinDbg TTD, sembolik yürütme (angr/Triton).
+
 ## [0.8.2] — 2026-10-15
 
 Sürüm 0.8.2: kalan şema kapsaması kapandı (168 `outputSchema`, 172 annotations,

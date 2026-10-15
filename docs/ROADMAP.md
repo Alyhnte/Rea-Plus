@@ -1,6 +1,6 @@
 # ROADMAP — ReaPlus yol haritası
 
-> Durum: v0.7.4 + yayımlanmamış (Unreleased) entegrasyon tabanı. Sürüm artışı yoktur. Bu belge `ROADMAP-NEXT.md`'nin yerini alır; oradaki
+> Durum: v0.9.0 release hazırlığı (orkest-rel). Bu belge `ROADMAP-NEXT.md`'nin yerini alır; oradaki
 > orkestrasyon (`rea_investigate`) ve typedef maddeleri gerçekleşti, kalanlar buraya taşındı
 > ve 2026-10-12 incelemesinin bulgularıyla genişletildi.
 >
@@ -42,9 +42,9 @@
 
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
-| ✅ Toolset profilleri (`REA_TOOLSETS=static,debug`) | KAPANDI (Unreleased): `all` 171, `minimal` 8, `static` 98, `android` 27, `dotnet` 20, `web` 26, `debug` 50; virgüllü birleşim, bilinmeyen profil açılış hatası, resources/prompts filtresiz | Araç listesi bağlamı küçülür, isabet artar | S | — |
-| ✅ Resources | KAPANDI (Unreleased): 2 statik salt-okunur resource (`rea-plus://server-info`, `rea-plus://capabilities-safety`); keyfi dosya/env açılmaz, subscribe yok | Sunucu kimliği + güvenlik kuralları URI ile okunur | M | — |
-| ✅ Prompts | KAPANDI (Unreleased): 3 yan etkisiz prompt (`packer-triage`, `dotnet-malware-triage`, `android-triage`); prompt araç çalıştırmaz, yalnız sıralı akış metni döner | Hazır triage akışları tek seçimde | S | — |
+| ✅ Toolset profilleri (`REA_TOOLSETS=static,debug`) | KAPANDI (v0.9.0): `all` 171, `minimal` 8, `static` 98, `android` 27, `dotnet` 20, `web` 26, `debug` 50; virgüllü birleşim, bilinmeyen profil açılış hatası, resources/prompts filtresiz | Araç listesi bağlamı küçülür, isabet artar | S | — |
+| ✅ Resources | KAPANDI (v0.9.0): 2 statik salt-okunur resource (`rea-plus://server-info`, `rea-plus://capabilities-safety`); keyfi dosya/env açılmaz, subscribe yok | Sunucu kimliği + güvenlik kuralları URI ile okunur | M | — |
+| ✅ Prompts | KAPANDI (v0.9.0): 3 yan etkisiz prompt (`packer-triage`, `dotnet-malware-triage`, `android-triage`); prompt araç çalıştırmaz, yalnız sıralı akış metni döner | Hazır triage akışları tek seçimde | S | — |
 | ✅ `outputSchema` + `structuredContent` | KAPANDI (v0.8.1): 168 araç `outputSchema` taşıyor (4 araç kalıcı şemasız: string/dizi dönenler + hep-kapıdan-dönenler); düz nesne sonuçlarda `structuredContent` metin JSON'uyla aynı — araç başına durum [`TOOLS.md`](TOOLS.md)'de | Tip güvenli tüketim | M | — |
 | ✅ Progress bildirimi + iptal | KAPANDI (v0.8.1): stage yardımcıları (`createStageProgress`/`onAbort`) paced emit + temizlik; `rea_process_run` pilotu + `rea_scan_repo` + `rea_jadx_full` staged | Ajan ilerlemeyi görür, vazgeçebilir | M | — |
 | ✅ Tool annotation'ları | KAPANDI (v0.8.1): 172 araç annotations taşıyor (sıfır işaretsiz); `destructiveHint`/`readOnlyHint` ile istemci onay UX'i | Onay UX'i düzelir | S | — |
@@ -55,9 +55,9 @@
 
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
-| ✅ Çalışma kökü kısıtı (`REA_WORKSPACE_ROOT`) | KAPANDI (Unreleased): `rea_*` yolları + conduit `open_target`/`debug_open` + türev yazmalar (`.unpacked`/`.extracted`/HAR) realpath ile kök içinde; operatör temp/cache yüzeyleri (browser artifacts, Ghidra tmp, hopper tmp isteği, apktool framework cache) bilinçli istisna | Prompt-injection ile rastgele dosya okuma/yazma yüzeyi kapanır | M | — |
-| ✅ Token'sız HTTP'de salt-okunur kip | KAPANDI (Unreleased): token yokken HTTP yalnız 44 araçlık, yol almayan allowlist'i kaydeder; sonuç `REA_TOOLSETS` ile kesişimdir, liste dışı/yeni araç görünmez | Yanlışlıkla açık bırakılan port zararsızlaşır | S | — |
-| ✅ Audit log (JSONL) | KAPANDI (Unreleased): `REA_AUDIT_LOG`, iki transportta da satır başına yalnız `ts`/`transport`/`tool`/`durationMs`/`isError`; argüman/token/yol/içerik yazılmaz, yazma hatası sunucuyu çökertmez | Olay incelemesi ve kurumsal kabul | S | — |
+| ✅ Çalışma kökü kısıtı (`REA_WORKSPACE_ROOT`) | KAPANDI (v0.9.0): `rea_*` yolları + conduit `open_target`/`debug_open` + türev yazmalar (`.unpacked`/`.extracted`/HAR) realpath ile kök içinde; operatör temp/cache yüzeyleri (browser artifacts, Ghidra tmp, hopper tmp isteği, apktool framework cache) bilinçli istisna | Prompt-injection ile rastgele dosya okuma/yazma yüzeyi kapanır | M | — |
+| ✅ Token'sız HTTP'de salt-okunur kip | KAPANDI (v0.9.0): token yokken HTTP yalnız 44 araçlık, yol almayan allowlist'i kaydeder; sonuç `REA_TOOLSETS` ile kesişimdir, liste dışı/yeni araç görünmez | Yanlışlıkla açık bırakılan port zararsızlaşır | S | — |
+| ✅ Audit log (JSONL) | KAPANDI (v0.9.0): `REA_AUDIT_LOG`, iki transportta da satır başına yalnız `ts`/`transport`/`tool`/`durationMs`/`isError`; argüman/token/yol/içerik yazılmaz, yazma hatası sunucuyu çökertmez | Olay incelemesi ve kurumsal kabul | S | — |
 | ✅ Rate limit + eşzamanlı istek tavanı + oturum TTL | KAPANDI (v0.8.1): `REA_HTTP_RATE_LIMIT_PER_MIN` (varsayılan 120/IP/dk) + `REA_HTTP_MAX_CONCURRENT` (varsayılan 16), aşımda `429`, geçersiz değer açılış hatası; oturum TTL `REA_SESSION_TTL_MS` (varsayılan 30dk, 0=kapalı) | HTTP dayanımı + oturum hijyeni | S | — |
 | Sandbox reçetesi (VM profili dokümanı) | "VM'de çalıştır" demekle kalınıyor | Hazır izole ortam tarifi (ağsız snapshot'lı VM) | S | P2 |
 
@@ -123,7 +123,7 @@
 
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
-| ✅ Otomatik araç referansı (tools/list → docs) | KAPANDI (Unreleased): [`TOOLS.md`](TOOLS.md) derlenmiş sunucunun gerçek yüzeyinden üretiliyor (171 araç + 2 resource + 3 prompt, araç başına `outputSchema`/annotations durumu) | 171 aracın güncel kataloğu | S | — |
+| ✅ Otomatik araç referansı (tools/list → docs) | KAPANDI (v0.9.0): [`TOOLS.md`](TOOLS.md) derlenmiş sunucunun gerçek yüzeyinden üretiliyor (171 araç + 2 resource + 3 prompt, araç başına `outputSchema`/annotations durumu) | 171 aracın güncel kataloğu | S | — |
 | Örnek oturumlar (asciinema/GIF) README'de | Görsel kanıt yok | İlk 10 saniyede ikna (yıldız dönüşümü) | S | P1 |
 | GitHub Pages docs sitesi | docs/ dağınık (20+ dosya) | Aranabilir, linklenebilir doküman | M | P2 |
 | Örnek prompt kütüphanesi | Yok | Kullanıcı ilk değeri dakikalar içinde alır | S | P2 |

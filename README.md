@@ -4,7 +4,7 @@
 
 # Reverse Engine Anything Plus
 
-**One MCP server for reverse engineering — live Windows debugging plus a 141-tool static-analysis suite for PE/ELF, .NET, APK, WASM/EVM, firmware, and the web.**
+**One MCP server for reverse engineering — live Windows debugging plus a 157-tool static-analysis suite for PE/ELF, Mach-O, .NET, APK, IL2CPP, WASM/EVM, firmware, and the web.**
 
 Your agent asks questions; rea-plus inspects the binary and answers with evidence, not guesses.
 
@@ -24,7 +24,7 @@ Your agent asks questions; rea-plus inspects the binary and answers with evidenc
 ## ✨ Why rea-plus?
 
 - 🐞 **Real debugging, not screenshots** — x64dbg, cdb (WinDbg), and Frida engines behind one frozen 30-tool core: breakpoints, stepping, registers, memory, call stacks, time-travel checkpoints.
-- 🧰 **141 static tools** — Ghidra headless, rizin/radare2, .NET CIL (dnfile) and ILSpy, jadx/apktool/adb, WASM + EVM, firmware, browser/HAR, UPX, PE/ELF/Mach-O readers, and more.
+- 🧰 **157 static tools** — Ghidra headless, rizin/radare2, .NET CIL (dnfile) and ILSpy, jadx/apktool/adb, WASM + EVM, firmware, browser/HAR, UPX, PE/ELF/Mach-O readers, and more.
 - 🤝 **Honest by design** — a missing backend answers `capability_unsupported` with an install hint. Nothing fakes a result, errors come back as proper MCP `isError`, and mutating live-debug calls require `confirm:true`.
 - 🧩 **187 tools, 2 resources, 3 prompts** — the full generated catalog lives in [`docs/TOOLS.md`](docs/TOOLS.md); `REA_TOOLSETS` lets small-context clients load only a profile slice (see [Configuration](#-configuration)). Without an HTTP token, only a 44-tool read-only allowlist is registered instead of the full surface.
 - 🔌 **Two transports** — stdio for local agents, streamable HTTP (`/mcp` + `/health`, bearer token, localhost Host/Origin validation) for shared setups.
@@ -66,7 +66,7 @@ Any stdio MCP client can launch it straight from the npm registry:
 }
 ```
 
-> **Publishing status:** `rea-plus@0.8.0` is live on the [npm registry](https://www.npmjs.com/package/rea-plus) and [`io.github.Alyhnte/rea-plus`](https://registry.modelcontextprotocol.io) is published on the MCP Registry. The supported installs are `npx -y rea-plus` (above) and GHCR (see [Docker](#-docker)).
+> **Publishing status:** `rea-plus@0.8.2` is live on the [npm registry](https://www.npmjs.com/package/rea-plus) and [`io.github.Alyhnte/rea-plus`](https://registry.modelcontextprotocol.io) is published on the MCP Registry. The supported installs are `npx -y rea-plus` (above) and GHCR (see [Docker](#-docker)).
 
 ### Clone & build
 
@@ -200,8 +200,15 @@ The complete, generated reference — **187 tools + 2 resources (`rea-plus://ser
 | Web / browsers | Navigation, clicks, screenshots, storage & console capture | Playwright (optional extra) |
 | WASM / EVM | Validation (wabt), disassembly, function selectors, opcode work | wabt · offline keccak |
 | Firmware & exotic | Firmware triage, DOS/MIPS/AOT/Go pre-scans, packer hunt (UPX→.NET→dump recipe) | Static inspection · UPX |
+| Mach-O / Apple | Header + load commands, otool output, bundle/plist reading (honest errors without backends) | Built-in reader · otool |
+| Unity IL2CPP | Il2CppDumper dump + global-metadata class/method counts (honest error when missing) | Il2CppDumper · metadata reader |
+| Binary diff | Function lists (name/address + hash) and version-to-version diff | Built-in |
+| PCAP / TLS | Stream reassembly + keylog-based TLS decryption | tshark · keylog |
+| Android dynamic | Dynamic-analysis recipe generation + dry-run recipe validation | Built-in recipe |
+| Scale | Parallel repo scan (pool of 4, cancellable) | Built-in |
 | Investigation | One-call triage: sniff → confidence → provider plan → evidence bundle | `rea_investigate` orchestrator |
 | Assistance | Capability probing + caching, fallback chains, config suggestions, telemetry | Built-in, offline |
+| Onboarding | `setup` wizard writes client configs (confirm-gated); `doctor --fix` proposes install commands, runs them only with `--yes` | rea-plus-cli |
 
 ## ⚙️ How it works
 
@@ -209,7 +216,7 @@ The complete, generated reference — **187 tools + 2 resources (`rea-plus://ser
 flowchart LR
     A["AI agent / MCP client"] -->|stdio or streamable HTTP| S["rea-plus server"]
     S --> C["Conduit core · 30 frozen tools<br/>x64dbg · cdb · Frida · radare2"]
-    S --> D["rea domains · 141 tools<br/>Ghidra · rizin · jadx · dnfile · wabt · Playwright"]
+    S --> D["rea domains · 157 tools<br/>Ghidra · rizin · jadx · dnfile · wabt · Playwright"]
     C --> T["Target binary / live process"]
     D --> T
     C --> E["Evidence bundle + obligation ledger"]
@@ -218,7 +225,7 @@ flowchart LR
 ```
 
 - **Frozen core.** The 30 conduit tool names are immutable (`src/facade/toolNamespace.ts`); renames are forbidden, so existing conduit clients keep working.
-- **rea domains.** 141 `rea_*` tools register centrally in `src/server/registerReaTools.ts`.
+- **rea domains.** 157 `rea_*` tools register centrally in `src/server/registerReaTools.ts`.
 - **Confirm gates.** Live operations that mutate a target require `confirm:true`; otherwise you get `confirmation_required`, never a silent side effect.
 - **One catalog.** `mergedCatalog()` (8 conduit + 16 rea prerequisite entries) is the single source `doctor` reads for versions and download links.
 - **Resources + prompts.** Two static, read-only resources (`rea-plus://server-info`, `rea-plus://capabilities-safety`) and three side-effect-free prompts (`packer-triage`, `dotnet-malware-triage`, `android-triage`) are registered alongside the tools; prompts only return text and never run a tool.
@@ -238,6 +245,8 @@ rea-plus-cli analyze-evm "approve(address,uint256)" --json
 rea-plus-cli analyze-wasm sample.wat --json
 rea-plus-cli analyze-js bundle.js bundle.js.map
 rea-plus-cli doctor --json                                # per-tool readiness report
+rea-plus-cli doctor --fix                                 # propose install commands for missing tools (--yes applies them)
+rea-plus-cli setup --dry-run                              # preview client config changes before writing
 ```
 
 ## 🔧 Configuration
@@ -256,7 +265,7 @@ All configuration is environment variables — no config files to edit in the se
 | `REA_WORKSPACE_ROOT` | Workspace root(s), path-delimiter separated. When set, `rea_*` path arguments, the conduit `open_target`/`debug_open` paths, and user-visible derived writes (`.unpacked`, `.extracted`, HAR output) must resolve inside a root; unset = no restriction. Operator temp/cache surfaces stay outside this boundary by design (browser artifacts dir, Ghidra tmp project/input dirs, the hopper tmp request file, the apktool framework cache) |
 | `REA_ROOTS` | Set to exactly `1` to enable the legacy-stdio Roots pilot. Client `file://` roots intersect with and can only narrow `REA_WORKSPACE_ROOT`; modern-protocol Roots is not enabled by this flag |
 | `REA_TOOLSETS` | Comma-separated tool profiles to register: `all` (default, 187), `minimal` (8), `static` (98), `android` (27), `dotnet` (20), `web` (26), `debug` (50). Combined profiles union; an unknown or empty name fails startup. Resources/prompts are unaffected |
-| `REA_ASYNC_JOBS` | Set to exactly `1` to register the 5 async job tools (176 tools total). Jobs are in-memory only, at most 2 concurrent, and only `rea_process_run` is whitelisted |
+| `REA_ASYNC_JOBS` | Set to exactly `1` to register the 5 async job tools (192 tools total). Jobs are in-memory only, at most 2 concurrent, and the whitelist is `rea_process_run` + `rea_scan_repo` + `rea_behavior_run` |
 | `REA_AUDIT_LOG` | Path of a JSONL audit log (both transports). Each line carries only `ts`, `transport`, `tool`, `durationMs`, `isError` — never arguments, tokens, paths, or target content. A write error warns once and disables auditing instead of crashing the server |
 | `REA_HTTP_RATE_LIMIT_PER_MIN` | HTTP requests per client IP per minute (default 120); excess gets `429`. A non-positive-integer value fails startup |
 | `REA_HTTP_MAX_CONCURRENT` | Maximum simultaneous in-flight HTTP requests (default 16); excess gets `429`. A non-positive-integer value fails startup |
@@ -268,7 +277,7 @@ External tools are discovered from these variables and PATH only — no machine-
 rea-plus is a debugger: by design it can launch, attach to, and instrument local processes. Treat access to it like shell access.
 
 - **stdio first.** The default transport never opens a port.
-- **HTTP is locked down.** Bearer token (constant-time compare), localhost Host/Origin validation against DNS-rebinding/CSRF, per-IP rate and concurrency limits (`REA_HTTP_RATE_LIMIT_PER_MIN`, `REA_HTTP_MAX_CONCURRENT`), and — when started without a token — a loud warning plus a reduced surface of 44 read-only, path-free allowlist tools (intersected with `REA_TOOLSETS`) instead of all 171.
+- **HTTP is locked down.** Bearer token (constant-time compare), localhost Host/Origin validation against DNS-rebinding/CSRF, per-IP rate and concurrency limits (`REA_HTTP_RATE_LIMIT_PER_MIN`, `REA_HTTP_MAX_CONCURRENT`), and — when started without a token — a loud warning plus a reduced surface of 44 read-only, path-free allowlist tools (intersected with `REA_TOOLSETS`) instead of all 187.
 - **Workspace boundary (opt-in).** With `REA_WORKSPACE_ROOT` set, `rea_*` path arguments, the conduit `open_target`/`debug_open` paths, and user-visible derived writes must stay inside the root (realpath-checked, so junction/symlink escapes fail). Operator temp/cache surfaces (browser artifacts, Ghidra tmp dirs, the hopper tmp request file, the apktool framework cache) are a documented exception and are not forced inside the root.
 - **Audit without content.** `REA_AUDIT_LOG` records one JSONL line per tool call with only time, transport, tool name, duration, and `isError` — never arguments, tokens, paths, or target content.
 - **Inputs are validated.** Addresses that reach backend command languages are restricted to hex/decimal/symbol form — no `;`/`!` command injection into r2/rizin.
@@ -293,10 +302,9 @@ Details: [`docs/VERIFY.md`](docs/VERIFY.md) · [`docs/MCP-CONTRACTS.md`](docs/MC
 
 Near the top of the list — the full, prioritized table lives in [`docs/ROADMAP.md`](docs/ROADMAP.md):
 
-- npm publish + MCP Registry listing (one-command `npx rea-plus`) — metadata and a manual, dry-run-by-default publish workflow are ready; the actual publish has not happened yet
-- Wider `outputSchema` coverage beyond the current 183 tools (187 already carry annotations), progress + cancellation beyond the `rea_process_run` pilot, and a wider async-job whitelist beyond that same pilot tool
+- npm + MCP Registry are live (`rea-plus@0.8.2`, `io.github.Alyhnte/rea-plus`) — supported installs are `npx -y rea-plus` and GHCR
+- Typed surface is closed: 183 tools carry `outputSchema` (4 permanently schema-less) and 187 carry annotations; async whitelist is 3 tools, progress helpers cover the staged tools
 - Completing the golden binary corpus (expected-output hashes per provider) — including the still-open live Frida VM check and the DEX golden APK acceptance test
-- Syscall/file/registry behavior profiles, repo-scale scanning with a persistent worker
 - Signed releases + SBOM, and a documented VM sandbox profile for live work
 
 ## ❓ FAQ
@@ -314,7 +322,7 @@ They mutate a running target (breakpoints, stepping, memory writes). The gate ke
 No. Conduit defaults to port 3847; rea-plus serves 3848, and the 30 conduit tool names are frozen.
 
 **npm says the package is not found?**
-Update your cache — `rea-plus@0.8.0` is on the [npm registry](https://www.npmjs.com/package/rea-plus) and published on the MCP Registry. Use `npx -y rea-plus` everywhere above or the GHCR image.
+Update your cache — `rea-plus@0.8.2` is on the [npm registry](https://www.npmjs.com/package/rea-plus) and published on the MCP Registry. Use `npx -y rea-plus` everywhere above or the GHCR image.
 
 ## 🤝 Contributing
 
