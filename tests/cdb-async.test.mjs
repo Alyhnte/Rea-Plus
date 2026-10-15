@@ -147,9 +147,11 @@ describe("cdb async pause + push (Dalga A/3)", () => {
       () => engine.pause("yok-oturum"),
       (e) => e instanceof CdbError && e.code === "target_not_open",
     );
+    // Linux'ta open() hedefe bakmadan engine_unavailable doner (cdb Windows'a ozel);
+    // Windows'ta var-olmayan hedef invalid_target olur. Ikisi de durust hata.
     await assert.rejects(
       () => engine.open("cdb-async-e", "C:\\kesinlikle\\yok\\hedef.exe"),
-      (e) => e instanceof CdbError && e.code === "invalid_target",
+      (e) => e instanceof CdbError && (e.code === "invalid_target" || e.code === "engine_unavailable"),
     );
     assert.equal(engine.isOpen("cdb-async-e"), false);
   });

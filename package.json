@@ -1,7 +1,7 @@
 {
   "name": "rea-plus",
   "mcpName": "io.github.Alyhnte/rea-plus",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "Conduit live-debug core + Rea static domains. 30 frozen tools + prefixed rea domains over stdio/HTTP.",
   "type": "module",
   "license": "MIT",

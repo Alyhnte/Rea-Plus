@@ -27,7 +27,7 @@ import { registerWithSessionQueue } from "./server/sessionQueue.js";
 import { parseToolsets, registerWithToolsetFilter } from "./server/toolsets.js";
 
 export const REA_PLUS_NAME = "rea-plus";
-export const REA_PLUS_VERSION = "0.8.1";
+export const REA_PLUS_VERSION = "0.8.2";
 
 export interface CreateReaPlusServerOptions {
   /**

@@ -3,24 +3,30 @@
 Tüm önemli değişiklikler bu dosyada tutulur. Format: Keep a Changelog + SemVer.
 All notable changes are documented here (Türkçe özet + English detail).
 
-## [Unreleased]
+## [0.8.2] — 2026-10-15
 
-Dalga E kapanışları (v0.8.2 adayı): 168 `outputSchema` (4 araç kalıcı şemasız),
-172 annotations (sıfır işaretsiz), PDB kaydı (`rea_pdb_indir`, 172. araç),
-oturum TTL, Roots modern MRTR, progress genelleme + async whitelist genişlemesi.
-Varsayılan yüzey 172 araç; opt-in yüzeyler: async +5 (177), kuyruk +1 (173).
+Sürüm 0.8.2: kalan şema kapsaması kapandı (168 `outputSchema`, 172 annotations,
+sıfır işaretsiz), PDB indirici 172. araç olarak kaydedildi, oturum TTL ve
+modern Roots MRTR geldi, progress genelleme + async whitelist 3'lüye çıktı.
+Varsayılan yüzey 172 araç; opt-in: async +5 (177), kuyruk +1 (173). 72/72
+varsayılan test yeşil (CI dahil).
 
 ### Eklendi / Added
 
-- 20 conduit `outputSchema` (motor araçları) + `rea_pdb_indir` şeması ve kaydı.
+- 20 conduit + `rea_pdb_indir` `outputSchema` (toplam 168); annotations 172/172.
+- `rea_pdb_indir` kaydı (Microsoft symbol server, bütünlüklü, önbellekli, yalnız `all` profilinde).
 - Oturum TTL (`REA_SESSION_TTL_MS`, varsayılan 30dk, 0=kapalı).
-- Roots modern MRTR akışı (`inputRequired`/`inputResponses`, list_changed legacy'de).
-- Progress stage yardımcıları 2 ek araca bağlandı (`rea_scan_repo`, `rea_jadx_full`).
-- Async whitelist: `rea_scan_repo` + `rea_behavior_run` eklendi (3'lü).
+- Roots modern MRTR (`inputRequired`/`inputResponses`); `list_changed` legacy'de.
+- Progress stage yardımcıları 2 ek araçta; async whitelist 3'lü.
+
+### Düzeltildi / Fixed
+
+- cdb-async testi CI-Linux uyumu (`engine_unavailable` dalı kabul edilir).
+- Korpus hash satır-sonu normalizesi; `ornek.js` HASHES düzeltmesi.
 
 ### Henüz yapılmadı / Not yet done
 
-- Frida canlı VM onayı; self-hosted Windows runner; kalıcı DEX korpusu (repo içi fixture).
+- Frida canlı VM onayı; self-hosted Windows runner; kalıcı DEX korpusu.
 - P2 dağıtım kolaylığı; analiz derinliği; P3 araştırma.
 
 ## [0.8.1] — 2026-10-14
