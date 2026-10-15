@@ -11,7 +11,7 @@ Your agent asks questions; rea-plus inspects the binary and answers with evidenc
 [![CI](https://github.com/Alyhnte/ReaPlus/actions/workflows/ci.yml/badge.svg)](https://github.com/Alyhnte/ReaPlus/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Alyhnte/ReaPlus?style=flat-square)](https://github.com/Alyhnte/ReaPlus/releases)
 [![Tools](https://img.shields.io/badge/MCP%20tools-187-blue?style=flat-square)](#-features)
-[![Tests](https://img.shields.io/badge/tests-839%20its%20%2B%20e2e-green?style=flat-square)](#-tests)
+[![Tests](https://img.shields.io/badge/tests-864%20its%20%2B%20e2e-green?style=flat-square)](#-tests)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE)
 
@@ -28,7 +28,7 @@ Your agent asks questions; rea-plus inspects the binary and answers with evidenc
 - 🤝 **Honest by design** — a missing backend answers `capability_unsupported` with an install hint. Nothing fakes a result, errors come back as proper MCP `isError`, and mutating live-debug calls require `confirm:true`.
 - 🧩 **187 tools, 2 resources, 3 prompts** — the full generated catalog lives in [`docs/TOOLS.md`](docs/TOOLS.md); `REA_TOOLSETS` lets small-context clients load only a profile slice (see [Configuration](#-configuration)). Without an HTTP token, only a 44-tool read-only allowlist is registered instead of the full surface.
 - 🔌 **Two transports** — stdio for local agents, streamable HTTP (`/mcp` + `/health`, bearer token, localhost Host/Origin validation) for shared setups.
-- 🧪 **Proven, not promised** — a 82-file default test lane, Ubuntu CI for the released line, and protocol tests that drive the real compiled server.
+- 🧪 **Proven, not promised** — a 86-file default test lane, Ubuntu CI for the released line, and protocol tests that drive the real compiled server.
 
 ```console
 $ rea-plus-cli doctor            # what is installed on this machine, what is missing
@@ -222,7 +222,7 @@ flowchart LR
 - **Confirm gates.** Live operations that mutate a target require `confirm:true`; otherwise you get `confirmation_required`, never a silent side effect.
 - **One catalog.** `mergedCatalog()` (8 conduit + 16 rea prerequisite entries) is the single source `doctor` reads for versions and download links.
 - **Resources + prompts.** Two static, read-only resources (`rea-plus://server-info`, `rea-plus://capabilities-safety`) and three side-effect-free prompts (`packer-triage`, `dotnet-malware-triage`, `android-triage`) are registered alongside the tools; prompts only return text and never run a tool.
-- **Typed outputs (partial).** `structuredContent` mirrors the text JSON, and coverage is deliberately partial: 183 tools declare an `outputSchema` and 172 tools carry annotations. Tools outside the schema set return text JSON without a declared output schema — see [`docs/TOOLS.md`](docs/TOOLS.md) per tool.
+- **Typed outputs (partial).** `structuredContent` mirrors the text JSON, and coverage is deliberately partial: 183 tools declare an `outputSchema` and 187 tools carry annotations. Tools outside the schema set return text JSON without a declared output schema — see [`docs/TOOLS.md`](docs/TOOLS.md) per tool.
 - **Toolset profiles.** `REA_TOOLSETS` filters registration to a profile slice (comma-separated union; unknown names fail startup instead of silently falling back to `all`). Resources and prompts are not filtered. New tools land in `all` only (fail-closed).
 - **Roots (legacy + modern).** With `REA_ROOTS=1` on the legacy stdio path, client roots can only narrow `REA_WORKSPACE_ROOT`; they can never widen it. Modern-protocol Roots uses the SDK multi-round-trip flow (`inputRequired` + `inputResponses`); `notifications/roots/list_changed` only exists pre-2026, so refresh happens on the next MRTR round.
 - **Progress (generalized).** Stage helpers (`createStageProgress`/`onAbort`) pace notifications (~20/s) and clean up on cancel; `rea_process_run` pilot unchanged, `rea_scan_repo` + `rea_jadx_full` staged. Other synchronous handlers remain out of scope.
@@ -278,10 +278,10 @@ rea-plus is a debugger: by design it can launch, attach to, and instrument local
 
 ## 🧪 Tests
 
-89 test files. The default lane (`npm test`) runs 82 files and excludes the live-injection/debugger, packet-capture, browser, e2e, and local-Ghidra suites — those touch real processes or machine-specific installs and belong to a VM or a dedicated CI job (`npm run test:live`). Every file is capped at 90s with process-tree kill, so a hung backend can never hang the lane. The released line's CI runs the default lane on Ubuntu (Node 20 + 22).
+92 test files. The default lane (`npm test`) runs 86 files and excludes the live-injection/debugger, packet-capture, browser, e2e, and local-Ghidra suites — those touch real processes or machine-specific installs and belong to a VM or a dedicated CI job (`npm run test:live`). Every file is capped at 90s with process-tree kill, so a hung backend can never hang the lane. The released line's CI runs the default lane on Ubuntu (Node 20 + 22).
 
 ```bash
-npm test                        # default lane: 82 files (live suites excluded)
+npm test                        # default lane: 86 files (live suites excluded)
 npm run test:live               # everything, incl. frida/sniff/browser/e2e/ghidra (VM/CI only)
 npm run test:e2e                # spawn -> /health -> tools/list
 node --test tests/evm.test.mjs # single-domain runs work too

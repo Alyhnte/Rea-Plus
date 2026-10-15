@@ -18,7 +18,6 @@ const LIVE = new Set([
   "frida-api.test.mjs",
   "fridaplus.test.mjs",
   "sniff.test.mjs",
-  "e2e.http.mjs",
   "browser2.test.mjs",
   "ghidra-full.test.mjs",
   "ghidra-prof2.test.mjs",

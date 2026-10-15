@@ -34,3 +34,6 @@ jobs:
 
       - name: Testler (varsayılan küme; canlı testler için npm run test:live)
         run: npm test
+
+      - name: Parser fuzz smoke (deterministik, crash/hang=0)
+        run: node scripts/fuzz-parsers.mjs --seed 1 --adet 50
