@@ -107,9 +107,11 @@
 
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
-| ✅ Worker cache canlı bağlama | KAPANDI (v0.10.0): reposcan yolu sayaç-kanıtlı; ölü silme ertelendi (test bağlılığı) | Hızlı tekrar | M | — |
+| ✅ Worker cache canlı bağlama | KAPANDI (v0.10.0): reposcan yolu sayaç-kanıtlı | Hızlı tekrar | M | — |
+| Ölü facade temizliği (`probeCache`/`parallelProbe`) | Kod bağlı ama test `probe.test.mjs` bağlı; silme test taşımayı gerektirir | Ölü kod kalkar | S | P1 |
 | ✅ Paralel tarama (4'lü havuz) | KAPANDI (v0.10.0): sıralı birleştirme + iptal + hata izolasyonu | CI entegrasyonu | M | — |
 | ✅ Şema bütçesi | KAPANDI (v0.10.0): ölçülü eşikler (200KB/110KB/600B) | Şişme biter | S | — |
+| Şema bütçesi CI zorlaması | Test var, CI adımı yok | Bütçe CI'da kırar | S | P2 |
 | ✅ Streaming okuma | KAPANDI (v0.10.0): 64KB tampon + iptalde durma | OOM biter | M | — |
 
 ## H) Test ve kalite
@@ -128,7 +130,8 @@
 |---|---|---|---|---|
 | ✅ Otomatik araç referansı | KAPANDI (v0.10.0): [`TOOLS.md`](TOOLS.md) gerçek yüzeyden (191 araç + 2 resource + 3 prompt) | Güncel katalog | S | — |
 | Örnek oturumlar (asciinema/GIF) README'de | Görsel kanıt yok | İlk 10 saniyede ikna (yıldız dönüşümü) | S | P1 |
-| ◐ Docs sitesi | ÜRETİLDİ (v0.10.0): 7 statik sayfa + 0 kırık link; Pages deployu yok | Aranabilir doküman | M | P2 |
+| ◐ Docs sitesi | ÜRETİLDİ (v0.10.0): 7 statik sayfa + 0 kırık link | Aranabilir doküman | M | P2 |
+| Pages deployu (site hazır, yayın yok) | `docs/site/` üretildi ama GitHub Pages'e bağlanmadı | Tek URL'de doküman | S | P2 |
 | ✅ Prompt kütüphanesi | KAPANDI (v0.10.0): `docs/PROMPTS.md` (10 prompt, örnek çağrılı) | İlk değer dakikalar içinde | S | — |
 | good-first-issue + CONTRIBUTING genişletme | Tek paragraf | Katkı hunisi açılır | S | P3 |
 
