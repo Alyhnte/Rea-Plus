@@ -3,6 +3,22 @@
 Tüm önemli değişiklikler bu dosyada tutulur. Format: Keep a Changelog + SemVer.
 All notable changes are documented here (Türkçe özet + English detail).
 
+## [0.10.1] — 2026-10-16
+
+Sürüm 0.10.1: P1 kod maddeleri kapandı — ölü facade temizliği +
+golden DEX fixture. Araç yüzeyi değişmedi (191 araç + 2 resource +
+3 prompt). 92/92 varsayılan test yeşil.
+
+### Düzeltildi / Fixed
+
+- Ölü facade silindi: `probeCache`/`parallelProbe` davranışı
+  `workerCache`'e taşındı (`ResultCache` TTL + `runProbes`);
+  `tests/probe.test.mjs` `worker-cache.test.mjs` altına taşındı.
+- Golden DEX fixture: `tests/corpus/mini.dex` (sentetik minimal DEX
+  v035, deterministik üretim `scripts/dex-fixture-uret.mjs`) +
+  `dex-golden` 7 test + HASHES girdisi.
+- `RepoScan` `.dex → dex/jadx` eşlemesi eklendi.
+
 ## [0.10.0] — 2026-10-16
 
 Sürüm 0.10.0: 4 yeni araç (187→191), serileştirme kuyruğu, worker-cache

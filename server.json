@@ -3,7 +3,7 @@
   "name": "io.github.Alyhnte/rea-plus",
   "title": "Reverse Engine Anything Plus",
   "description": "Conduit live-debug core (30 frozen tools) + Rea static RE domains over MCP stdio/HTTP.",
-      "version": "0.10.0",
+      "version": "0.10.1",
   "repository": {
     "url": "https://github.com/Alyhnte/ReaPlus",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "npm",
       "identifier": "rea-plus",
-  "version": "0.10.0",
+  "version": "0.10.1",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"

@@ -1,7 +1,7 @@
-# winget/Alyhnte.ReaPlus/0.10.0/Alyhnte.ReaPlus.locale.en-US.yaml — yerellik manifesti.
-# Surum kaynagi: package.json (0.10.0). Magaza yayini YOK (`winget submit` kosulmadi).
+# winget/Alyhnte.ReaPlus/0.10.1/Alyhnte.ReaPlus.locale.en-US.yaml — yerellik manifesti.
+# Surum kaynagi: package.json (0.10.1). Magaza yayini YOK (`winget submit` kosulmadi).
 PackageIdentifier: Alyhnte.ReaPlus
-PackageVersion: 0.10.0
+PackageVersion: 0.10.1
 PackageLocale: en-US
 Publisher: Alyhnte
 PackageName: ReaPlus
