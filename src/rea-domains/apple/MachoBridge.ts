@@ -486,9 +486,57 @@ function kategoriAdiniCoz(buf: Buffer, dv: DataView, bolumler: Bolum[], le: bool
   return adOku(buf, adOff);
 }
 
+type ObjcCozum = {
+  objcVar: boolean;
+  siniflar: string[]; kategoriler: string[];
+  girisSayisi: number; kategoriGirisSayisi: number; cozulemeyen: number;
+};
+
+// Bölüm listesinden sınıf/kategori adlarını çözer (saf okuma; throw yok).
+// İnce yol ve yağlı dilim yolu bu tek gövdeyi paylaşır (çözüm mantığı birebir).
+function objcCozumle(buf: Buffer, dv: DataView, bolumler: Bolum[], le: boolean, lim: number): ObjcCozum {
+  const sinifBolumu = bolumler.find((b) => b.ad === "__objc_classlist") ?? null;
+  const katBolumu = bolumler.find((b) => b.ad === "__objc_catlist") ?? null;
+  const siniflar: string[] = [];
+  const kategoriler: string[] = [];
+  let girisSayisi = 0;
+  let kategoriGirisSayisi = 0;
+  let cozulemeyen = 0;
+  if (sinifBolumu) {
+    const girisler = Number(sinifBolumu.size / 8n);
+    girisSayisi = girisler;
+    const n = Math.min(girisler, lim);
+    for (let i = 0; i < n; i++) {
+      const fo = sinifBolumu.offset + i * 8;
+      if (fo + 8 > buf.length) { cozulemeyen++; continue; }
+      const ad = sinifAdiniCoz(buf, dv, bolumler, le, dv.getBigUint64(fo, le));
+      if (ad === null) cozulemeyen++;
+      else siniflar.push(ad);
+    }
+  }
+  if (katBolumu) {
+    const girisler = Number(katBolumu.size / 8n);
+    kategoriGirisSayisi = girisler;
+    const n = Math.min(girisler, lim);
+    for (let i = 0; i < n; i++) {
+      const fo = katBolumu.offset + i * 8;
+      if (fo + 8 > buf.length) { cozulemeyen++; continue; }
+      const ad = kategoriAdiniCoz(buf, dv, bolumler, le, dv.getBigUint64(fo, le));
+      if (ad === null) cozulemeyen++;
+      else kategoriler.push(ad);
+    }
+  }
+  return {
+    objcVar: !!(sinifBolumu || katBolumu),
+    siniflar, kategoriler, girisSayisi, kategoriGirisSayisi, cozulemeyen,
+  };
+}
+
 // ObjC sınıf + kategori listesi: saf okuma her zaman çalışır; class-dump yoksa sinirli=true.
 // ObjC bölümü yoksa boş liste + objc:"yok" döner (desteklenmiyor değil: dosya Mach-O ama ObjC'siz).
-export function rea_macho_objc(yol: string, limit = 200) {
+// Yağlı (fat) girdide her 64-bit dilim bağımsız çözülür (arch kırılımlı toplama);
+// 32-bit/bozuk dilimler dürüstçe atlanır (nedeniyle), hiçbiri çözülemezse unsupported.
+export function rea_macho_objc(yol: string, limit = 200, arch?: string) {
   const buf = hamOku(yol);
   if (!buf) return engel(`dosya yok/okunamadı: ${yol}`);
   if (buf.length < 4) return engel("dosya çok kısa");
@@ -504,7 +552,7 @@ export function rea_macho_objc(yol: string, limit = 200) {
     : null;
   if (!inceMi) {
     if (sihir === "cafebabe" || sihir === "bebafeca" || sihir === "cafebabf" || sihir === "bfbafeca") {
-      return engel("yağlı (fat) ObjC çözümü desteklenmiyor (ince dilimi çıkarıp deneyin)");
+      return rea_macho_objc_fat(buf, dv, sihir, limit, arch, classdump, sinirli);
     }
     return engel(`Mach-O sihri yok: ${sihir}`);
   }
@@ -513,12 +561,12 @@ export function rea_macho_objc(yol: string, limit = 200) {
   if (!h) return engel("Mach-O başlığı kesik/bozuk (ncmds gerçekçi değil ya da dosya kısa)");
   const bolumler = bolumleriOku(buf, dv, 0, h);
   if (!bolumler) return engel("bölüm tablosu kesik/bozuk");
-  const sinifBolumu = bolumler.find((b) => b.ad === "__objc_classlist") ?? null;
-  const katBolumu = bolumler.find((b) => b.ad === "__objc_catlist") ?? null;
   const not =
     "saf TS __objc_classlist/__objc_catlist okuma (modern 64-bit düzeni: bits@32 mask 0x7fffffffffff8, ro->name@24, category name@0); " +
     "tam hiyerarşi/protokol için class-dump";
-  if (!sinifBolumu && !katBolumu) {
+  const lim = Math.max(0, limit);
+  const cozum = objcCozumle(buf, dv, bolumler, inceMi.le, lim);
+  if (!cozum.objcVar) {
     return {
       ok: true as const, tool: "rea_macho_objc",
       summary: `objc yok${sinirli ? " sinirli" : ""}`,
@@ -531,36 +579,7 @@ export function rea_macho_objc(yol: string, limit = 200) {
       },
     };
   }
-  const lim = Math.max(0, limit);
-  const siniflar: string[] = [];
-  const kategoriler: string[] = [];
-  let girisSayisi = 0;
-  let kategoriGirisSayisi = 0;
-  let cozulemeyen = 0;
-  if (sinifBolumu) {
-    const girisler = Number(sinifBolumu.size / 8n);
-    girisSayisi = girisler;
-    const n = Math.min(girisler, lim);
-    for (let i = 0; i < n; i++) {
-      const fo = sinifBolumu.offset + i * 8;
-      if (fo + 8 > buf.length) { cozulemeyen++; continue; }
-      const ad = sinifAdiniCoz(buf, dv, bolumler, inceMi.le, dv.getBigUint64(fo, inceMi.le));
-      if (ad === null) cozulemeyen++;
-      else siniflar.push(ad);
-    }
-  }
-  if (katBolumu) {
-    const girisler = Number(katBolumu.size / 8n);
-    kategoriGirisSayisi = girisler;
-    const n = Math.min(girisler, lim);
-    for (let i = 0; i < n; i++) {
-      const fo = katBolumu.offset + i * 8;
-      if (fo + 8 > buf.length) { cozulemeyen++; continue; }
-      const ad = kategoriAdiniCoz(buf, dv, bolumler, inceMi.le, dv.getBigUint64(fo, inceMi.le));
-      if (ad === null) cozulemeyen++;
-      else kategoriler.push(ad);
-    }
-  }
+  const { siniflar, kategoriler, girisSayisi, kategoriGirisSayisi, cozulemeyen } = cozum;
   return {
     ok: true as const, tool: "rea_macho_objc",
     summary: `objc sinif=${siniflar.length} kategori=${kategoriler.length}${sinirli ? " sinirli" : ""}`,
@@ -570,6 +589,99 @@ export function rea_macho_objc(yol: string, limit = 200) {
       kategoriler, kategoriSayisi: kategoriler.length,
       girisSayisi, kategoriGirisSayisi, cozulemeyen,
       sinirli, classdump, not,
+    },
+  };
+}
+
+// ---------------------------------------------------------------- yağlı ObjC ----
+
+export type MachoObjcDilim = {
+  arch: string; offset: number; size: number; objc: "var" | "yok";
+  siniflar: string[]; kategoriler: string[];
+  girisSayisi: number; kategoriGirisSayisi: number; cozulemeyen: number;
+};
+
+export type MachoObjcAtlanan = { arch: string; offset: number; size: number; neden: string };
+
+// Tek dilim tamponunu çözer (ince düzen; dilim kendi sihrini taşır).
+// Çözülemezse hata dizesi döner (throw yok; çağıran dürüstçe atlar).
+function objcDilimCoz(ds: Buffer, lim: number): { cozum: ObjcCozum } | { hata: string } {
+  if (ds.length < 4) return { hata: "dilim çok kısa" };
+  const dsihir = ds.subarray(0, 4).toString("hex");
+  const dim =
+    dsihir === "cffaedfe" ? { le: true, is64: true }
+    : dsihir === "feedfacf" ? { le: false, is64: true }
+    : dsihir === "cefaedfe" ? { le: true, is64: false }
+    : dsihir === "feedface" ? { le: false, is64: false }
+    : null;
+  if (!dim) return { hata: `dilim Mach-O sihri yok: ${dsihir}` };
+  if (!dim.is64) return { hata: "32-bit dilimde ObjC çözümü desteklenmiyor (yalnız 64-bit)" };
+  const ddv = new DataView(ds.buffer, ds.byteOffset, ds.byteLength);
+  const h = inceBaslikOku(ds, ddv, 0, dim.le, true);
+  if (!h) return { hata: "dilim başlığı kesik/bozuk" };
+  const bolumler = bolumleriOku(ds, ddv, 0, h);
+  if (!bolumler) return { hata: "dilim bölüm tablosu kesik/bozuk" };
+  return { cozum: objcCozumle(ds, ddv, bolumler, dim.le, lim) };
+}
+
+// Yağlı kip: her 64-bit dilim bağımsız saf okuma, arch kırılımlı toplama.
+// arch verilirse yalnız o mimari çözülür (yoksa mevcutlar listelenerek unsupported).
+function rea_macho_objc_fat(
+  buf: Buffer, dv: DataView, sihir: string, limit: number, arch: string | undefined,
+  classdump: string, sinirli: boolean,
+) {
+  const f = fatOku(buf, dv, sihir);
+  if (!f) return engel("fat başlığı kesik/bozuk");
+  const secili = arch ? f.mimariler.filter((m) => m.arch === arch) : f.mimariler;
+  if (secili.length === 0) {
+    return engel(`istenen mimari fat içinde yok: ${arch} (var: ${f.mimariler.map((m) => m.arch).join(",") || "hiçbiri"})`);
+  }
+  const lim = Math.max(0, limit);
+  const dilimler: MachoObjcDilim[] = [];
+  const atlananDilimler: MachoObjcAtlanan[] = [];
+  for (const m of secili) {
+    if (m.offset + 4 > buf.length || m.offset + m.size > buf.length || m.size < 4) {
+      atlananDilimler.push({ arch: m.arch, offset: m.offset, size: m.size, neden: "dilim dosya dışında/kesik" });
+      continue;
+    }
+    const ds = buf.subarray(m.offset, m.offset + m.size);
+    const r = objcDilimCoz(ds, lim);
+    if ("hata" in r) {
+      atlananDilimler.push({ arch: m.arch, offset: m.offset, size: m.size, neden: r.hata });
+      continue;
+    }
+    dilimler.push({
+      arch: m.arch, offset: m.offset, size: m.size,
+      objc: r.cozum.objcVar ? "var" : "yok",
+      siniflar: r.cozum.siniflar, kategoriler: r.cozum.kategoriler,
+      girisSayisi: r.cozum.girisSayisi, kategoriGirisSayisi: r.cozum.kategoriGirisSayisi,
+      cozulemeyen: r.cozum.cozulemeyen,
+    });
+  }
+  if (dilimler.length === 0) {
+    return engel(
+      `hiçbir fat dilimi çözülemedi (atlanan=${atlananDilimler.length}: ` +
+      `${atlananDilimler.map((a) => `${a.arch}: ${a.neden}`).join("; ").slice(0, 300)})`,
+    );
+  }
+  const siniflar = dilimler.flatMap((d) => d.siniflar);
+  const kategoriler = dilimler.flatMap((d) => d.kategoriler);
+  const girisSayisi = dilimler.reduce((t, d) => t + d.girisSayisi, 0);
+  const kategoriGirisSayisi = dilimler.reduce((t, d) => t + d.kategoriGirisSayisi, 0);
+  const cozulemeyen = dilimler.reduce((t, d) => t + d.cozulemeyen, 0);
+  const objc = dilimler.some((d) => d.objc === "var") ? "var" : "yok";
+  return {
+    ok: true as const, tool: "rea_macho_objc",
+    summary: `fat objc sinif=${siniflar.length} kategori=${kategoriler.length} dilim=${dilimler.length}/${secili.length}${sinirli ? " sinirli" : ""}`,
+    details: {
+      sihir, fat: true, mimariler: f.mimariler, seciliArch: arch ?? null,
+      objc, siniflar, sinifSayisi: siniflar.length,
+      kategoriler, kategoriSayisi: kategoriler.length,
+      girisSayisi, kategoriGirisSayisi, cozulemeyen,
+      dilimler, atlananDilimler,
+      sinirli, classdump,
+      not: "yağlı kip: her 64-bit dilim bağımsız saf okuma (modern 64-bit düzeni; limit dilim başına uygulanır); " +
+        "32-bit/bozuk dilimler atlanır (atlananDilimler); tam hiyerarşi/protokol için class-dump",
     },
   };
 }
