@@ -1,0 +1,7 @@
+# winget/Alyhnte.ReaPlus/0.10.2/Alyhnte.ReaPlus.yaml — surum manifesti.
+# Surum kaynagi: package.json (0.10.2). Magaza yayini YOK (`winget submit` kosulmadi).
+PackageIdentifier: Alyhnte.ReaPlus
+PackageVersion: 0.10.2
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.6.0

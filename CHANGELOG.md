@@ -3,6 +3,29 @@
 Tüm önemli değişiklikler bu dosyada tutulur. Format: Keep a Changelog + SemVer.
 All notable changes are documented here (Türkçe özet + English detail).
 
+## [0.10.2] — 2026-10-16
+
+Sürüm 0.10.2: P2 dağıtım/kalite dalgaları + Mach-O derinliği + P3
+araştırma notları. Araç yüzeyi değişmedi (191 araç + 2 resource +
+3 prompt). 96/96 varsayılan test yeşil.
+
+### Eklendi / Added
+
+- Pages deploy workflow'u (`pages.yml`: main push → site-uret → deploy).
+- Şema bütçesi CI adımı (200KB liste / 110KB şema / 600B ort).
+- Hedefli fuzz harness (`scripts/fuzz-harness.mjs`: sınıflandırma + rapor
+  + `docs/FUZZ.md`; ilk koşu 0 crash).
+- Portable node bundle (`scripts/sea-portable.mjs` + `docs/SEA-DAGITIM.md`;
+  SEA tek-exe 3 engel nedeniyle yok).
+- P3 fizibilite notları (`docs/ARASTIRMA-*`: LLDB/TTD/angr BEKLE, ticari YAPMA).
+- Katkı hunisi (CONTRIBUTING genişletme + good-first-issue formu).
+
+### Düzeltildi / Fixed
+
+- `rea_macho_objc` fat binary dilim çözümü (`arch` parametresi + dürüstlük
+  merdiveni); IL2CPP v31+ çevrimdışı doğrulanamadığı için sınırlı-kip korundu.
+- ROADMAP v0.10.1 senkronu (P1 kapanışlar işlendi).
+
 ## [0.10.1] — 2026-10-16
 
 Sürüm 0.10.1: P1 kod maddeleri kapandı — ölü facade temizliği +

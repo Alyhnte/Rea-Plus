@@ -1,10 +1,10 @@
 {
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "Conduit live-debug core + Rea static domains. 30 frozen tools + prefixed rea domains over stdio/HTTP.",
   "homepage": "https://github.com/Alyhnte/ReaPlus",
   "license": "MIT",
-  "url": "https://registry.npmjs.org/rea-plus/-/rea-plus-0.10.1.tgz",
-  "hash": "9b2aec6a62835479fc68a9203801f66aae9ac2b3e9787c1348c50841c0d38dc2",
+  "url": "https://registry.npmjs.org/rea-plus/-/rea-plus-0.10.2.tgz",
+  "hash": "349fb2395dcaf7d2669d6a94035c1c363ce912b2dde6b10fa953d389668a2c32",
   "_hashNotu": "Yerel `npm pack` ciktisinin gercek sha256 olcumu (sbom.json kok hash'i ile ayni). Registry tarball'i `npm publish` sonrasi farkli olabilir; yayin oncesi guncelleyin. Magaza yayini YOK.",
   "bin": [
     "dist/cli/index.js"
