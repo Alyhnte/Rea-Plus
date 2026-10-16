@@ -37,3 +37,6 @@ jobs:
 
       - name: Parser fuzz smoke (deterministik, crash/hang=0)
         run: node scripts/fuzz-parsers.mjs --seed 1 --adet 50
+
+      - name: Şema bütçesi (schema-budget, deterministik; 200KB liste / 110KB şema / 600B ort)
+        run: node --test tests/schema-budget.test.mjs
