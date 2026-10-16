@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prompt Kütüphanesi — ReaPlus Docs</title>
+<style>body{max-width:60rem;margin:2rem auto;padding:0 1rem;font-family:system-ui,sans-serif;line-height:1.6}nav{margin-bottom:1rem}pre{background:#f4f4f4;padding:1rem;overflow:auto}code{background:#f4f4f4}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:.4rem;text-align:left}.ozet{background:#eef;border:1px solid #ccd;padding:.6rem 1rem}</style>
+</head>
+<body>
+<nav><a href="index.html">Ana Sayfa</a> · <a href="readme.html">README</a> · <a href="tools.html">Araç Referansı</a> · <a href="examples.html">Örnekler</a> · <a href="roadmap.html">Yol Haritası</a> · <a href="changelog.html">Değişiklikler</a> · <strong>Prompt Kütüphanesi</strong></nav>
+<p class="ozet">Yüzey özeti (gerçek koşu, TOOLS.md): 191 araç · 187 outputSchema · 191 annotations · 2 resource · 3 prompt</p>
+<h1>Prompt Kütüphanesi</h1>
+<h1 id="reaplus-prompt-kütüphanesi-10-hazır-prompt">ReaPlus Prompt Kütüphanesi (10 hazır prompt)</h1>
+<p>Ajanın rea-plus'a soracağı 10 hazır soru kalıbı. Her prompt: <strong>Amaç</strong> +
+<strong>Örnek çağrı</strong> (gerçek MCP/<code>rea-plus-cli</code> formu, alan adları üretilmiş
+referans <a href="tools.html"><code>TOOLS.md</code></a> ile aynı) + <strong>Beklenen çıktı</strong> türü.
+Yüzey: <strong>187 araç</strong>, <strong>183 outputSchema</strong>, <strong>187 annotations</strong>, 2 resource, 3 prompt.</p>
+<blockquote>Not: <code>confirm:true</code> isteyen canlı-debug çağrıları listede yok; buradaki
+10 promptun tamamı salt-okunur/statik akışlardır.</blockquote>
+<h2 id="1-triage--bu-dosya-nedir-nereden-başlarım">1) Triage — &quot;bu dosya nedir, nereden başlarım?&quot;</h2>
+<p><strong>Amaç:</strong> Bilinmeyen bir dosyayı tek çağrıda sınıfla ve sonraki adım planını al.</p>
+<p><strong>Örnek çağrı:</strong></p>
+<pre><code class="language-json">{ &quot;name&quot;: &quot;rea_investigate&quot;, &quot;arguments&quot;: { &quot;path&quot;: &quot;sample.exe&quot; } }</code></pre>
+<p><strong>Beklenen çıktı:</strong> <code>ok/plan/skor/tip/motor/yedekler</code> alanlı nesne (<code>outputSchema</code>
+alanları: <code>arac, motor, ok, plan, skor, tip, yedekler</code>); tip (pe/elf/apk/…),
+güven skoru ve önerilen motor + yedek plan listesi.</p>
+<h2 id="2-manifest--bu-apknın-paketi-izinleri-aktiviteleri">2) Manifest — &quot;bu APK'nın paketi, izinleri, aktiviteleri?&quot;</h2>
+<p><strong>Amaç:</strong> APK'nın <code>AndroidManifest.xml</code> kimliğini jadx ile çöz.</p>
+<p><strong>Örnek çağrı:</strong></p>
+<pre><code class="language-bash">node -e &quot;import('./dist/rea-domains/android/JadxBridge.js').then(m=&gt;console.log(JSON.stringify(m.rea_jadx_manifest('tests/corpus/sahte.apk'))))&quot;</code></pre>
+<p><strong>Beklenen çıktı:</strong> <code>ok/paket/izinler/aktiviteler</code> alanlı nesne; jadx yoksa
+uydurma manifest yerine <code>capability_unsupported</code> + kurulum ipucu.</p>
+<h2 id="3-davranış--olayları-zaman-çizgisine-diz">3) Davranış — &quot;olayları zaman çizgisine diz&quot;</h2>
+<p><strong>Amaç:</strong> API/syscall/net/dosya/process olaylarından kaynak-öncelikli özet üret
+(yürütme yok, saf fonksiyon).</p>
+<p><strong>Örnek çağrı:</strong></p>
+<pre><code class="language-bash">node -e &quot;import('./dist/rea-domains/behavior/BehaviorTimeline.js').then(m=&gt;console.log(m.rea_behavior_timeline([
+ {\&quot;kaynak\&quot;:\&quot;api\&quot;,\&quot;zaman\&quot;:3,\&quot;detay\&quot;:\&quot;CreateFileW\&quot;},
+ {\&quot;kaynak\&quot;:\&quot;net\&quot;,\&quot;zaman\&quot;:1,\&quot;detay\&quot;:\&quot;dns:ornek.test\&quot;},
+ {\&quot;kaynak\&quot;:\&quot;api\&quot;,\&quot;zaman\&quot;:2,\&quot;detay\&quot;:\&quot;CreateFileW\&quot;},
+ {\&quot;kaynak\&quot;:\&quot;process\&quot;,\&quot;zaman\&quot;:4,\&quot;detay\&quot;:\&quot;exit:0\&quot;}
+]).summary))&quot;</code></pre>
+<p><strong>Beklenen çıktı:</strong> Metin özet (<code>4 olay api@2 -&gt; process@4 top_api=CreateFileW</code>
+biçimi) + <code>sıralı/sayılar/top_api/ilk/son</code> detayları; boş listede
+<code>capability_unsupported</code>.</p>
+<h2 id="4-repo--bu-dizinde-ne-tür-dosyalar-var">4) Repo — &quot;bu dizinde ne tür dosyalar var?&quot;</h2>
+<p><strong>Amaç:</strong> Bir dizindeki PE/ELF/APK/JS/WASM dosyalarını sihir baytla tespit edip
+dosya başına sonraki-araç planı al.</p>
+<p><strong>Örnek çağrı:</strong></p>
+<pre><code class="language-json">{ &quot;name&quot;: &quot;rea_scan_repo&quot;, &quot;arguments&quot;: { &quot;path&quot;: &quot;&lt;hedef-dizin&gt;&quot; } }</code></pre>
+<p><strong>Beklenen çıktı:</strong> <code>summary</code> metni (<code>5 dosya, 5 tip …</code> biçimi) +
+<code>details.tipler</code> sayımı + <code>details.planlar</code> (dosya → önerilen motor);
+hedefsiz dizinde boş liste (<code>ok:true</code>).</p>
+<h2 id="5-pdb--debug-kaydından-sembole-git">5) PDB — &quot;debug kaydından sembole git&quot;</h2>
+<p><strong>Amaç:</strong> PE'nin CodeView RSDS kaydından PDB kimliğini çöz, Microsoft symbol
+server düzeninde indir (bütünlüklü + önbellekli).</p>
+<p><strong>Örnek çağrı:</strong></p>
+<pre><code class="language-bash">node -e &quot;import('./dist/rea-domains/typedef/PdbReader.js').then(m=&gt;console.log(JSON.stringify(m.rea_pdb_yolu('&lt;debug-bilgili.exe&gt;'))))&quot;</code></pre>
+<p><strong>Beklenen çıktı:</strong> Adım 1'de <code>pdb/guid/yas</code> (<code>rea_pdb_yolu</code> alanları:
+<code>arac, dosya, guid, ok, pdb, yas</code>); adım 2'de <code>Ad/GUID-tiresiz+YAŞ/Ad</code>
+düzenli URL, <code>yol/cache</code> bilgisi (<code>rea_pdb_indir</code> alanları:
+<code>arac, cache, dosya, guid, ok, pdb, url, yas, yol</code>); bozuk içerikte
+<code>butunluk_hatasi</code>, ikinci çağrıda <code>cache:true</code>.</p>
+<h2 id="6-diff--iki-sürüm-arasında-fonksiyon-farkı-ne">6) Diff — &quot;iki sürüm arasında fonksiyon farkı ne?&quot;</h2>
+<p><strong>Amaç:</strong> İki ikili sürümün fonksiyon listelerini karşılaştırıp
+eklenen/çıkarılan/değişen/aynen kalan kümeleri al (N-day incelemesi girişi).</p>
+<p><strong>Örnek çağrı:</strong></p>
+<pre><code class="language-json">{ &quot;name&quot;: &quot;rea_bindiff_karsilastir&quot;, &quot;arguments&quot;: { &quot;text&quot;: &quot;&lt;rea_bindiff_fonksiyonlar çıktısı&gt;&quot; } }</code></pre>
+<p><strong>Beklenen çıktı:</strong> <code>aynen/cikarilan/degisen/eklenen/eski/yeni/istatistik/ozet</code>
+alanlı nesne; girdi <code>rea_bindiff_fonksiyonlar</code> (<code>path</code> zorunlu) çıktısıdır.</p>
+<h2 id="7-pcap--bu-yakalamada-hangi-akışlar-var-tls-çözülür-mü">7) Pcap — &quot;bu yakalamada hangi akışlar var, TLS çözülür mü?&quot;</h2>
+<p><strong>Amaç:</strong> PCAP dosyasındaki akışları birleştir; keylog varsa TLS içeriğini çöz.</p>
+<p><strong>Örnek çağrı:</strong></p>
+<pre><code class="language-json">{ &quot;name&quot;: &quot;rea_pcap_oku&quot;, &quot;arguments&quot;: { &quot;path&quot;: &quot;ornek.pcap&quot; } }</code></pre>
+<p>Keylog ile:</p>
+<pre><code class="language-json">{ &quot;name&quot;: &quot;rea_pcap_oku&quot;, &quot;arguments&quot;: { &quot;path&quot;: &quot;ornek.pcap&quot;, &quot;keylog&quot;: &quot;sslkeylog.txt&quot; } }</code></pre>
+<p><strong>Beklenen çıktı:</strong> <code>details/summary</code> içinde birleştirilmiş akış listesi
+(<code>outputSchema</code> var); <code>keylog</code> opsiyoneldir, verilmezse şifreli içerik
+çözülmeden meta-akışlar döner.</p>
+<h2 id="8-reçete--bu-apk-için-dinamik-analiz-planı-üret-ve-doğrula">8) Reçete — &quot;bu APK için dinamik analiz planı üret ve doğrula&quot;</h2>
+<p><strong>Amaç:</strong> APK yolundan kuru-doğrulamalı dinamik analiz reçetesi üret
+(çalıştırma yok, plan + doğrulama).</p>
+<p><strong>Örnek çağrı:</strong></p>
+<pre><code class="language-json">{ &quot;name&quot;: &quot;rea_android_dinamik_recete&quot;, &quot;arguments&quot;: { &quot;path&quot;: &quot;ornek.apk&quot; } }</code></pre>
+<p>Ardından reçete metniyle:</p>
+<pre><code class="language-json">{ &quot;name&quot;: &quot;rea_android_recete_dogrula&quot;, &quot;arguments&quot;: { &quot;text&quot;: &quot;&lt;recete-metni&gt;&quot; } }</code></pre>
+<p><strong>Beklenen çıktı:</strong> İlki <code>recete</code> alanlı nesne; ikincisi <code>adim_sayisi/ok</code>
+alanlı doğrulama sonucu.</p>
+<h2 id="9-fuzz--ayrıştırıcılar-bozuk-girdide-çökmüyor-mu">9) Fuzz — &quot;ayrıştırıcılar bozuk girdide çökmüyor mu?&quot;</h2>
+<p><strong>Amaç:</strong> PE/ELF/WASM/metadata ayrıştırıcılarına korpus tohumlarıyla bozuk
+girdi verip çökme/istisna taraması yap (yazma yalnız tmpdir'e).</p>
+<p><strong>Örnek çağrı:</strong></p>
+<pre><code class="language-bash">node scripts/fuzz-parsers.mjs</code></pre>
+<p><strong>Beklenen çıktı:</strong> Konsol özeti (tohum sayısı, çöken girdi listesi; temiz
+koşuda sıfır çökme) + <code>tests/parser-fuzz.test.mjs</code> yeşili; korpus
+(<code>tests/corpus/</code>) salt okunur kalır.</p>
+<h2 id="10-perf--listeaçılış-bütçeleri-tutuyor-mu">10) Perf — &quot;liste/açılış bütçeleri tutuyor mu?&quot;</h2>
+<p><strong>Amaç:</strong> <code>tools/list</code> yanıt süresi + sunucu açılış süresi bütçelerini ölç,
+regresyonu testle yakala.</p>
+<p><strong>Örnek çağrı:</strong></p>
+<pre><code class="language-bash">node tests/perf-budget.test.mjs</code></pre>
+<p><strong>Beklenen çıktı:</strong> node:test çıktısı (bütçe eşikleri <code>tests/perf-budget.test.mjs</code>
+içinde tanımlı); eşik aşımı testi kırmızıya düşürür, süreler konsolda
+milisaniye olarak raporlanır.</p>
+</body>
+</html>

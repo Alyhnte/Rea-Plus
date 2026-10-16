@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Örnekler — ReaPlus Docs</title>
+<style>body{max-width:60rem;margin:2rem auto;padding:0 1rem;font-family:system-ui,sans-serif;line-height:1.6}nav{margin-bottom:1rem}pre{background:#f4f4f4;padding:1rem;overflow:auto}code{background:#f4f4f4}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:.4rem;text-align:left}.ozet{background:#eef;border:1px solid #ccd;padding:.6rem 1rem}</style>
+</head>
+<body>
+<nav><a href="index.html">Ana Sayfa</a> · <a href="readme.html">README</a> · <a href="tools.html">Araç Referansı</a> · <strong>Örnekler</strong> · <a href="roadmap.html">Yol Haritası</a> · <a href="changelog.html">Değişiklikler</a> · <a href="prompts.html">Prompt Kütüphanesi</a></nav>
+<p class="ozet">Yüzey özeti (gerçek koşu, TOOLS.md): 191 araç · 187 outputSchema · 191 annotations · 2 resource · 3 prompt</p>
+<h1>Örnekler</h1>
+<h1 id="reaplus-örnek-prompt-kütüphanesi">ReaPlus Örnek Prompt Kütüphanesi</h1>
+<p>5 hazır senaryo: komut + beklenen çıktı + ne anlama geldiği. Buradaki <strong>her
+komut ve her sayı gerçek koşudan alınmıştır</strong> (uydurma çıktı yok);
+<code>tests/docs-examples.test.mjs</code> hepsini çalıştırıp doğrular.</p>
+<p>Yüzey (üretilmiş referans <a href="tools.html"><code>TOOLS.md</code></a> özeti): <strong>187 araç</strong>,
+<strong>183 outputSchema</strong>, <strong>187 annotations</strong>, 2 resource, 3 prompt.</p>
+<p>Ön koşul: <code>npm run build</code> (örnekler <code>dist/</code> üstünden koşar). Corpus
+dosyaları salt okunur (<code>tests/corpus/</code>); hiçbir örnek onları değiştirmez.</p>
+<h2 id="1-pe-triage--bu-exe-nedir-ne-çağırır">1) PE triage — &quot;bu exe nedir, ne çağırır?&quot;</h2>
+<pre><code class="language-bash">node dist/cli/index.js analyze-pe tests/corpus/mini_pe_x64.exe</code></pre>
+<p>Beklenen çıktı (gerçek koşu):</p>
+<pre><code class="language-text">dosya: tests/corpus/mini_pe_x64.exe
+machine: 0x8664 bit: 64 sections: 1 entry: 0x1000
+dll (1): kernel32.dll
+fonksiyon (1): kernel32.dll!ExitProcess</code></pre>
+<p>Ne anlama gelir: <code>0x8664</code> = x64 COFF, tek <code>.text</code> bölümü, giriş <code>0x1000</code>;
+tek import <code>kernel32.dll!ExitProcess</code> — minimal bir test ikilisi profili.
+Makineye okunur hali:</p>
+<pre><code class="language-bash">node dist/cli/index.js analyze-pe tests/corpus/mini_pe_x64.exe --json</code></pre>
+<pre><code class="language-json">{&quot;ok&quot;:true,&quot;path&quot;:&quot;tests/corpus/mini_pe_x64.exe&quot;,&quot;machine&quot;:34404,
+ &quot;machine_hex&quot;:&quot;0x8664&quot;,&quot;bit&quot;:&quot;64&quot;,&quot;section_sayisi&quot;:1,&quot;entry&quot;:4096,
+ &quot;entry_hex&quot;:&quot;0x1000&quot;,&quot;dlls&quot;:[&quot;kernel32.dll&quot;],
+ &quot;fonksiyonlar&quot;:[&quot;kernel32.dll!ExitProcess&quot;],
+ &quot;bolumler&quot;:[{&quot;ad&quot;:&quot;.text&quot;,&quot;vsize&quot;:4096,&quot;vaddr&quot;:4096}]}</code></pre>
+<h2 id="2-apk-manifest--bu-paketin-adı-izinleri-aktiviteleri">2) APK manifest — &quot;bu paketin adı, izinleri, aktiviteleri?&quot;</h2>
+<p><code>jadx</code> kuruluysa (yoksa <code>capability_unsupported</code> + kurulum ipucu döner,
+uydurma manifest üretilmez):</p>
+<pre><code class="language-bash">node -e &quot;import('./dist/rea-domains/android/JadxBridge.js').then(m=&gt;console.log(JSON.stringify(m.rea_jadx_manifest('tests/corpus/sahte.apk'))))&quot;</code></pre>
+<p>Beklenen çıktı (gerçek koşu, jadx 1.x):</p>
+<pre><code class="language-json">{&quot;ok&quot;:true,&quot;arac&quot;:&quot;rea_jadx_manifest&quot;,&quot;apk&quot;:&quot;tests/corpus/sahte.apk&quot;,
+ &quot;paket&quot;:&quot;com.ornek.sahte&quot;,&quot;izinler&quot;:[],&quot;aktiviteler&quot;:[]}</code></pre>
+<p>Ne anlama gelir: jadx <code>--no-src</code> ile kaynakları açıp <code>AndroidManifest.xml</code>'i
+parse eder; sahte korpus APK'sında paket adı var ama izin/aktivite yok —
+gerçek bir uygulamada burada <code>INTERNET</code> gibi izinler ve <code>.MainActivity</code>
+gibi aktiviteler listelenir. <code>rea_jadx_classes</code> ile sınıf listesine,
+<code>rea_jadx_decompile</code> ile tek sınıf kaynağına inilir.</p>
+<h2 id="3-davranış-profili--olayları-zaman-çizgisine-diz">3) Davranış profili — &quot;olayları zaman çizgisine diz&quot;</h2>
+<p>Saf fonksiyon, yürütme yok — API/syscall/net/dosya/process olaylarını
+kaynak önceliğine dizer, ilk/son + top-5 API özeti üretir:</p>
+<pre><code class="language-bash">node -e &quot;import('./dist/rea-domains/behavior/BehaviorTimeline.js').then(m=&gt;console.log(m.rea_behavior_timeline([
+ {\&quot;kaynak\&quot;:\&quot;api\&quot;,\&quot;zaman\&quot;:3,\&quot;detay\&quot;:\&quot;CreateFileW\&quot;},
+ {\&quot;kaynak\&quot;:\&quot;net\&quot;,\&quot;zaman\&quot;:1,\&quot;detay\&quot;:\&quot;dns:ornek.test\&quot;},
+ {\&quot;kaynak\&quot;:\&quot;api\&quot;,\&quot;zaman\&quot;:2,\&quot;detay\&quot;:\&quot;CreateFileW\&quot;},
+ {\&quot;kaynak\&quot;:\&quot;process\&quot;,\&quot;zaman\&quot;:4,\&quot;detay\&quot;:\&quot;exit:0\&quot;}
+]).summary))&quot;</code></pre>
+<p>Beklenen çıktı (gerçek koşu):</p>
+<pre><code class="language-text">4 olay api@2 -&gt; process@4 top_api=CreateFileW</code></pre>
+<p>Ne anlama gelir: 4 olay kronolojiye değil <strong>kaynak önceliğine</strong>
+(api &gt; syscall &gt; net &gt; dosya &gt; process) dizilir; <code>sayılar</code>
+<code>{api:2, net:1, process:1}</code>, <code>top_api</code> en sık API'yi verir. Boş/eksik
+listede <code>capability_unsupported</code> döner — boş timeline uydurulmaz.</p>
+<h2 id="4-repo-tarama--bu-dizinde-ne-tür-dosyalar-var">4) Repo tarama — &quot;bu dizinde ne tür dosyalar var?&quot;</h2>
+<p>Sihir bayt + uzantı ipucuyla PE/ELF/APK/JS/WASM tespiti, motor önerisi ve
+5 dosyalık plan (tamamen offline, <code>.git</code>/<code>node_modules</code>/<code>dist</code> atlanır):</p>
+<pre><code class="language-bash">node -e &quot;import('node:fs').then(async fs=&gt;{const {rea_scan_repo}=await import('./dist/rea-domains/reposcan/RepoScan.js');
+const r=await rea_scan_repo('&lt;hedef-dizin&gt;');console.log(r.summary,JSON.stringify(r.details.tipler));})&quot;</code></pre>
+<p>5 sihirli dosyalı bir dizinde gerçek koşu:</p>
+<pre><code class="language-text">5 dosya, 5 tip {&quot;pe&quot;:1,&quot;elf&quot;:1,&quot;apk&quot;:1,&quot;js&quot;:1,&quot;wasm&quot;:1}</code></pre>
+<p>Ne anlama gelir: her dosya <code>yol/tip/motor</code> üçlüsüyle listelenir
+(örn. <code>.exe</code> → <code>pe</code>/<code>cutter</code>, <code>.apk</code> → <code>apk</code>/<code>jadx</code>, <code>.elf</code> →
+<code>elf</code>/<code>radare2</code>); <code>planlar</code> her dosya için önerilen sonraki aracı verir.
+Hedefsiz/boş dizinde boş liste (<code>ok:true</code>), yok dizinde
+<code>capability_unsupported</code>.</p>
+<h2 id="5-pdb-indirme--debug-kaydından-sembole">5) PDB indirme — &quot;debug kaydından sembole&quot;</h2>
+<p>Adım 1 — CodeView RSDS kaydından PDB kimliğini çöz (salt okunur):</p>
+<pre><code class="language-bash">node -e &quot;import('./dist/rea-domains/typedef/PdbReader.js').then(m=&gt;console.log(JSON.stringify(m.rea_pdb_yolu('&lt;debug-bilgili.exe&gt;'))))&quot;</code></pre>
+<p>Debug bilgili bir PE'de gerçek koşu (yerel üretilmiş örnek):</p>
+<pre><code class="language-json">{&quot;ok&quot;:true,&quot;arac&quot;:&quot;rea_pdb_yolu&quot;,&quot;pdb&quot;:&quot;ornek_test.pdb&quot;,
+ &quot;guid&quot;:&quot;ABCDEF01-2345-6789-ABCD-EF0123456789&quot;,&quot;yas&quot;:1}</code></pre>
+<p>Debug kaydı yoksa <code>bulunamadi</code> döner (<code>PDB debug kaydı yok</code>) — uydurma
+GUID üretilmez.</p>
+<p>Adım 2 — Microsoft symbol server düzeninde indir + bütünlük + önbellek:</p>
+<pre><code class="language-text">&lt;server&gt;/ornek_test.pdb/ABCDEF0123456789ABCDEF01234567891/ornek_test.pdb</code></pre>
+<p>Ne anlama gelir: URL <code>Ad/GUID-tiresiz+YAŞ/Ad</code> düzenindedir; inen dosya
+MSF imzası + GUID+yaş deseniyle doğrulanır, <code>&lt;önbellek&gt;/Ad/SİG/Ad</code>
+altına yazılır; ikinci çağrı ağa gitmeden <code>cache:true</code> döner. Bozuk
+içerik <code>butunluk_hatasi</code> ile reddedilir, yarım dosya yazılmaz; ağ yoksa
+<code>ag_hatasi</code> — sahte PDB asla yazılmaz. Önbellek dizini
+<code>REAPLUS_SYMBOL_CACHE</code> ile taşınır.</p>
+<h2 id="sonraki-adımlar">Sonraki adımlar</h2>
+<ul><li>Tam araç listesi: <a href="tools.html"><code>TOOLS.md</code></a> (üretilmiş, 187 araç).</li><li>Doğrulama akışı: <a href="https://github.com/Alyhnte/ReaPlus/blob/main/VERIFY.md"><code>VERIFY.md</code></a>; katkı akışı: <code>CONTRIBUTING.md</code>.</li></ul>
+</body>
+</html>

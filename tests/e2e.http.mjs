@@ -186,7 +186,7 @@ async function tokenliFaz() {
     assert.equal(ciplak.status, 401, "tokensız /health 401 dönmeli");
     // (b) tools/list 187 araç
     const adlar = await tumAraclar(port, auth);
-    assert.equal(adlar.length, 187, `araç sayısı 187 olmalı, gelen=${adlar.length}`);
+    assert.equal(adlar.length, 191, `araç sayısı 187 olmalı, gelen=${adlar.length}`);
     assert(adlar.includes("health"), "araçlarda health yok");
     assert(adlar.includes("rea_evm_selector"), "araçlarda rea_evm_selector yok");
     assert(adlar.includes("debug_open"), "tam yüzeyde debug_open yok");

@@ -134,3 +134,70 @@ export function rea_go_goresym(yol: string): ReaGpResult {
     return { ok: false, code: "capability_unsupported", reason: `GoReSym çalışmadı: ${(e as Error)?.message ?? e}` };
   }
 }
+
+// --- Go buildinfo derinliği: build-id + modül bağımlılık listesi (saf metin okuma) ---
+// Biçim (Go debug/buildinfo): "Go buildinf:" işaretinden sonra tab-ayraçlı satırlar:
+//   path\t<ana paket yolu> | mod\t<yol>\t<surum>[\t<ozet>] | dep\t<yol>\t<surum>\t<ozet>.
+// Blok ilk yabancı satırda biter; "=>" (replace) satırları atlanır. ELF not/sembol
+// çözümü değildir — bu sınır `not` alanında belirtilir.
+export interface GoModul { yol: string; surum: string }
+export function rea_go_buildinfo(yol: string): ReaGpResult {
+  if (!yol || !existsSync(yol)) return { ok: false, code: "capability_unsupported", reason: "dosya yok" };
+  const metin = readFileSync(yol).toString("latin1");
+  if (!goSinyalVarMi(metin)) return { ok: false, code: "capability_unsupported", reason: "go sinyali yok (go1.x/pclntab bulunamadı)" };
+  const surum = metin.match(/go1\.\d+(\.\d+)?/)?.[0] ?? null;
+  const sinirliNot = "tam modül grafiği için `go version -m` ya da GoReSym";
+  const isaret = metin.indexOf("Go buildinf:");
+  if (isaret < 0) {
+    return {
+      ok: true, tool: "rea_go_buildinfo", summary: `${surum ?? "?"} buildinfo yok (sınırlı)`,
+      details: {
+        buildid: surum, goSurumu: surum, modul: null, anaModul: null,
+        moduller: [] as GoModul[], modulSayisi: 0, sinirli: true,
+        not: `buildinfo bölümü yok (sınırlı: yalnız sürüm izi); ${sinirliNot}`,
+      },
+    };
+  }
+  const satirlar = metin.slice(isaret).split("\n").slice(1, 502);
+  let modul: string | null = null;
+  let anaModul: GoModul | null = null;
+  const moduller: GoModul[] = [];
+  const gorulen = new Set<string>();
+  let blokBozuk = false;
+  let satirGordu = false;
+  for (const ham of satirlar) {
+    const satir = ham.replace(/[\0\r]+$/g, "");
+    if (!satir) continue;
+    const parca = satir.split("\t");
+    const bas = parca[0];
+    if (bas !== "path" && bas !== "mod" && bas !== "dep" && bas !== "=>") break; // blok bitti
+    satirGordu = true;
+    if (bas === "path") {
+      if (modul === null) modul = (parca[1] ?? "").trim() || null;
+    } else if (bas === "mod") {
+      if (!anaModul) anaModul = { yol: (parca[1] ?? "").trim(), surum: (parca[2] ?? "").trim() };
+    } else if (bas === "dep") {
+      const y = (parca[1] ?? "").trim();
+      const s = (parca[2] ?? "").trim();
+      if (!y) { blokBozuk = true; continue; }
+      if (!gorulen.has(y)) {
+        gorulen.add(y);
+        moduller.push({ yol: y, surum: s });
+        if (moduller.length >= 200) break;
+      }
+    }
+    // "=>" (replace) satırları blok akışını bozmaz, kayda alınmaz.
+  }
+  const sinirli = !satirGordu || blokBozuk;
+  return {
+    ok: true, tool: "rea_go_buildinfo",
+    summary: `${surum ?? "?"} modul=${moduller.length}${sinirli ? " sinirli" : ""}`,
+    details: {
+      buildid: surum, goSurumu: surum, modul, anaModul, moduller,
+      modulSayisi: moduller.length, sinirli,
+      not: sinirli
+        ? `buildinfo işareti var ama blok çözülemedi (sınırlı); ${sinirliNot}`
+        : `metin taraması (ELF not/sembol çözümü değil); ${sinirliNot}`,
+    },
+  };
+}

@@ -335,3 +335,241 @@ export function rea_macho_otool(yol: string, ekstraArgs: string[] = []) {
   if ((r.status ?? 1) !== 0) return engel(`otool başarısız (kod=${r.status ?? "?"})${kuyruk ? `: ${kuyruk}` : ""}`);
   return { ok: true as const, tool: "rea_macho_otool", summary: `otool satir=${stdout.split("\n").length}`, details: { cikti: stdout.slice(0, 4000), satir: stdout.split("\n").length } };
 }
+
+// ---------------------------------------------------------------- class-dump keşfi ----
+
+// Class-dump keşfi (otool ile aynı sıra): REA_CLASSDUMP_BIN → Windows where → POSIX PATH.
+// Env tanımlıysa otoritatiftir: yol içeren değerde dosya yoksa null döner.
+export function resolveClassdumpCommand(
+  env: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+): OtoolCommand | null {
+  const binEnv = (env.REA_CLASSDUMP_BIN ?? "").trim();
+  if (binEnv) {
+    const yolIcerir = binEnv.includes("/") || binEnv.includes("\\");
+    if (yolIcerir && !existsSync(binEnv)) return null;
+    return { komut: binEnv, onEkArgs: [], kaynak: "REA_CLASSDUMP_BIN" };
+  }
+  if (platform === "win32") {
+    try {
+      const r = spawnSync("where", ["class-dump"], { encoding: "utf8", timeout: 15000, stdio: ["ignore", "pipe", "ignore"], windowsHide: true });
+      if (r.error || (r.status ?? 1) !== 0) return null;
+      const ilk = String(r.stdout ?? "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean)[0];
+      if (!ilk) return null;
+      return { komut: ilk, onEkArgs: [], kaynak: "where class-dump" };
+    } catch { return null; }
+  }
+  return { komut: "class-dump", onEkArgs: [], kaynak: "PATH" };
+}
+
+// Class-dump köprüsü: yoksa dürüst unsupported + kurulum ipucu; varsa gerçek çağrı.
+export function rea_macho_classdump(yol: string, ekstraArgs: string[] = []) {
+  if (!yol || !existsSync(yol)) return engel(`dosya yok: ${yol}`);
+  const cmd = resolveClassdumpCommand();
+  if (!cmd) {
+    return engel(
+      "class-dump bulunamadı (kurulum: https://github.com/nygard/class-dump ; bulunan yolu REA_CLASSDUMP_BIN ile verin; " +
+      "saf okuma için rea_macho_objc kullanın — sınırlı kip)",
+    );
+  }
+  const args = [...cmd.onEkArgs, ...ekstraArgs, yol];
+  let r;
+  try {
+    r = spawnSync(cmd.komut, args, { encoding: "utf8", timeout: 30000, maxBuffer: 4 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+  } catch (e) {
+    return engel(`class-dump başlatılamadı: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  const stdout = typeof r.stdout === "string" ? r.stdout : "";
+  const stderr = typeof r.stderr === "string" ? r.stderr : "";
+  const kuyruk = (stderr.trim() || stdout.trim()).slice(-500);
+  const err = r.error as NodeJS.ErrnoException | undefined;
+  if (err) {
+    if (err.code === "ETIMEDOUT") return engel(`class-dump zaman aşımı (30000ms)${kuyruk ? `: ${kuyruk}` : ""}`);
+    if (err.code === "ENOENT") {
+      return engel(
+        `class-dump bulunamadı (ENOENT, kaynak: ${cmd.kaynak}) — kurulum: https://github.com/nygard/class-dump ; ` +
+        "saf okuma için rea_macho_objc kullanın — sınırlı kip",
+      );
+    }
+    return engel(`class-dump çalıştırma hatası: ${err.message}${kuyruk ? ` — ${kuyruk}` : ""}`);
+  }
+  if ((r.status ?? 1) !== 0) return engel(`class-dump başarısız (kod=${r.status ?? "?"})${kuyruk ? `: ${kuyruk}` : ""}`);
+  return { ok: true as const, tool: "rea_macho_classdump", summary: `class-dump satir=${stdout.split("\n").length}`, details: { cikti: stdout.slice(0, 4000), satir: stdout.split("\n").length } };
+}
+
+// ---------------------------------------------------------------- ObjC derinliği ----
+// Saf TS __objc_classlist/__objc_catlist okuma (yürütme yok, dış araç şart değil).
+// Düzen (modern 64-bit ObjC runtime, objc-runtime-new.h):
+//   class_t: isa(8) + superclass(8) + cache(16) + bits(8) -> bits@32,
+//     data = bits & FAST_DATA_MASK (0x00007ffffffffff8);
+//   class_ro_t: flags(4) + instanceStart(4) + instanceSize(4) + reserved(4)
+//     + ivarLayout(8) + name(8) -> name@24;
+//   category_t: name(8) başta -> name@0.
+// Sanal adres -> dosya ofseti bölüm tablosundan (addr/size/offset) çözülür.
+
+type Bolum = { seg: string; ad: string; addr: bigint; size: bigint; offset: number };
+
+// LC_SEGMENT_64 komutlarındaki section_64 girdilerini toplar; kesik tabloda null döner.
+function bolumleriOku(buf: Buffer, dv: DataView, base: number, h: InceBaslik): Bolum[] | null {
+  const out: Bolum[] = [];
+  let off = base + h.baslikBoy;
+  for (let i = 0; i < h.ncmds; i++) {
+    if (off + 8 > buf.length) return null;
+    const cmd = dv.getUint32(off, h.le);
+    const cmdsize = dv.getUint32(off + 4, h.le);
+    if (cmdsize < 8 || off + cmdsize > buf.length) return null;
+    if (cmd === 0x19) {
+      if (off + 72 > buf.length) return null;
+      const nsects = dv.getUint32(off + 64, h.le);
+      if (nsects > 256) return null;
+      if (off + 72 + nsects * 80 > buf.length) return null;
+      for (let s = 0; s < nsects; s++) {
+        const so = off + 72 + s * 80;
+        const ad = buf.subarray(so, so + 16).toString("ascii").replace(/\0.*$/, "");
+        const seg = buf.subarray(so + 16, so + 32).toString("ascii").replace(/\0.*$/, "");
+        out.push({
+          seg, ad,
+          addr: dv.getBigUint64(so + 32, h.le),
+          size: dv.getBigUint64(so + 40, h.le),
+          offset: dv.getUint32(so + 48, h.le),
+        });
+      }
+    }
+    off += cmdsize;
+  }
+  return out;
+}
+
+// Sanal adresi dosya ofsetine çevirir (uzunluk dahil aralık kontrolü); çözülemezse null.
+function vaCoz(bolumler: Bolum[], va: bigint, uzunluk: number, bufUzunluk: number): number | null {
+  if (va === 0n) return null;
+  for (const b of bolumler) {
+    if (va >= b.addr && va + BigInt(uzunluk) <= b.addr + b.size) {
+      const fo = b.offset + Number(va - b.addr);
+      if (fo >= 0 && fo + uzunluk <= bufUzunluk) return fo;
+    }
+  }
+  return null;
+}
+
+// Dosya ofsetindeki NUL-sonlu dizeyi okur; NUL yoksa/boşsa null (sahte ad üretilmez).
+function adOku(buf: Buffer, fo: number, azami = 256): string | null {
+  let bit = fo;
+  const son = Math.min(fo + azami, buf.length);
+  while (bit < son && buf[bit] !== 0) bit++;
+  if (bit >= son || bit === fo) return null;
+  return buf.subarray(fo, bit).toString("utf8");
+}
+
+const SINIF_VERI_MASKESI = 0x7fffffffffff8n;
+
+// Sınıf işaretçisinden ad çözer: class -> bits&mask -> class_ro -> name -> cstring.
+function sinifAdiniCoz(buf: Buffer, dv: DataView, bolumler: Bolum[], le: boolean, sinifPtr: bigint): string | null {
+  const sinifOff = vaCoz(bolumler, sinifPtr, 40, buf.length);
+  if (sinifOff === null) return null;
+  const roPtr = dv.getBigUint64(sinifOff + 32, le) & SINIF_VERI_MASKESI;
+  const roOff = vaCoz(bolumler, roPtr, 32, buf.length);
+  if (roOff === null) return null;
+  const adPtr = dv.getBigUint64(roOff + 24, le);
+  const adOff = vaCoz(bolumler, adPtr, 1, buf.length);
+  if (adOff === null) return null;
+  return adOku(buf, adOff);
+}
+
+// Kategori işaretçisinden ad çözer: category_t.name@0 -> cstring.
+function kategoriAdiniCoz(buf: Buffer, dv: DataView, bolumler: Bolum[], le: boolean, katPtr: bigint): string | null {
+  const katOff = vaCoz(bolumler, katPtr, 8, buf.length);
+  if (katOff === null) return null;
+  const adPtr = dv.getBigUint64(katOff, le);
+  const adOff = vaCoz(bolumler, adPtr, 1, buf.length);
+  if (adOff === null) return null;
+  return adOku(buf, adOff);
+}
+
+// ObjC sınıf + kategori listesi: saf okuma her zaman çalışır; class-dump yoksa sinirli=true.
+// ObjC bölümü yoksa boş liste + objc:"yok" döner (desteklenmiyor değil: dosya Mach-O ama ObjC'siz).
+export function rea_macho_objc(yol: string, limit = 200) {
+  const buf = hamOku(yol);
+  if (!buf) return engel(`dosya yok/okunamadı: ${yol}`);
+  if (buf.length < 4) return engel("dosya çok kısa");
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const sihir = sihirHex(buf);
+  const classdump = resolveClassdumpCommand() === null ? "yok" : "var";
+  const sinirli = classdump === "yok";
+  const inceMi =
+    sihir === "cffaedfe" ? { le: true, is64: true }
+    : sihir === "feedfacf" ? { le: false, is64: true }
+    : sihir === "cefaedfe" ? { le: true, is64: false }
+    : sihir === "feedface" ? { le: false, is64: false }
+    : null;
+  if (!inceMi) {
+    if (sihir === "cafebabe" || sihir === "bebafeca" || sihir === "cafebabf" || sihir === "bfbafeca") {
+      return engel("yağlı (fat) ObjC çözümü desteklenmiyor (ince dilimi çıkarıp deneyin)");
+    }
+    return engel(`Mach-O sihri yok: ${sihir}`);
+  }
+  if (!inceMi.is64) return engel("32-bit ObjC çözümü desteklenmiyor (yalnız 64-bit)");
+  const h = inceBaslikOku(buf, dv, 0, inceMi.le, true);
+  if (!h) return engel("Mach-O başlığı kesik/bozuk (ncmds gerçekçi değil ya da dosya kısa)");
+  const bolumler = bolumleriOku(buf, dv, 0, h);
+  if (!bolumler) return engel("bölüm tablosu kesik/bozuk");
+  const sinifBolumu = bolumler.find((b) => b.ad === "__objc_classlist") ?? null;
+  const katBolumu = bolumler.find((b) => b.ad === "__objc_catlist") ?? null;
+  const not =
+    "saf TS __objc_classlist/__objc_catlist okuma (modern 64-bit düzeni: bits@32 mask 0x7fffffffffff8, ro->name@24, category name@0); " +
+    "tam hiyerarşi/protokol için class-dump";
+  if (!sinifBolumu && !katBolumu) {
+    return {
+      ok: true as const, tool: "rea_macho_objc",
+      summary: `objc yok${sinirli ? " sinirli" : ""}`,
+      details: {
+        sihir, arch: archAdi(h.cputype), objc: "yok",
+        siniflar: [] as string[], sinifSayisi: 0,
+        kategoriler: [] as string[], kategoriSayisi: 0,
+        sinirli, classdump,
+        not: "__objc_classlist/__objc_catlist bölümü yok (saf okuma; class-dump da yoksa isim çözümlemesi sınırlı)",
+      },
+    };
+  }
+  const lim = Math.max(0, limit);
+  const siniflar: string[] = [];
+  const kategoriler: string[] = [];
+  let girisSayisi = 0;
+  let kategoriGirisSayisi = 0;
+  let cozulemeyen = 0;
+  if (sinifBolumu) {
+    const girisler = Number(sinifBolumu.size / 8n);
+    girisSayisi = girisler;
+    const n = Math.min(girisler, lim);
+    for (let i = 0; i < n; i++) {
+      const fo = sinifBolumu.offset + i * 8;
+      if (fo + 8 > buf.length) { cozulemeyen++; continue; }
+      const ad = sinifAdiniCoz(buf, dv, bolumler, inceMi.le, dv.getBigUint64(fo, inceMi.le));
+      if (ad === null) cozulemeyen++;
+      else siniflar.push(ad);
+    }
+  }
+  if (katBolumu) {
+    const girisler = Number(katBolumu.size / 8n);
+    kategoriGirisSayisi = girisler;
+    const n = Math.min(girisler, lim);
+    for (let i = 0; i < n; i++) {
+      const fo = katBolumu.offset + i * 8;
+      if (fo + 8 > buf.length) { cozulemeyen++; continue; }
+      const ad = kategoriAdiniCoz(buf, dv, bolumler, inceMi.le, dv.getBigUint64(fo, inceMi.le));
+      if (ad === null) cozulemeyen++;
+      else kategoriler.push(ad);
+    }
+  }
+  return {
+    ok: true as const, tool: "rea_macho_objc",
+    summary: `objc sinif=${siniflar.length} kategori=${kategoriler.length}${sinirli ? " sinirli" : ""}`,
+    details: {
+      sihir, arch: archAdi(h.cputype), objc: "var",
+      siniflar, sinifSayisi: siniflar.length,
+      kategoriler, kategoriSayisi: kategoriler.length,
+      girisSayisi, kategoriGirisSayisi, cozulemeyen,
+      sinirli, classdump, not,
+    },
+  };
+}

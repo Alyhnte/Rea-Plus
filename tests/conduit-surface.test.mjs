@@ -238,9 +238,9 @@ describe("conduit yuzeyi (gercek protokol, InMemoryTransport)", () => {
     await bag?.kapat();
   });
 
-  it("tools/list toplam 187 araci korur; conduit 30'un tamami vardir", () => {
-    assert.equal(araclar.length, 187, `beklenen 187, gelen ${araclar.length}`);
-    assert.equal(new Set(araclar.map((a) => a.name)).size, 187);
+  it("tools/list toplam 191 araci korur; conduit 30'un tamami vardir", () => {
+    assert.equal(araclar.length, 191, `beklenen 191, gelen ${araclar.length}`);
+    assert.equal(new Set(araclar.map((a) => a.name)).size, 191);
     assert.deepEqual(conduitAraclar.map((a) => a.name).sort(), BEKLENEN_30);
   });
 

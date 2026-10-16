@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>README — ReaPlus Docs</title>
+<style>body{max-width:60rem;margin:2rem auto;padding:0 1rem;font-family:system-ui,sans-serif;line-height:1.6}nav{margin-bottom:1rem}pre{background:#f4f4f4;padding:1rem;overflow:auto}code{background:#f4f4f4}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:.4rem;text-align:left}.ozet{background:#eef;border:1px solid #ccd;padding:.6rem 1rem}</style>
+</head>
+<body>
+<nav><a href="index.html">Ana Sayfa</a> · <strong>README</strong> · <a href="tools.html">Araç Referansı</a> · <a href="examples.html">Örnekler</a> · <a href="roadmap.html">Yol Haritası</a> · <a href="changelog.html">Değişiklikler</a> · <a href="prompts.html">Prompt Kütüphanesi</a></nav>
+<p class="ozet">Yüzey özeti (gerçek koşu, TOOLS.md): 191 araç · 187 outputSchema · 191 annotations · 2 resource · 3 prompt</p>
+<h1>README</h1>
+<p>&lt;div align=&quot;center&quot;&gt;</p>
+<p>&lt;img src=&quot;assets/icon.svg&quot; width=&quot;110&quot; height=&quot;110&quot; alt=&quot;rea-plus logo&quot;&gt;</p>
+<h1 id="reverse-engine-anything-plus">Reverse Engine Anything Plus</h1>
+<p><strong>One MCP server for reverse engineering — live Windows debugging plus a 157-tool static-analysis suite for PE/ELF, Mach-O, .NET, APK, IL2CPP, WASM/EVM, firmware, and the web.</strong></p>
+<p>Your agent asks questions; rea-plus inspects the binary and answers with evidence, not guesses.</p>
+<p><a href="https://github.com/Alyhnte/ReaPlus/actions/workflows/ci.yml"><img src="https://github.com/Alyhnte/ReaPlus/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+<a href="https://github.com/Alyhnte/ReaPlus/releases"><img src="https://img.shields.io/github/v/release/Alyhnte/ReaPlus?style=flat-square" alt="Release"></a>
+<a href="#-features"><img src="https://img.shields.io/badge/MCP%20tools-187-blue?style=flat-square" alt="Tools"></a>
+<a href="#-tests"><img src="https://img.shields.io/badge/tests-864%20its%20%2B%20e2e-green?style=flat-square" alt="Tests"></a>
+<a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square" alt="Node"></a>
+<a href="https://github.com/Alyhnte/ReaPlus/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-yellow?style=flat-square" alt="License: MIT"></a></p>
+<p><a href="#-install">Install</a> · <a href="#-client-setup">Clients</a> · <a href="#-docker">Docker</a> · <a href="#-features">Features</a> · <a href="tools.html">Tools</a> · <a href="#-how-it-works">How it works</a> · <a href="#-security-model">Security</a> · <a href="roadmap.html">Roadmap</a> · <a href="#-faq">FAQ</a></p>
+<p>&lt;/div&gt;</p>
+<hr>
+<h2 id="-why-rea-plus">✨ Why rea-plus?</h2>
+<ul><li>🐞 <strong>Real debugging, not screenshots</strong> — x64dbg, cdb (WinDbg), and Frida engines behind one frozen 30-tool core: breakpoints, stepping, registers, memory, call stacks, time-travel checkpoints.</li><li>🧰 <strong>157 static tools</strong> — Ghidra headless, rizin/radare2, .NET CIL (dnfile) and ILSpy, jadx/apktool/adb, WASM + EVM, firmware, browser/HAR, UPX, PE/ELF/Mach-O readers, and more.</li><li>🤝 <strong>Honest by design</strong> — a missing backend answers <code>capability_unsupported</code> with an install hint. Nothing fakes a result, errors come back as proper MCP <code>isError</code>, and mutating live-debug calls require <code>confirm:true</code>.</li><li>🧩 <strong>187 tools, 2 resources, 3 prompts</strong> — the full generated catalog lives in <a href="tools.html"><code>docs/TOOLS.md</code></a>; <code>REA_TOOLSETS</code> lets small-context clients load only a profile slice (see <a href="#-configuration">Configuration</a>). Without an HTTP token, only a 44-tool read-only allowlist is registered instead of the full surface.</li><li>🔌 <strong>Two transports</strong> — stdio for local agents, streamable HTTP (<code>/mcp</code> + <code>/health</code>, bearer token, localhost Host/Origin validation) for shared setups.</li><li>🧪 <strong>Proven, not promised</strong> — a 86-file default test lane, Ubuntu CI for the released line, and protocol tests that drive the real compiled server.</li></ul>
+<pre><code class="language-console">$ rea-plus-cli doctor            # what is installed on this machine, what is missing
+$ rea-plus-cli analyze-evm &quot;transfer(address,uint256)&quot;
+transfer(address,uint256) -&gt; 0xa9059cbb</code></pre>
+<pre><code class="language-jsonc">// One MCP call your agent makes:
+{ &quot;name&quot;: &quot;rea_investigate&quot;, &quot;arguments&quot;: { &quot;path&quot;: &quot;sample.exe&quot; } }
+// -&gt; sniff + confidence + provider plan + evidence bundle, in one answer</code></pre>
+<h2 id="-install">🚀 Install</h2>
+<blockquote><strong>Requirements:</strong> Node.js ≥ 20. Everything else (Ghidra, rizin, jadx, Frida tooling, …) is optional — tools light up as backends appear; run <code>doctor</code> to see your machine's map. Windows is required for the live debuggers (x64dbg/cdb/Frida attach); static analysis runs anywhere.</blockquote>
+<h3 id="one-click-cursor--vs-code">One-click (Cursor / VS Code)</h3>
+<p><a href="https://cursor.com/install-mcp?name=rea-plus&amp;amp;config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsInJlYS1wbHVzIl19"><img src="https://img.shields.io/badge/Add%20to%20Cursor-000000?style=for-the-badge&amp;amp;logo=cursor&amp;amp;logoColor=white" alt="Add to Cursor"></a>
+<a href="https://vscode.dev/redirect/mcp/install?name=rea-plus&amp;amp;config=%7B%22type%22%3A%22stdio%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22rea-plus%22%5D%7D"><img src="https://img.shields.io/badge/Install%20in%20VS%20Code-007ACC?style=for-the-badge&amp;amp;logo=visualstudiocode&amp;amp;logoColor=white" alt="Install in VS Code"></a></p>
+<h3 id="npx-no-clone">npx (no clone)</h3>
+<p>Any stdio MCP client can launch it straight from the npm registry:</p>
+<pre><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;rea-plus&quot;: {
+      &quot;command&quot;: &quot;npx&quot;,
+      &quot;args&quot;: [&quot;-y&quot;, &quot;rea-plus&quot;]
+    }
+  }
+}</code></pre>
+<blockquote><strong>Publishing status:</strong> <code>rea-plus@0.8.2</code> is live on the <a href="https://www.npmjs.com/package/rea-plus">npm registry</a> and <a href="https://registry.modelcontextprotocol.io"><code>io.github.Alyhnte/rea-plus</code></a> is published on the MCP Registry. The supported installs are <code>npx -y rea-plus</code> (above) and GHCR (see <a href="#-docker">Docker</a>).</blockquote>
+<h3 id="clone--build">Clone &amp; build</h3>
+<pre><code class="language-bash">git clone https://github.com/Alyhnte/ReaPlus.git
+cd ReaPlus
+npm ci
+npm run build        # tsc + runtime assets (frida-agent.js, Ghidra scripts) -&gt; dist/
+npm start            # stdio server (dist/server.js)
+
+# Optional HTTP transport:
+node dist/server.js --transport http --port 3848
+# -&gt; GET  http://127.0.0.1:3848/health
+# -&gt; POST http://127.0.0.1:3848/mcp</code></pre>
+<h3 id="optional-extras">Optional extras</h3>
+<pre><code class="language-bash"># Browser tools (Playwright is an optional dependency, loaded lazily):
+npm i playwright &amp;&amp; npx playwright install chromium</code></pre>
+<p>Then point your agent at it and ask it to inspect something.</p>
+<h2 id="-client-setup">🔌 Client setup</h2>
+<p>Every client below gets the same server. Ready-made files live in <a href="https://github.com/Alyhnte/ReaPlus/blob/main/configs/"><code>configs/</code></a>.</p>
+<p>&lt;details&gt;
+&lt;summary&gt;&lt;strong&gt;Claude Desktop&lt;/strong&gt;&lt;/summary&gt;</p>
+<p>Add to <code>claude_desktop_config.json</code> (see <a href="https://github.com/Alyhnte/ReaPlus/blob/main/configs/claude-desktop/claude_desktop_config.stdio.json"><code>configs/claude-desktop/</code></a>):</p>
+<pre><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;rea-plus&quot;: { &quot;command&quot;: &quot;npx&quot;, &quot;args&quot;: [&quot;-y&quot;, &quot;rea-plus&quot;] }
+  }
+}</code></pre>
+<p>&lt;/details&gt;</p>
+<p>&lt;details&gt;
+&lt;summary&gt;&lt;strong&gt;Claude Code&lt;/strong&gt;&lt;/summary&gt;</p>
+<pre><code class="language-bash">claude mcp add rea-plus -- npx -y rea-plus</code></pre>
+<p>Or drop <a href="https://github.com/Alyhnte/ReaPlus/blob/main/configs/claude-code/.mcp.json"><code>configs/claude-code/.mcp.json</code></a> into your project root.</p>
+<p>&lt;/details&gt;</p>
+<p>&lt;details&gt;
+&lt;summary&gt;&lt;strong&gt;Cursor&lt;/strong&gt;&lt;/summary&gt;</p>
+<p>Click <strong>Add to Cursor</strong> above, or use <a href="https://github.com/Alyhnte/ReaPlus/blob/main/configs/cursor/mcp.stdio.json"><code>configs/cursor/mcp.stdio.json</code></a> (clone path form) / <a href="https://github.com/Alyhnte/ReaPlus/blob/main/configs/cursor/mcp.http.json"><code>mcp.http.json</code></a> (HTTP form).</p>
+<p>&lt;/details&gt;</p>
+<p>&lt;details&gt;
+&lt;summary&gt;&lt;strong&gt;VS Code&lt;/strong&gt;&lt;/summary&gt;</p>
+<p>Click <strong>Install in VS Code</strong> above, or copy <a href="https://github.com/Alyhnte/ReaPlus/blob/main/configs/vscode/mcp.json"><code>configs/vscode/mcp.json</code></a> to <code>.vscode/mcp.json</code> in your workspace.</p>
+<p>&lt;/details&gt;</p>
+<p>&lt;details&gt;
+&lt;summary&gt;&lt;strong&gt;Windsurf&lt;/strong&gt;&lt;/summary&gt;</p>
+<p>Use <a href="https://github.com/Alyhnte/ReaPlus/blob/main/configs/windsurf/mcp_config.json"><code>configs/windsurf/mcp_config.json</code></a> as your <code>mcp_config.json</code>.</p>
+<p>&lt;/details&gt;</p>
+<p>&lt;details&gt;
+&lt;summary&gt;&lt;strong&gt;Codex&lt;/strong&gt;&lt;/summary&gt;</p>
+<p>Append <a href="https://github.com/Alyhnte/ReaPlus/blob/main/configs/codex/config.toml"><code>configs/codex/config.toml</code></a> to <code>~/.codex/config.toml</code>:</p>
+<pre><code class="language-toml">[mcp_servers.rea-plus]
+command = &quot;npx&quot;
+args = [&quot;-y&quot;, &quot;rea-plus&quot;]</code></pre>
+<p>&lt;/details&gt;</p>
+<p>&lt;details&gt;
+&lt;summary&gt;&lt;strong&gt;opencode / generic HTTP&lt;/strong&gt;&lt;/summary&gt;</p>
+<pre><code class="language-bash">DBG_BRIDGE_TOKEN=your-secret node dist/server.js --transport http --port 3848
+# clients connect to http://127.0.0.1:3848/mcp with Authorization: Bearer &lt;token&gt;</code></pre>
+<p>See <a href="https://github.com/Alyhnte/ReaPlus/blob/main/configs/opencode/opencode.stdio.json"><code>configs/opencode/</code></a> for stdio and HTTP variants.</p>
+<p>&lt;/details&gt;</p>
+<h2 id="-docker">🐳 Docker</h2>
+<pre><code class="language-bash"># Build locally (works today):
+docker build -t rea-plus .
+
+# stdio (for MCP clients that spawn containers):
+docker run -i --rm rea-plus
+
+# HTTP:
+docker run -p 3848:3848 -e DBG_BRIDGE_TOKEN=your-secret rea-plus --transport http --port 3848 --host 0.0.0.0</code></pre>
+<p>Images are published to GHCR on each release (<code>ghcr.io/alyhnte/reaplus</code>). Windows-only
+debuggers (x64dbg/cdb) report <code>capability_unsupported</code> inside a Linux container; static
+analysis, the CLI, and both transports work.</p>
+<h2 id="-features">🧰 Features</h2>
+<p>The complete, generated reference — <strong>187 tools + 2 resources (<code>rea-plus://server-info</code>, <code>rea-plus://capabilities-safety</code>) + 3 prompts (<code>packer-triage</code>, <code>dotnet-malware-triage</code>, <code>android-triage</code>)</strong> — is in <a href="tools.html"><code>docs/TOOLS.md</code></a>. The table below is only a domain summary.</p>
+<table><thead><tr><th>Domain</th><th>What you get</th><th>Engine / backend</th></tr></thead><tbody><tr><td>Live debugging</td><td>Breakpoints, step/continue, registers, memory, call stacks, checkpoints &amp; rewind</td><td>x64dbg · cdb · Frida · radare2 (conduit core, 30 frozen tools)</td></tr><tr><td>Native static (PE/ELF)</td><td>Disassembly, CFG, xrefs, strings, imports, PDB/DWARF, decompile</td><td>Ghidra headless · rizin/Cutter</td></tr><tr><td>.NET</td><td>Real CLR detection, CIL dump via dnfile, ILSpy decompile</td><td>dnfile · ilspycmd</td></tr><tr><td>Android</td><td>APK decode/build, framework info, adb bridge</td><td>jadx · apktool · aapt2 · adb</td></tr><tr><td>Dynamic instrumentation</td><td>Attach/spawn, API tracing, conditional breakpoints, process pause</td><td>Frida 17</td></tr><tr><td>Behavior</td><td>Process runs with SHA-256 records, network capture (HAR), event timelines</td><td>mitmproxy · process capture</td></tr><tr><td>Web / browsers</td><td>Navigation, clicks, screenshots, storage &amp; console capture</td><td>Playwright (optional extra)</td></tr><tr><td>WASM / EVM</td><td>Validation (wabt), disassembly, function selectors, opcode work</td><td>wabt · offline keccak</td></tr><tr><td>Firmware &amp; exotic</td><td>Firmware triage, DOS/MIPS/AOT/Go pre-scans, packer hunt (UPX→.NET→dump recipe)</td><td>Static inspection · UPX</td></tr><tr><td>Mach-O / Apple</td><td>Header + load commands, otool output, bundle/plist reading (honest errors without backends)</td><td>Built-in reader · otool</td></tr><tr><td>Unity IL2CPP</td><td>Il2CppDumper dump + global-metadata class/method counts (honest error when missing)</td><td>Il2CppDumper · metadata reader</td></tr><tr><td>Binary diff</td><td>Function lists (name/address + hash) and version-to-version diff</td><td>Built-in</td></tr><tr><td>PCAP / TLS</td><td>Stream reassembly + keylog-based TLS decryption</td><td>tshark · keylog</td></tr><tr><td>Android dynamic</td><td>Dynamic-analysis recipe generation + dry-run recipe validation</td><td>Built-in recipe</td></tr><tr><td>Scale</td><td>Parallel repo scan (pool of 4, cancellable)</td><td>Built-in</td></tr><tr><td>Investigation</td><td>One-call triage: sniff → confidence → provider plan → evidence bundle</td><td><code>rea_investigate</code> orchestrator</td></tr><tr><td>Assistance</td><td>Capability probing + caching, fallback chains, config suggestions, telemetry</td><td>Built-in, offline</td></tr><tr><td>Onboarding</td><td><code>setup</code> wizard writes client configs (confirm-gated); <code>doctor --fix</code> proposes install commands, runs them only with <code>--yes</code></td><td>rea-plus-cli</td></tr></tbody></table>
+<h2 id="-how-it-works">⚙️ How it works</h2>
+<pre><code class="language-mermaid">flowchart LR
+    A[&quot;AI agent / MCP client&quot;] --&gt;|stdio or streamable HTTP| S[&quot;rea-plus server&quot;]
+    S --&gt; C[&quot;Conduit core · 30 frozen tools&lt;br/&gt;x64dbg · cdb · Frida · radare2&quot;]
+    S --&gt; D[&quot;rea domains · 157 tools&lt;br/&gt;Ghidra · rizin · jadx · dnfile · wabt · Playwright&quot;]
+    C --&gt; T[&quot;Target binary / live process&quot;]
+    D --&gt; T
+    C --&gt; E[&quot;Evidence bundle + obligation ledger&quot;]
+    D --&gt; E
+    E --&gt; A</code></pre>
+<ul><li><strong>Frozen core.</strong> The 30 conduit tool names are immutable (<code>src/facade/toolNamespace.ts</code>); renames are forbidden, so existing conduit clients keep working.</li><li><strong>rea domains.</strong> 157 <code>rea_*</code> tools register centrally in <code>src/server/registerReaTools.ts</code>.</li><li><strong>Confirm gates.</strong> Live operations that mutate a target require <code>confirm:true</code>; otherwise you get <code>confirmation_required</code>, never a silent side effect.</li><li><strong>One catalog.</strong> <code>mergedCatalog()</code> (8 conduit + 16 rea prerequisite entries) is the single source <code>doctor</code> reads for versions and download links.</li><li><strong>Resources + prompts.</strong> Two static, read-only resources (<code>rea-plus://server-info</code>, <code>rea-plus://capabilities-safety</code>) and three side-effect-free prompts (<code>packer-triage</code>, <code>dotnet-malware-triage</code>, <code>android-triage</code>) are registered alongside the tools; prompts only return text and never run a tool.</li><li><strong>Typed outputs (partial).</strong> <code>structuredContent</code> mirrors the text JSON, and coverage is deliberately partial: 183 tools declare an <code>outputSchema</code> and 187 tools carry annotations. Tools outside the schema set return text JSON without a declared output schema — see <a href="tools.html"><code>docs/TOOLS.md</code></a> per tool.</li><li><strong>Toolset profiles.</strong> <code>REA_TOOLSETS</code> filters registration to a profile slice (comma-separated union; unknown names fail startup instead of silently falling back to <code>all</code>). Resources and prompts are not filtered. New tools land in <code>all</code> only (fail-closed).</li><li><strong>Roots (legacy + modern).</strong> With <code>REA_ROOTS=1</code> on the legacy stdio path, client roots can only narrow <code>REA_WORKSPACE_ROOT</code>; they can never widen it. Modern-protocol Roots uses the SDK multi-round-trip flow (<code>inputRequired</code> + <code>inputResponses</code>); <code>notifications/roots/list_changed</code> only exists pre-2026, so refresh happens on the next MRTR round.</li><li><strong>Progress (generalized).</strong> Stage helpers (<code>createStageProgress</code>/<code>onAbort</code>) pace notifications (~20/s) and clean up on cancel; <code>rea_process_run</code> pilot unchanged, <code>rea_scan_repo</code> + <code>rea_jadx_full</code> staged. Other synchronous handlers remain out of scope.</li><li><strong>Async jobs (opt-in).</strong> With <code>REA_ASYNC_JOBS=1</code>, five job tools (<code>rea_job_start/status/result/cancel/list</code>) run whitelisted tools (<code>rea_process_run</code>, <code>rea_scan_repo</code>, <code>rea_behavior_run</code>) through a bounded in-memory queue (2 concurrent). Default surface stays 187 tools; opt-in surface is 192.</li></ul>
+<h2 id="-cli">💻 CLI</h2>
+<p>The same engines are scriptable from the terminal (<code>rea-plus-cli</code>, or <code>node dist/cli/index.js</code> in a clone):</p>
+<pre><code class="language-bash">rea-plus-cli analyze-evm &quot;transfer(address,uint256)&quot;     # -&gt; 0xa9059cbb (fully offline)
+rea-plus-cli analyze-evm &quot;approve(address,uint256)&quot; --json
+rea-plus-cli analyze-wasm sample.wat --json
+rea-plus-cli analyze-js bundle.js bundle.js.map
+rea-plus-cli doctor --json                                # per-tool readiness report
+rea-plus-cli doctor --fix                                 # propose install commands for missing tools (--yes applies them)
+rea-plus-cli setup --dry-run                              # preview client config changes before writing</code></pre>
+<h2 id="-configuration">🔧 Configuration</h2>
+<p>All configuration is environment variables — no config files to edit in the server itself.</p>
+<table><thead><tr><th>Variable</th><th>Purpose</th></tr></thead><tbody><tr><td><code>DBG_BRIDGE_TOKEN</code></td><td>Bearer token for the HTTP transport (unset on HTTP = auth off + startup warning + only 44 read-only allowlist tools registered, intersected with <code>REA_TOOLSETS</code>; stdio is unaffected)</td></tr><tr><td><code>DBG_BRIDGE_FRIDA_TIMEOUT_MS</code></td><td>Frida agent RPC timeout (default 30000)</td></tr><tr><td><code>REA_GHIDRA_DIR</code></td><td>Ghidra installation directory for provider-backed analysis</td></tr><tr><td><code>REA_UPX_BIN</code> · <code>REA_WABT_BIN</code> · <code>REA_AAPT2_BIN</code></td><td>Explicit tool paths when not on PATH</td></tr><tr><td><code>REA_JEB_MCP_URL</code> · <code>REA_JEB_ALLOW_REMOTE</code></td><td>JEB endpoint; remote (non-loopback) requires <code>REA_JEB_ALLOW_REMOTE=1</code></td></tr><tr><td><code>REA_CDP_URL</code></td><td>Attach browser tools to an existing Chrome DevTools endpoint</td></tr><tr><td><code>REA_CORELIB_DLL</code></td><td>Preferred .NET runtime DLL for CIL inspection</td></tr><tr><td><code>REA_WORKSPACE_ROOT</code></td><td>Workspace root(s), path-delimiter separated. When set, <code>rea_*</code> path arguments, the conduit <code>open_target</code>/<code>debug_open</code> paths, and user-visible derived writes (<code>.unpacked</code>, <code>.extracted</code>, HAR output) must resolve inside a root; unset = no restriction. Operator temp/cache surfaces stay outside this boundary by design (browser artifacts dir, Ghidra tmp project/input dirs, the hopper tmp request file, the apktool framework cache)</td></tr><tr><td><code>REA_ROOTS</code></td><td>Set to exactly <code>1</code> to enable the legacy-stdio Roots pilot. Client <code>file://</code> roots intersect with and can only narrow <code>REA_WORKSPACE_ROOT</code>; modern-protocol Roots is not enabled by this flag</td></tr><tr><td><code>REA_TOOLSETS</code></td><td>Comma-separated tool profiles to register: <code>all</code> (default, 187), <code>minimal</code> (8), <code>static</code> (98), <code>android</code> (27), <code>dotnet</code> (20), <code>web</code> (26), <code>debug</code> (50). Combined profiles union; an unknown or empty name fails startup. Resources/prompts are unaffected</td></tr><tr><td><code>REA_ASYNC_JOBS</code></td><td>Set to exactly <code>1</code> to register the 5 async job tools (192 tools total). Jobs are in-memory only, at most 2 concurrent, and the whitelist is <code>rea_process_run</code> + <code>rea_scan_repo</code> + <code>rea_behavior_run</code></td></tr><tr><td><code>REA_AUDIT_LOG</code></td><td>Path of a JSONL audit log (both transports). Each line carries only <code>ts</code>, <code>transport</code>, <code>tool</code>, <code>durationMs</code>, <code>isError</code> — never arguments, tokens, paths, or target content. A write error warns once and disables auditing instead of crashing the server</td></tr><tr><td><code>REA_HTTP_RATE_LIMIT_PER_MIN</code></td><td>HTTP requests per client IP per minute (default 120); excess gets <code>429</code>. A non-positive-integer value fails startup</td></tr><tr><td><code>REA_HTTP_MAX_CONCURRENT</code></td><td>Maximum simultaneous in-flight HTTP requests (default 16); excess gets <code>429</code>. A non-positive-integer value fails startup</td></tr></tbody></table>
+<p>External tools are discovered from these variables and PATH only — no machine-specific paths are baked in.</p>
+<h2 id="-security-model">🔒 Security model</h2>
+<p>rea-plus is a debugger: by design it can launch, attach to, and instrument local processes. Treat access to it like shell access.</p>
+<ul><li><strong>stdio first.</strong> The default transport never opens a port.</li><li><strong>HTTP is locked down.</strong> Bearer token (constant-time compare), localhost Host/Origin validation against DNS-rebinding/CSRF, per-IP rate and concurrency limits (<code>REA_HTTP_RATE_LIMIT_PER_MIN</code>, <code>REA_HTTP_MAX_CONCURRENT</code>), and — when started without a token — a loud warning plus a reduced surface of 44 read-only, path-free allowlist tools (intersected with <code>REA_TOOLSETS</code>) instead of all 187.</li><li><strong>Workspace boundary (opt-in).</strong> With <code>REA_WORKSPACE_ROOT</code> set, <code>rea_*</code> path arguments, the conduit <code>open_target</code>/<code>debug_open</code> paths, and user-visible derived writes must stay inside the root (realpath-checked, so junction/symlink escapes fail). Operator temp/cache surfaces (browser artifacts, Ghidra tmp dirs, the hopper tmp request file, the apktool framework cache) are a documented exception and are not forced inside the root.</li><li><strong>Audit without content.</strong> <code>REA_AUDIT_LOG</code> records one JSONL line per tool call with only time, transport, tool name, duration, and <code>isError</code> — never arguments, tokens, paths, or target content.</li><li><strong>Inputs are validated.</strong> Addresses that reach backend command languages are restricted to hex/decimal/symbol form — no <code>;</code>/<code>!</code> command injection into r2/rizin.</li><li><strong>SSRF gate.</strong> Outbound helper calls (e.g. the JEB bridge) are loopback-only unless the operator opts in; link-local/metadata hosts are always blocked.</li><li><strong>No fake results.</strong> Missing capability ⇒ <code>capability_unsupported</code> with a reason; handler errors ⇒ MCP <code>isError</code> with the message only (no stack traces).</li><li><strong>No target execution in static paths.</strong> Inspection tools read bytes; they never run the sample. Run unknown binaries in a VM — that is what the live lane is for.</li></ul>
+<h2 id="-tests">🧪 Tests</h2>
+<p>92 test files. The default lane (<code>npm test</code>) runs 86 files and excludes the live-injection/debugger, packet-capture, browser, e2e, and local-Ghidra suites — those touch real processes or machine-specific installs and belong to a VM or a dedicated CI job (<code>npm run test:live</code>). Every file is capped at 90s with process-tree kill, so a hung backend can never hang the lane. The released line's CI runs the default lane on Ubuntu (Node 20 + 22).</p>
+<pre><code class="language-bash">npm test                        # default lane: 86 files (live suites excluded)
+npm run test:live               # everything, incl. frida/sniff/browser/e2e/ghidra (VM/CI only)
+npm run test:e2e                # spawn -&gt; /health -&gt; tools/list
+node --test tests/evm.test.mjs # single-domain runs work too</code></pre>
+<p>Details: <a href="https://github.com/Alyhnte/ReaPlus/blob/main/docs/VERIFY.md"><code>docs/VERIFY.md</code></a> · <a href="https://github.com/Alyhnte/ReaPlus/blob/main/docs/MCP-CONTRACTS.md"><code>docs/MCP-CONTRACTS.md</code></a> · <a href="changelog.html"><code>CHANGELOG.md</code></a></p>
+<h2 id="-roadmap">🗺️ Roadmap</h2>
+<p>Near the top of the list — the full, prioritized table lives in <a href="roadmap.html"><code>docs/ROADMAP.md</code></a>:</p>
+<ul><li>npm + MCP Registry are live (<code>rea-plus@0.8.2</code>, <code>io.github.Alyhnte/rea-plus</code>) — supported installs are <code>npx -y rea-plus</code> and GHCR</li><li>Typed surface is closed: 183 tools carry <code>outputSchema</code> (4 permanently schema-less) and 187 carry annotations; async whitelist is 3 tools, progress helpers cover the staged tools</li><li>Completing the golden binary corpus (expected-output hashes per provider) — including the still-open live Frida VM check and the DEX golden APK acceptance test</li><li>Signed releases + SBOM, and a documented VM sandbox profile for live work</li></ul>
+<h2 id="-faq">❓ FAQ</h2>
+<p><strong>Do I need Ghidra, IDA, Hopper, or JEB?</strong>
+No. Static JS/.NET/WASM/EVM and offline inspection work without them; provider-backed depth uses your own installations when present. Commercial tools are never bundled or licensed by rea-plus.</p>
+<p><strong>Why does a tool return <code>capability_unsupported</code>?</strong>
+Its backend is not installed on this machine. The response names the missing capability and where to get it (the same catalog <code>doctor</code> reads). Install it and the tool lights up — no code changes.</p>
+<p><strong>Why do live operations need <code>confirm:true</code>?</strong>
+They mutate a running target (breakpoints, stepping, memory writes). The gate keeps agents from changing program state by accident.</p>
+<p><strong>Does it clash with conduit?</strong>
+No. Conduit defaults to port 3847; rea-plus serves 3848, and the 30 conduit tool names are frozen.</p>
+<p><strong>npm says the package is not found?</strong>
+Update your cache — <code>rea-plus@0.8.2</code> is on the <a href="https://www.npmjs.com/package/rea-plus">npm registry</a> and published on the MCP Registry. Use <code>npx -y rea-plus</code> everywhere above or the GHCR image.</p>
+<h2 id="-contributing">🤝 Contributing</h2>
+<p>Issues and PRs are welcome — bug reports, feature ideas, docs. Run <code>npm run typecheck</code> and <code>npm test</code> before submitting, keep conduit tool names frozen, and make new tools fail honestly (<code>capability_unsupported</code>, never a fake <code>ok</code>).</p>
+<p>If rea-plus saved you an afternoon of hex-editor archaeology, a ⭐ helps other reversers find it.</p>
+<h2 id="-license">📄 License</h2>
+<p><a href="https://github.com/Alyhnte/ReaPlus/blob/main/LICENSE">MIT</a>. rea-plus code is MIT licensed; third-party tools and providers keep their own licenses — you must legally obtain and be authorized to use commercial tools (IDA Pro, Hopper, JEB) under their vendor terms.</p>
+<p>&lt;div align=&quot;center&quot;&gt;</p>
+<p><strong>Reverse Engine Anything Plus</strong> · built on the conduit live-debug core · <a href="https://github.com/Alyhnte/ReaPlus/releases">Releases</a> · <a href="roadmap.html">Roadmap</a> · <a href="changelog.html">Changelog</a></p>
+<p>&lt;/div&gt;</p>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ana Sayfa — ReaPlus Docs</title>
+<style>body{max-width:60rem;margin:2rem auto;padding:0 1rem;font-family:system-ui,sans-serif;line-height:1.6}nav{margin-bottom:1rem}pre{background:#f4f4f4;padding:1rem;overflow:auto}code{background:#f4f4f4}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:.4rem;text-align:left}.ozet{background:#eef;border:1px solid #ccd;padding:.6rem 1rem}</style>
+</head>
+<body>
+<nav><strong>Ana Sayfa</strong> · <a href="readme.html">README</a> · <a href="tools.html">Araç Referansı</a> · <a href="examples.html">Örnekler</a> · <a href="roadmap.html">Yol Haritası</a> · <a href="changelog.html">Değişiklikler</a> · <a href="prompts.html">Prompt Kütüphanesi</a></nav>
+<p class="ozet">Yüzey özeti (gerçek koşu, TOOLS.md): 191 araç · 187 outputSchema · 191 annotations · 2 resource · 3 prompt</p>
+<h1>Ana Sayfa</h1>
+<p>README + Araç Referansı + Örnekler + Yol Haritası + Değişiklikler + Prompt Kütüphanesi — tek statik site. Üretim: <code>node scripts/site-uret.mjs</code>.</p>
+<label>Site içinde ara: <input type="search" id="arama" placeholder="örn. pcap, reçete, fuzz"></label>
+<ul id="sonuclar"><li data-baslik="readme kurulum, istemciler, özellikler, güvenlik"><a href="readme.html">README</a> — Kurulum, istemciler, özellikler, güvenlik</li><li data-baslik="araç referansı üretilmiş tam katalog (gerçek yüzey)"><a href="tools.html">Araç Referansı</a> — Üretilmiş tam katalog (gerçek yüzey)</li><li data-baslik="örnekler gerçek koşudan 5 senaryo"><a href="examples.html">Örnekler</a> — Gerçek koşudan 5 senaryo</li><li data-baslik="yol haritası öncelikli işler ve kapananlar"><a href="roadmap.html">Yol Haritası</a> — Öncelikli işler ve kapananlar</li><li data-baslik="değişiklikler sürüm notları (keep a changelog)"><a href="changelog.html">Değişiklikler</a> — Sürüm notları (Keep a Changelog)</li><li data-baslik="prompt kütüphanesi 10 hazır soru kalıbı"><a href="prompts.html">Prompt Kütüphanesi</a> — 10 hazır soru kalıbı</li><li data-baslik="triage — &quot;bu dosya nedir, nereden başlarım?&quot; hazır prompt"><a href="prompts.html">Triage — &quot;bu dosya nedir, nereden başlarım?&quot;</a> — hazır prompt</li><li data-baslik="manifest — &quot;bu apk'nın paketi, izinleri, aktiviteleri?&quot; hazır prompt"><a href="prompts.html">Manifest — &quot;bu APK'nın paketi, izinleri, aktiviteleri?&quot;</a> — hazır prompt</li><li data-baslik="davranış — &quot;olayları zaman çizgisine diz&quot; hazır prompt"><a href="prompts.html">Davranış — &quot;olayları zaman çizgisine diz&quot;</a> — hazır prompt</li><li data-baslik="repo — &quot;bu dizinde ne tür dosyalar var?&quot; hazır prompt"><a href="prompts.html">Repo — &quot;bu dizinde ne tür dosyalar var?&quot;</a> — hazır prompt</li><li data-baslik="pdb — &quot;debug kaydından sembole git&quot; hazır prompt"><a href="prompts.html">PDB — &quot;debug kaydından sembole git&quot;</a> — hazır prompt</li><li data-baslik="diff — &quot;iki sürüm arasında fonksiyon farkı ne?&quot; hazır prompt"><a href="prompts.html">Diff — &quot;iki sürüm arasında fonksiyon farkı ne?&quot;</a> — hazır prompt</li><li data-baslik="pcap — &quot;bu yakalamada hangi akışlar var, tls çözülür mü?&quot; hazır prompt"><a href="prompts.html">Pcap — &quot;bu yakalamada hangi akışlar var, TLS çözülür mü?&quot;</a> — hazır prompt</li><li data-baslik="reçete — &quot;bu apk için dinamik analiz planı üret ve doğrula&quot; hazır prompt"><a href="prompts.html">Reçete — &quot;bu APK için dinamik analiz planı üret ve doğrula&quot;</a> — hazır prompt</li><li data-baslik="fuzz — &quot;ayrıştırıcılar bozuk girdide çökmüyor mu?&quot; hazır prompt"><a href="prompts.html">Fuzz — &quot;ayrıştırıcılar bozuk girdide çökmüyor mu?&quot;</a> — hazır prompt</li><li data-baslik="perf — &quot;liste/açılış bütçeleri tutuyor mu?&quot; hazır prompt"><a href="prompts.html">Perf — &quot;liste/açılış bütçeleri tutuyor mu?&quot;</a> — hazır prompt</li></ul>
+<script>
+const kutu = document.getElementById("arama");
+const ogeler = [...document.querySelectorAll("#sonuclar li")];
+kutu.addEventListener("input", () => {
+  const q = kutu.value.toLocaleLowerCase("tr");
+  for (const li of ogeler) li.hidden = q !== "" && !li.dataset.baslik.includes(q);
+});
+</script>
+</body>
+</html>

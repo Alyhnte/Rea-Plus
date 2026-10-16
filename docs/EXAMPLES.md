@@ -4,8 +4,8 @@
 komut ve her sayı gerçek koşudan alınmıştır** (uydurma çıktı yok);
 `tests/docs-examples.test.mjs` hepsini çalıştırıp doğrular.
 
-Yüzey (üretilmiş referans [`TOOLS.md`](TOOLS.md) özeti): **187 araç**,
-**183 outputSchema**, **187 annotations**, 2 resource, 3 prompt.
+Yüzey (üretilmiş referans [`TOOLS.md`](TOOLS.md) özeti): **191 araç**,
+**187 outputSchema**, **191 annotations**, 2 resource, 3 prompt.
 
 Ön koşul: `npm run build` (örnekler `dist/` üstünden koşar). Corpus
 dosyaları salt okunur (`tests/corpus/`); hiçbir örnek onları değiştirmez.

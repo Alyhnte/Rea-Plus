@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Araç Referansı — ReaPlus Docs</title>
+<style>body{max-width:60rem;margin:2rem auto;padding:0 1rem;font-family:system-ui,sans-serif;line-height:1.6}nav{margin-bottom:1rem}pre{background:#f4f4f4;padding:1rem;overflow:auto}code{background:#f4f4f4}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:.4rem;text-align:left}.ozet{background:#eef;border:1px solid #ccd;padding:.6rem 1rem}</style>
+</head>
+<body>
+<nav><a href="index.html">Ana Sayfa</a> · <a href="readme.html">README</a> · <strong>Araç Referansı</strong> · <a href="examples.html">Örnekler</a> · <a href="roadmap.html">Yol Haritası</a> · <a href="changelog.html">Değişiklikler</a> · <a href="prompts.html">Prompt Kütüphanesi</a></nav>
+<p class="ozet">Yüzey özeti (gerçek koşu, TOOLS.md): 191 araç · 187 outputSchema · 191 annotations · 2 resource · 3 prompt</p>
+<h1>Araç Referansı</h1>
+<h1 id="reaplus-araç-referansı">ReaPlus Araç Referansı</h1>
+<blockquote>Bu dosya otomatik üretilir; elle düzenlemeyin. Kaynak: derlenmiş sunucunun
+(<code>dist/server.js</code>) gerçek MCP yüzeyi. Yeniden üretmek için:
+<code>npm run build &amp;&amp; node scripts/generate-tool-reference.mjs</code></blockquote>
+<h2 id="özet">Özet</h2>
+<ul><li>Sunucu: <code>rea-plus</code> 0.9.0</li><li>Toplam araç: 191</li><li>Toplam resource: 2</li><li>Toplam prompt: 3</li><li>outputSchema taşıyan araç: 187</li><li>annotations taşıyan araç: 191</li></ul>
+<h2 id="araçlar">Araçlar</h2>
+<h3 id="close_target"><code>close_target</code></h3>
+<p>Release the binary target (and its radare2 process) held by a session.</p>
+<ul><li>Girdi alanları:</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: closed, session_id)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="debug_attach"><code>debug_attach</code></h3>
+<p>Attach by pid, or, on a frida session, connect to a listening Frida Gadget (gadget host:port) or a running mobile package on USB (usb + package). The target keeps running after debug_close.</p>
+<ul><li>Girdi alanları:</li><li><code>auto_analyze</code> (boolean, opsiyonel) — Run x64dbg auto-analysis after attaching (slower).</li><li><code>break_on_entry</code> (boolean, opsiyonel) — Pause the debuggee right after attaching.</li><li><code>gadget</code> (string, opsiyonel) — Frida Gadget listen address host:port. For targets that cannot be attached by pid.</li><li><code>package</code> (string, opsiyonel) — Process or mobile package name. Defaults to Gadget. Required with usb.</li><li><code>pid</code> (integer, opsiyonel) — Live process id. Required unless gadget or usb is set.</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li><code>usb</code> (boolean, opsiyonel) — Use the USB Frida device (phone or tablet) instead of a host:port Gadget.</li><li>outputSchema: var (alanlar: architecture, attached, engine, entry_point, mode, module_base, module_entry, path, pid, session_id)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="debug_breakpoint"><code>debug_breakpoint</code></h3>
+<p>Set, remove, or list breakpoints. Address may be hex, a number, or an x64dbg expression.</p>
+<ul><li>Girdi alanları:</li><li><code>action</code> (enum, opsiyonel)</li><li><code>address</code> (string | number, opsiyonel) — Required for set/remove; ignored for list.</li><li><code>condition</code> (string, opsiyonel) — Break condition expression (set only).</li><li><code>log_text</code> (string, opsiyonel) — Log text on hit (set only).</li><li><code>name</code> (string, opsiyonel) — Breakpoint name (set only).</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li><code>type</code> (enum, opsiyonel)</li><li>outputSchema: var</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="debug_callstack"><code>debug_callstack</code></h3>
+<p>Read the current thread's call stack (address, module, function per frame).</p>
+<ul><li>Girdi alanları:</li><li><code>max_frames</code> (integer, opsiyonel) — Max frames returned (default 50).</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: frames, session_id, threadId)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="debug_close"><code>debug_close</code></h3>
+<p>Tear down the hidden x64dbg process held by a session. Launched targets are stopped; attached targets are detached and left running.</p>
+<ul><li>Girdi alanları:</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: closed, session_id)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="debug_code"><code>debug_code</code></h3>
+<p>Live code: disassemble at an address (default: the stopped instruction pointer), assemble one instruction, or run until an address. Requires confirm:true.</p>
+<ul><li>Girdi alanları:</li><li><code>action</code> (enum, zorunlu)</li><li><code>address</code> (string | number, opsiyonel) — Address as hex (&quot;0x140001000&quot;), decimal, or an engine expression (&quot;cip&quot;).</li><li><code>confirm</code> (boolean, opsiyonel) — Must be true or the tool returns confirmation_required and does not touch the debuggee.</li><li><code>count</code> (integer, opsiyonel) — Instruction count for disassemble (default 12).</li><li><code>instruction</code> (string, opsiyonel) — Single instruction for assemble.</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="debug_continue"><code>debug_continue</code></h3>
+<p>Resume the debuggee until the next breakpoint, single-step, or exit. The stop posts an event (debug.breakpoint_hit / debug.exited / debug.paused) retrievable via events_pull.</p>
+<ul><li>Girdi alanları:</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: address, reason, session_id)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="debug_memory"><code>debug_memory</code></h3>
+<p>Live process memory: read, search, or dump. Requires confirm:true. Without it the call returns confirmation_required and does not touch the debuggee.</p>
+<ul><li>Girdi alanları:</li><li><code>action</code> (enum, zorunlu)</li><li><code>address</code> (string | number, opsiyonel) — Read/dump address.</li><li><code>confirm</code> (boolean, opsiyonel) — Must be true or the tool returns confirmation_required and does not touch the debuggee.</li><li><code>length</code> (integer, opsiyonel) — Search length in bytes (default 4096, or the main module).</li><li><code>max_results</code> (integer, opsiyonel)</li><li><code>pattern</code> (string, opsiyonel) — Search pattern. Hex bytes, or ascii when search_type is ascii.</li><li><code>search_type</code> (enum, opsiyonel)</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li><code>size</code> (integer, opsiyonel) — Byte count for read (default 64) or dump (default 256).</li><li><code>start_address</code> (string | number, opsiyonel) — Address as hex (&quot;0x140001000&quot;), decimal, or an engine expression (&quot;cip&quot;).</li><li>outputSchema: var</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="debug_open"><code>debug_open</code></h3>
+<p>Open a PE target for live debugging on this session's debug engine. Auto-detects x86/x64 and leaves the debuggee paused. x64dbg breaks on entry; cdb stops at the initial loader breakpoint and reports the PE entry.</p>
+<ul><li>Girdi alanları:</li><li><code>auto_analyze</code> (boolean, opsiyonel) — Run x64dbg auto-analysis after loading (slower).</li><li><code>break_on_entry</code> (boolean, opsiyonel) — Stop at the entry point after loading.</li><li><code>command_line_args</code> (string, opsiyonel) — Command line arguments for the debuggee.</li><li><code>path</code> (string, zorunlu) — Filesystem path of the PE binary to debug.</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: architecture, attached, engine, entry_point, mode, module_base, module_entry, opened, path, pid, session_id)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="debug_pause"><code>debug_pause</code></h3>
+<p>Asynchronously break a running debuggee. Idempotent when already paused.</p>
+<ul><li>Girdi alanları:</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: address, reason, session_id)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="debug_plugin"><code>debug_plugin</code></h3>
+<p>x64dbg Scylla and ScyllaHide. status reports files on disk. dump and hide do not open a window: a missing headless plugin returns engine_unavailable with the plugins path. Requires confirm:true. cdb and frida return capability_unsupported.</p>
+<ul><li>Girdi alanları:</li><li><code>action</code> (enum, zorunlu)</li><li><code>confirm</code> (boolean, opsiyonel) — Must be true or the tool returns confirmation_required and does not touch the debuggee.</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="debug_registers"><code>debug_registers</code></h3>
+<p>Read debuggee registers (general + flags; segment/debug optionally).</p>
+<ul><li>Girdi alanları:</li><li><code>include_debug</code> (boolean, opsiyonel) — Include debug registers.</li><li><code>include_segment</code> (boolean, opsiyonel) — Include segment registers.</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: debug, flags, general, segment, session_id)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="debug_state"><code>debug_state</code></h3>
+<p>Report live debug state (running/paused/terminated + pause reason) and the open target, if any.</p>
+<ul><li>Girdi alanları:</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="debug_step"><code>debug_step</code></h3>
+<p>Single-step the debuggee (into or over calls) and report the new location.</p>
+<ul><li>Girdi alanları:</li><li><code>count</code> (integer, opsiyonel) — Steps to take (default 1).</li><li><code>kind</code> (enum, opsiyonel)</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: address, disassembly, function, kind, module, registers, session_id)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="debug_thread"><code>debug_thread</code></h3>
+<p>Live threads: list, select, freeze, thaw, or read one thread's context. The id is the value returned by list (cdb index, x64dbg/frida OS thread id). Requires confirm:true. Frida has no suspend or switch API.</p>
+<ul><li>Girdi alanları:</li><li><code>action</code> (enum, zorunlu)</li><li><code>confirm</code> (boolean, opsiyonel) — Must be true or the tool returns confirmation_required and does not touch the debuggee.</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li><code>thread_id</code> (integer, opsiyonel)</li><li>outputSchema: var</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="debug_time"><code>debug_time</code></h3>
+<p>Checkpoint snapshot, the checkpoint timeline, and rewind of one checkpoint. A checkpoint is the active thread's registers, the thread list, and one memory window. Requires confirm:true.</p>
+<ul><li>Girdi alanları:</li><li><code>action</code> (enum, zorunlu)</li><li><code>checkpoint_id</code> (string, opsiyonel)</li><li><code>confirm</code> (boolean, opsiyonel) — Must be true or the tool returns confirmation_required and does not touch the debuggee.</li><li><code>memory_size</code> (integer, opsiyonel) — Bytes captured at the instruction pointer (default 64).</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="disassemble"><code>disassemble</code></h3>
+<p>Disassemble instructions at an address (linear, <code>count</code> ops) or a whole function. Defaults to the entry function.</p>
+<ul><li>Girdi alanları:</li><li><code>address</code> (string | number, opsiyonel) — Target address as hex (&quot;0x400200&quot;), decimal, or flag name (&quot;entry0&quot;).</li><li><code>count</code> (integer, opsiyonel) — Ops for address mode (default 32).</li><li><code>function</code> (string, opsiyonel) — Function name or address, e.g. &quot;entry0&quot;.</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: count, location, ops, session_id, text)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="dump"><code>dump</code></h3>
+<p>Read raw bytes at an address as hexdump text or a JSON byte array.</p>
+<ul><li>Girdi alanları:</li><li><code>address</code> (string | number, zorunlu) — Target address as hex (&quot;0x400200&quot;), decimal, or flag name (&quot;entry0&quot;).</li><li><code>format</code> (enum, opsiyonel)</li><li><code>length</code> (integer, opsiyonel) — Bytes to read (default 128).</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: address, bytes, format, length, session_id, text)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="events_pull"><code>events_pull</code></h3>
+<p>Pull events stored for one application session since a sequence number. This does not subscribe to push notifications.</p>
+<ul><li>Girdi alanları:</li><li><code>after</code> (integer, opsiyonel) — Return events with seq greater than this.</li><li><code>limit</code> (integer, opsiyonel)</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: events, retainedFrom, session_id)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="explain"><code>explain</code></h3>
+<p>Short Turkish explanation of an assembly window: what the region does, where it jumps, and which calls notify the user or the system. Pass instructions already disassembled, or a session_id. A live debug session is read only when confirm is true. Call this when the user asks what the assembly means.</p>
+<ul><li>Girdi alanları:</li><li><code>address</code> (string | number, opsiyonel) — Address to disassemble when instructions are omitted.</li><li><code>confirm</code> (boolean, opsiyonel) — Required only when explain itself disassembles a live debug session. Pasted instructions skip this.</li><li><code>count</code> (integer, opsiyonel) — How many instructions to read (default 16).</li><li><code>instructions</code> (object[], opsiyonel) — Already fetched ops. When set, the debugger is not called.</li><li><code>session_id</code> (string, opsiyonel) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: atlamalar, bildirimler, cagrilar, dil, gosterilen, kaynak, komut_sayisi, ozet, satirlar)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="get_cfg"><code>get_cfg</code></h3>
+<p>Control-flow graph of a function as JSON and/or Graphviz DOT. Defaults to the entry function.</p>
+<ul><li>Girdi alanları:</li><li><code>address</code> (string | number, opsiyonel) — Target address as hex (&quot;0x400200&quot;), decimal, or flag name (&quot;entry0&quot;).</li><li><code>format</code> (enum, opsiyonel)</li><li><code>function</code> (string, opsiyonel) — Function name or address, e.g. &quot;entry0&quot;.</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: dot, function, json, location, session_id)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="health"><code>health</code></h3>
+<p>Report bridge liveness. Does not touch a debugger engine.</p>
+<ul><li>Girdi alanları: yok</li><li>outputSchema: var (alanlar: name, protocol, sessions, status)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="open_target"><code>open_target</code></h3>
+<p>Open a binary target for static analysis in a radare2 session. Only mode 'static' is supported; anything else is a capability error. Requires r2 on PATH.</p>
+<ul><li>Girdi alanları:</li><li><code>mode</code> (string, opsiyonel) — Analysis mode. Only &quot;static&quot; is supported.</li><li><code>path</code> (string, zorunlu) — Filesystem path of the binary to analyze.</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: engine, mode, opened, path, session_id)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="prerequisites"><code>prerequisites</code></h3>
+<p>Check the programs Conduit uses (radare2, x64dbg, cdb, Python, Frida, Graphviz, ScyllaHide). Missing ones include a download URL and where to put the files. The bridge does not download them. Call this when a tool is missing or before choosing an engine.</p>
+<ul><li>Girdi alanları: yok</li><li>outputSchema: var (alanlar: araclar, ozet)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=true, readOnlyHint=true)</li></ul>
+<h3 id="rea_adb_devices"><code>rea_adb_devices</code></h3>
+<p>Bağlı cihaz listesi.</p>
+<ul><li>Girdi alanları: yok</li><li>outputSchema: var (alanlar: arac, cihazlar, ok)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_adb_install"><code>rea_adb_install</code></h3>
+<p>APK cihaza kurulum.</p>
+<ul><li>Girdi alanları:</li><li><code>apk_path</code> (string, zorunlu)</li><li><code>seri</code> (string, opsiyonel)</li><li>outputSchema: var (alanlar: apk, arac, ok, sonuc)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_adb_logcat"><code>rea_adb_logcat</code></h3>
+<p>Cihaz logcat dökümü.</p>
+<ul><li>Girdi alanları:</li><li><code>seri</code> (string, opsiyonel)</li><li>outputSchema: var (alanlar: arac, ok, satirlar, toplam_satir)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_adb_packages"><code>rea_adb_packages</code></h3>
+<p>Yüklü paket listesi.</p>
+<ul><li>Girdi alanları:</li><li><code>filtre</code> (string, opsiyonel)</li><li><code>seri</code> (string, opsiyonel)</li><li>outputSchema: var (alanlar: arac, ok, paketler)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_adb_screencap"><code>rea_adb_screencap</code></h3>
+<p>Cihaz ekran görüntüsü.</p>
+<ul><li>Girdi alanları:</li><li><code>out</code> (string, zorunlu)</li><li><code>seri</code> (string, opsiyonel)</li><li>outputSchema: var (alanlar: arac, bayt, ok, yol)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_android_dinamik_recete"><code>rea_android_dinamik_recete</code></h3>
+<p>Android dinamik analiz reçetesi üretimi.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, ok, recete)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_android_recete_dogrula"><code>rea_android_recete_dogrula</code></h3>
+<p>Reçete kuru-doğrulaması.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: adim_sayisi, arac, ok)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_aot_detect"><code>rea_aot_detect</code></h3>
+<p>NativeAOT sinyali.</p>
+<ul><li>Girdi alanları:</li><li><code>b64dosya</code> (string, zorunlu)</li><li><code>metin</code> (string, opsiyonel)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_aot_objc"><code>rea_aot_objc</code></h3>
+<p>ObjC dispatch izleri.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_aot_profile"><code>rea_aot_profile</code></h3>
+<p>AOT profili.</p>
+<ul><li>Girdi alanları:</li><li><code>b64dosya</code> (string, zorunlu)</li><li><code>metin</code> (string, opsiyonel)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_aot_swift"><code>rea_aot_swift</code></h3>
+<p>Swift dispatch izleri.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_apktool_build"><code>rea_apktool_build</code></h3>
+<p>Decode dizinden APK rebuild.</p>
+<ul><li>Girdi alanları:</li><li><code>dir</code> (string, zorunlu)</li><li><code>out</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, ciktiApk, ok, proje)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_apktool_caps"><code>rea_apktool_caps</code></h3>
+<p>apktool yetenek yoklaması.</p>
+<ul><li>Girdi alanları: yok</li><li>outputSchema: var (alanlar: aapt2, aapt2Tamam, apktool, arac, ok)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_apktool_decode"><code>rea_apktool_decode</code></h3>
+<p>APK decode (resource).</p>
+<ul><li>Girdi alanları:</li><li><code>apk_path</code> (string, zorunlu)</li><li><code>out</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: apk, arac, ciktiDir, ok)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_apktool_framework"><code>rea_apktool_framework</code></h3>
+<p>Framework APK kurulumu.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: apk, arac, ok)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_apktool_info"><code>rea_apktool_info</code></h3>
+<p>apktool+aapt2 sürümleri.</p>
+<ul><li>Girdi alanları: yok</li><li>outputSchema: var (alanlar: arac, ok, surum)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_apple_bundle"><code>rea_apple_bundle</code></h3>
+<p>Bundle anatomisi.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_apple_macho"><code>rea_apple_macho</code></h3>
+<p>Mach-O sihir + dyld listesi.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_apple_plist"><code>rea_apple_plist</code></h3>
+<p>Info.plist anahtar okuma.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_behavior_full"><code>rea_behavior_full</code></h3>
+<p>Tek çağrıda davranış raporu.</p>
+<ul><li>Girdi alanları:</li><li><code>api</code> (string, zorunlu)</li><li><code>net</code> (string, opsiyonel)</li><li>outputSchema: var (alanlar: bulgular, cizelge, ok, ozet, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_behavior_timeline"><code>rea_behavior_timeline</code></h3>
+<p>Olay çizelgesi + özet.</p>
+<ul><li>Girdi alanları:</li><li><code>olaylar</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_best_motor"><code>rea_best_motor</code></h3>
+<p>Hedef tip için en iyi motor (skor).</p>
+<ul><li>Girdi alanları:</li><li><code>adaylar</code> (string[], zorunlu)</li><li><code>tip</code> (string, zorunlu)</li><li>outputSchema: yok</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_bindiff_fonksiyonlar"><code>rea_bindiff_fonksiyonlar</code></h3>
+<p>Binary fonksiyon listesi (ad/adres + hash).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, bicim, dosya, fonksiyonlar, istatistik, ok, sayi, sembollu)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_bindiff_karsilastir"><code>rea_bindiff_karsilastir</code></h3>
+<p>İki sürüm arası fonksiyon farkı.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, aynen, cikarilan, degisen, eklenen, eski, istatistik, ok, ozet, yeni)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_browser_caps"><code>rea_browser_caps</code></h3>
+<p>Browser yetenek yoklaması.</p>
+<ul><li>Girdi alanları: yok</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_browser_click"><code>rea_browser_click</code></h3>
+<p>Tıklama + sonrası durum.</p>
+<ul><li>Girdi alanları:</li><li><code>selector</code> (string, zorunlu)</li><li><code>url</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_browser_har_import"><code>rea_browser_har_import</code></h3>
+<p>HAR içe aktarma.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_browser_nav"><code>rea_browser_nav</code></h3>
+<p>Sayfa açma + başlık.</p>
+<ul><li>Girdi alanları:</li><li><code>url</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_browser_scenario"><code>rea_browser_scenario</code></h3>
+<p>Senaryo kaydı.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_browser_shot"><code>rea_browser_shot</code></h3>
+<p>Tam sayfa ekran görüntüsü.</p>
+<ul><li>Girdi alanları:</li><li><code>out</code> (string, zorunlu)</li><li><code>url</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_config_suggest"><code>rea_config_suggest</code></h3>
+<p>Bulunan araçlara MCP config snippet.</p>
+<ul><li>Girdi alanları:</li><li><code>bulunan</code> (string[], zorunlu)</li><li>outputSchema: var (alanlar: snippet)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_console_yakala"><code>rea_console_yakala</code></h3>
+<p>Konsol mesajları.</p>
+<ul><li>Girdi alanları:</li><li><code>url</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_coverage"><code>rea_coverage</code></h3>
+<p>Kapsama oranı.</p>
+<ul><li>Girdi alanları:</li><li><code>incelenen</code> (integer, zorunlu)</li><li><code>toplam</code> (integer, zorunlu)</li><li>outputSchema: var (alanlar: arac, kalan, ok, oran)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_crash_append"><code>rea_crash_append</code></h3>
+<p>Crash olayı ekleme.</p>
+<ul><li>Girdi alanları:</li><li><code>olay</code> (string, zorunlu)</li><li><code>olaylar</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_crash_hint"><code>rea_crash_hint</code></h3>
+<p>Crash ipucu.</p>
+<ul><li>Girdi alanları:</li><li><code>olaylar</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_crash_kayit_parse"><code>rea_crash_kayit_parse</code></h3>
+<p>Crash notu parse.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, ok, registerlar, sinyal, threadSayisi, threadler)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_crash_ozet"><code>rea_crash_ozet</code></h3>
+<p>Crash özeti.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, ilkFrame, ok, registerSayisi, sinyal, threadSayisi)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_crash_timeline"><code>rea_crash_timeline</code></h3>
+<p>Crash timeline.</p>
+<ul><li>Girdi alanları:</li><li><code>olaylar</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_cutter_caps"><code>rea_cutter_caps</code></h3>
+<p>Cutter/rizin yetenek yoklaması.</p>
+<ul><li>Girdi alanları: yok</li><li>outputSchema: var (alanlar: arac, ok, pdc, surum)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_cutter_decompile"><code>rea_cutter_decompile</code></h3>
+<p>Cutter sözde-derleme.</p>
+<ul><li>Girdi alanları:</li><li><code>addr</code> (string, zorunlu)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: addr, arac, hedef, kaynak, kod, not, ok)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_cutter_disasm"><code>rea_cutter_disasm</code></h3>
+<p>Cutter/rizin disassembly.</p>
+<ul><li>Girdi alanları:</li><li><code>addr</code> (string, zorunlu)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: addr, arac, hedef, ok, ops)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_cutter_funcs"><code>rea_cutter_funcs</code></h3>
+<p>Cutter/rizin fonksiyon listesi.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, fonksiyonlar, hedef, ok)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_cutter_strings"><code>rea_cutter_strings</code></h3>
+<p>Cutter/rizin string listesi.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, hedef, ok, strings)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_cutter_xrefs"><code>rea_cutter_xrefs</code></h3>
+<p>Cutter/rizin xref listesi.</p>
+<ul><li>Girdi alanları:</li><li><code>addr</code> (string, zorunlu)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: addr, arac, hedef, ok, xrefs)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_diff_match"><code>rea_diff_match</code></h3>
+<p>Fonksiyon eşleme (JSON diziler).</p>
+<ul><li>Girdi alanları:</li><li><code>a</code> (string, zorunlu)</li><li><code>b</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_diff_summary"><code>rea_diff_summary</code></h3>
+<p>Eklenen/silinen özeti.</p>
+<ul><li>Girdi alanları:</li><li><code>a</code> (string, zorunlu)</li><li><code>b</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_dos_com"><code>rea_dos_com</code></h3>
+<p>COM tespiti.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_dos_int21"><code>rea_dos_int21</code></h3>
+<p>INT21 çağrı taraması.</p>
+<ul><li>Girdi alanları:</li><li><code>b64</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_dos_mz"><code>rea_dos_mz</code></h3>
+<p>MZ başlık kontrolü.</p>
+<ul><li>Girdi alanları:</li><li><code>b64</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_dos_psp"><code>rea_dos_psp</code></h3>
+<p>PSP struct parse.</p>
+<ul><li>Girdi alanları:</li><li><code>b64</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_dosya_izi"><code>rea_dosya_izi</code></h3>
+<p>API olaylarından dosya yazma/okuma.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_dotnet_cil"><code>rea_dotnet_cil</code></h3>
+<p>CIL method dökümü (dnfile).</p>
+<ul><li>Girdi alanları:</li><li><code>filtre</code> (string, opsiyonel)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, assembly, dosya, filtre, method_sayisi, methods, not, ok)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_dotnet_metadata"><code>rea_dotnet_metadata</code></h3>
+<p>Assembly metadata okuma.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, clr, dosya, not, ok, okuyucu)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_dwarf_ozet"><code>rea_dwarf_ozet</code></h3>
+<p>ELF DWARF özeti.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, dosya, fonksiyonAdlari, ok, subprogramSayisi, unitSayisi)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_evidence_bundle"><code>rea_evidence_bundle</code></h3>
+<p>Kanıt paketi derleme.</p>
+<ul><li>Girdi alanları:</li><li><code>ogeler</code> (string, zorunlu)</li><li><code>sakli</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: digest, items, retained, tools_sha256)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_evidence_verify"><code>rea_evidence_verify</code></h3>
+<p>Kanıt paketi doğrulama.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: ok)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_evm_disasm"><code>rea_evm_disasm</code></h3>
+<p>EVM bytecode disassembly (offline).</p>
+<ul><li>Girdi alanları:</li><li><code>hex</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, detay, ok, ozet)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_evm_selector"><code>rea_evm_selector</code></h3>
+<p>EVM 4-byte selector (keccak, offline).</p>
+<ul><li>Girdi alanları:</li><li><code>sig</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_evm_selectors"><code>rea_evm_selectors</code></h3>
+<p>EVM seçici adayları.</p>
+<ul><li>Girdi alanları:</li><li><code>hex</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_evm_stats"><code>rea_evm_stats</code></h3>
+<p>EVM opcode istatistiği.</p>
+<ul><li>Girdi alanları:</li><li><code>hex</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_fallback"><code>rea_fallback</code></h3>
+<p>Birincil yoksa yedek zincir.</p>
+<ul><li>Girdi alanları:</li><li><code>birincil</code> (string, zorunlu)</li><li><code>mevcut</code> (string[], zorunlu)</li><li>outputSchema: yok</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_firmware_caps"><code>rea_firmware_caps</code></h3>
+<p>Firmware yetenek yoklaması.</p>
+<ul><li>Girdi alanları: yok</li><li>outputSchema: var (alanlar: ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_firmware_extract"><code>rea_firmware_extract</code></h3>
+<p>Firmware çıkarma.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: ok, summary, tool)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_firmware_handoff"><code>rea_firmware_handoff</code></h3>
+<p>Firmware handoff notu.</p>
+<ul><li>Girdi alanları:</li><li><code>neden</code> (string, zorunlu)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: handoff, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_flutter_blutter"><code>rea_flutter_blutter</code></h3>
+<p>Blutter ile Dart analizi (yoksa dürüst hata).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: izler, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_flutter_payload"><code>rea_flutter_payload</code></h3>
+<p>Flutter payload izleri.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: izler, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_flutter_scan"><code>rea_flutter_scan</code></h3>
+<p>Flutter/Dart izi tarama.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: buildId, dartMi, motor, ok, summary, tool, tur)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_flutter_snapshot"><code>rea_flutter_snapshot</code></h3>
+<p>Flutter AOT snapshot bilgisi (Dart magic + sürüm).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: dartMi, dartSurumu, izolasyon, magic, ok, summary, tool, tur)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_frida_api"><code>rea_frida_api</code></h3>
+<p>API tracer (isim+args+retval).</p>
+<ul><li>Girdi alanları:</li><li><code>desen</code> (string, opsiyonel)</li><li><code>pid</code> (integer, zorunlu)</li><li>outputSchema: var (alanlar: arac, cagrilar, ok, pid, sayi)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_frida_cond"><code>rea_frida_cond</code></h3>
+<p>Koşullu breakpoint.</p>
+<ul><li>Girdi alanları:</li><li><code>adres</code> (string, zorunlu)</li><li><code>kosul</code> (string, zorunlu)</li><li><code>pid</code> (integer, zorunlu)</li><li>outputSchema: var (alanlar: adres, arac, hitSayisi, ok, pid, tuttu)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_frida_pause"><code>rea_frida_pause</code></h3>
+<p>Hedef süreç duraklatma (NtSuspend).</p>
+<ul><li>Girdi alanları:</li><li><code>pid</code> (integer, zorunlu)</li><li>outputSchema: var (alanlar: arac, durum, ok, pid)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_frida_resume"><code>rea_frida_resume</code></h3>
+<p>Duraklatılmış süreci devam ettirme.</p>
+<ul><li>Girdi alanları:</li><li><code>pid</code> (integer, zorunlu)</li><li>outputSchema: var (alanlar: arac, durum, ok, pid)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_frida_stalker"><code>rea_frida_stalker</code></h3>
+<p>Stalker çağrı izleme.</p>
+<ul><li>Girdi alanları:</li><li><code>pid</code> (integer, zorunlu)</li><li><code>sure_ms</code> (integer, opsiyonel)</li><li>outputSchema: var (alanlar: arac, cagrilar, ok, pid, sayi)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_frida_step"><code>rea_frida_step</code></h3>
+<p>Sonraki-komut emülasyonu.</p>
+<ul><li>Girdi alanları:</li><li><code>adres</code> (string, opsiyonel)</li><li><code>pid</code> (integer, zorunlu)</li><li>outputSchema: var (alanlar: adres, arac, ok, pid, sonraki, vurdu)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_fs_diff"><code>rea_fs_diff</code></h3>
+<p>Snapshot diff.</p>
+<ul><li>Girdi alanları:</li><li><code>once</code> (string, zorunlu)</li><li><code>sonra</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: kayıt, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_fs_snapshot"><code>rea_fs_snapshot</code></h3>
+<p>Dizin snapshot.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: kayıt, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_ghidra_analyze"><code>rea_ghidra_analyze</code></h3>
+<p>Ghidra headless import+analiz.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, hedef, log, ok)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_ghidra_decompile"><code>rea_ghidra_decompile</code></h3>
+<p>Ghidra sözde-kod.</p>
+<ul><li>Girdi alanları:</li><li><code>addr</code> (string, zorunlu)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: addr, arac, hedef, kod, ok)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_ghidra_disasm"><code>rea_ghidra_disasm</code></h3>
+<p>Ghidra disassembly.</p>
+<ul><li>Girdi alanları:</li><li><code>addr</code> (string, zorunlu)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: addr, arac, hedef, kod, ok, sayi, talimatlar)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_ghidra_funcs"><code>rea_ghidra_funcs</code></h3>
+<p>Ghidra fonksiyon listesi.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, fonksiyonlar, hedef, ok)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_ghidra_strings"><code>rea_ghidra_strings</code></h3>
+<p>Ghidra string listesi.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, hedef, ok, strings)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_ghidra_trace"><code>rea_ghidra_trace</code></h3>
+<p>Snapshot -&gt; Ghidra Trace import.</p>
+<ul><li>Girdi alanları:</li><li><code>kayit</code> (string, zorunlu)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, hedef, ok, sonuc)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_ghidra_vt"><code>rea_ghidra_vt</code></h3>
+<p>İki binary fonksiyon diff (version tracking).</p>
+<ul><li>Girdi alanları:</li><li><code>eski</code> (string, zorunlu)</li><li><code>yeni</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, degisen, eklenen, eski, ok, ozet, silinen, yeni)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_ghidra_xrefs"><code>rea_ghidra_xrefs</code></h3>
+<p>Ghidra xref listesi.</p>
+<ul><li>Girdi alanları:</li><li><code>addr</code> (string, zorunlu)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: addr, arac, hedef, ok, xrefs)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_go_buildinfo"><code>rea_go_buildinfo</code></h3>
+<p>Go build-id + modül bağımlılıkları.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_go_funclines"><code>rea_go_funclines</code></h3>
+<p>Go fonksiyon + dosya:satır eşlemesi.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_go_goresym"><code>rea_go_goresym</code></h3>
+<p>GoReSym analizi (yoksa dürüst hata).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_go_module"><code>rea_go_module</code></h3>
+<p>Go modül bilgisi.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_go_version"><code>rea_go_version</code></h3>
+<p>Go sürüm izi.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_hap_liste"><code>rea_hap_liste</code></h3>
+<p>HAP dosya listesi.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, dosya, dosyalar, ok, sayi)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_hap_manifest"><code>rea_hap_manifest</code></h3>
+<p>HAP manifest (bundle/version).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, bundleName, dosya, kaynak, ok, version)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_hopper_istek"><code>rea_hopper_istek</code></h3>
+<p>Hopper istek dosyası üretimi.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: adresler, arac, hedef, hopper, istekDosyasi, ok)</li><li>annotations: var (destructiveHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_hopper_tara"><code>rea_hopper_tara</code></h3>
+<p>Dosyada string/regex tarama.</p>
+<ul><li>Girdi alanları:</li><li><code>desen</code> (string, zorunlu)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, desen, eslesmeler, hedef, ok, regex, sayi)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_ida_flirt"><code>rea_ida_flirt</code></h3>
+<p>String-tabanlı derleyici/kütüphane tahmini (gerçek FLIRT imzası değil; IDA kuruluysa doğrulama için rea_ida_idb çıktısını IDA'da imza uygulayarak kullanın).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, eslesmeler, guven, hedef, idaMevcut, kutuphane, method, not, ok, sayi, surumler)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_ida_idb"><code>rea_ida_idb</code></h3>
+<p>IDB batch üretimi (idat).</p>
+<ul><li>Girdi alanları:</li><li><code>out</code> (string, zorunlu)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, hedef, idat, idb, ok)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_il2cpp_dump"><code>rea_il2cpp_dump</code></h3>
+<p>Il2CppDumper ile döküm (yoksa dürüst hata).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, cikti, dosya, dosyaSayisi, log, ok, ozet)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_il2cpp_metadata"><code>rea_il2cpp_metadata</code></h3>
+<p>IL2CPP global-metadata sınıf/metod sayımı.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, assemblySayisi, dosya, goruntuSayisi, metodSayisi, not, ok, ozet, sinifSayisi, surum)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_il2cpp_methods"><code>rea_il2cpp_methods</code></h3>
+<p>IL2CPP method imzaları (sınırlıysa dürüst işaret).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, dosya, imzaSayisi, imzalar, metodSayisi, not, ok, sinirli, surum)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_ilspy_decompile"><code>rea_ilspy_decompile</code></h3>
+<p>.NET C# decompile.</p>
+<ul><li>Girdi alanları:</li><li><code>out</code> (string, zorunlu)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, ciktiDir, cs_sayisi, dosya, not, ok)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_investigate"><code>rea_investigate</code></h3>
+<p>Otomatik soruşturma planı (sniff+skor+yedek).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li><code>soru</code> (string, opsiyonel)</li><li>outputSchema: var (alanlar: arac, motor, ok, plan, skor, tip, yedekler)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_jadx_classes"><code>rea_jadx_classes</code></h3>
+<p>APK sınıf listesi.</p>
+<ul><li>Girdi alanları:</li><li><code>apk_path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, ok, siniflar, toplam_sinif)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_jadx_decompile"><code>rea_jadx_decompile</code></h3>
+<p>APK tek sınıf decompile.</p>
+<ul><li>Girdi alanları:</li><li><code>apk_path</code> (string, zorunlu)</li><li><code>out</code> (string, zorunlu)</li><li><code>sinif</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, bayt, ciktiDir, dosya, ok, sinif)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_jadx_full"><code>rea_jadx_full</code></h3>
+<p>APK tam decompile.</p>
+<ul><li>Girdi alanları:</li><li><code>apk_path</code> (string, zorunlu)</li><li><code>out</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, ciktiDir, java_dosya_sayisi, ok)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_jadx_manifest"><code>rea_jadx_manifest</code></h3>
+<p>APK manifest özeti.</p>
+<ul><li>Girdi alanları:</li><li><code>apk_path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: aktiviteler, apk, arac, izinler, ok, paket)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_jadx_methods"><code>rea_jadx_methods</code></h3>
+<p>Decompile çıktıda method listesi.</p>
+<ul><li>Girdi alanları:</li><li><code>dir</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, methodlar, ok)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_jadx_read"><code>rea_jadx_read</code></h3>
+<p>Decompile sınıf okuma (400 satır).</p>
+<ul><li>Girdi alanları:</li><li><code>dir</code> (string, zorunlu)</li><li><code>sinif</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, dosya, ok, satirlar, toplam_satir)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_jadx_xrefs"><code>rea_jadx_xrefs</code></h3>
+<p>Decompile çıktıda terim arama.</p>
+<ul><li>Girdi alanları:</li><li><code>dir</code> (string, zorunlu)</li><li><code>terim</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, kayitlar, ok)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_jeb_sorgu"><code>rea_jeb_sorgu</code></h3>
+<p>JEB MCP sorgusu.</p>
+<ul><li>Girdi alanları:</li><li><code>govde</code> (string, opsiyonel)</li><li><code>url</code> (string, zorunlu)</li><li><code>yontem</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, durum, govde, ok, url, yontem)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_js_bundle"><code>rea_js_bundle</code></h3>
+<p>Bundle özeti.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_js_export_shape"><code>rea_js_export_shape</code></h3>
+<p>Export şekli.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_js_require"><code>rea_js_require</code></h3>
+<p>Require/import grafı.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_js_sourcemap"><code>rea_js_sourcemap</code></h3>
+<p>Source-map çözümleme.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_macho_classdump"><code>rea_macho_classdump</code></h3>
+<p>class-dump çıktısı (yoksa dürüst hata).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_macho_info"><code>rea_macho_info</code></h3>
+<p>Mach-O başlık (mimari + dosya tipi).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_macho_loads"><code>rea_macho_loads</code></h3>
+<p>Mach-O load komutları (segment/dylib).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_macho_objc"><code>rea_macho_objc</code></h3>
+<p>ObjC sınıf/kategori listesi (saf okuma).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_macho_otool"><code>rea_macho_otool</code></h3>
+<p>otool çıktısı (yoksa dürüst hata).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_managed_compare"><code>rea_managed_compare</code></h3>
+<p>Managed üye diff.</p>
+<ul><li>Girdi alanları:</li><li><code>a</code> (string, zorunlu)</li><li><code>b</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, detay, ok, ozet)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_managed_import"><code>rea_managed_import</code></h3>
+<p>Reconstruction kaydı.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, detay, ok, ozet)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_managed_verify"><code>rea_managed_verify</code></h3>
+<p>Native bağımlılık doğrulama.</p>
+<ul><li>Girdi alanları:</li><li><code>beklenen</code> (string, zorunlu)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, detay, ok, ozet)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_mips_funcs"><code>rea_mips_funcs</code></h3>
+<p>MIPS fonksiyon ön-tarama.</p>
+<ul><li>Girdi alanları:</li><li><code>b64</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_mips_psp_profile"><code>rea_mips_psp_profile</code></h3>
+<p>MIPS/PSP profili.</p>
+<ul><li>Girdi alanları:</li><li><code>b64</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_missing_reason"><code>rea_missing_reason</code></h3>
+<p>Eksik araç + kur komutu.</p>
+<ul><li>Girdi alanları:</li><li><code>eksik</code> (string, zorunlu)</li><li><code>platform</code> (string, opsiyonel)</li><li>outputSchema: var (alanlar: alternatif, eksik, kur, neden)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_net_capture"><code>rea_net_capture</code></h3>
+<p>Yerel ağ yakalama (HAR).</p>
+<ul><li>Girdi alanları:</li><li><code>url</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: kayıt, ok, summary, tool)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_obligation_advance"><code>rea_obligation_advance</code></h3>
+<p>Halka ilerletme.</p>
+<ul><li>Girdi alanları:</li><li><code>bulgu</code> (string, zorunlu)</li><li><code>defter</code> (string, zorunlu)</li><li><code>kod</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: links)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_obligation_close"><code>rea_obligation_close</code></h3>
+<p>Defter mühürleme.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: kapatıldı, links)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_obligation_ledger"><code>rea_obligation_ledger</code></h3>
+<p>Defter kurma.</p>
+<ul><li>Girdi alanları:</li><li><code>bulgular</code> (string[], zorunlu)</li><li><code>evidence_digest</code> (string, zorunlu)</li><li><code>tools_sha256</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: evidence_digest, kapatıldı, ledger_id, links, tools_sha256)</li><li>annotations: var (destructiveHint=false, idempotentHint=false, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_obligation_verify"><code>rea_obligation_verify</code></h3>
+<p>Zincir doğrulama.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: eksik, ok)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_pcap_oku"><code>rea_pcap_oku</code></h3>
+<p>PCAP akış birleştirme + keylog TLS çözme.</p>
+<ul><li>Girdi alanları:</li><li><code>keylog</code> (string, opsiyonel)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_pdb_indir"><code>rea_pdb_indir</code></h3>
+<p>PE debug dizinindeki CodeView RSDS kaydından Microsoft symbol server'dan PDB indirme + bütünlük + önbellek.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, cache, dosya, guid, ok, pdb, url, yas, yol)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_pdb_yolu"><code>rea_pdb_yolu</code></h3>
+<p>PE debug dizininden PDB yolu.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, dosya, guid, ok, pdb, yas)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_pe_imports"><code>rea_pe_imports</code></h3>
+<p>PE import listesi.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, dlls, dosya, fonksiyonlar, not, ok, sayi)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_pe_info"><code>rea_pe_info</code></h3>
+<p>PE başlık bilgisi.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, bit, dosya, entry, entry_hex, machine, machine_hex, ok, section_sayisi)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_pe_sections"><code>rea_pe_sections</code></h3>
+<p>PE section tablosu.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, bolumler, dosya, ok, sayi)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_process_caps"><code>rea_process_caps</code></h3>
+<p>Süreç yetenek yoklaması.</p>
+<ul><li>Girdi alanları: yok</li><li>outputSchema: var (alanlar: kayıt, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_process_compare"><code>rea_process_compare</code></h3>
+<p>Pipe/PTY karşılaştırma.</p>
+<ul><li>Girdi alanları:</li><li><code>cmd</code> (string, zorunlu)</li><li>outputSchema: yok</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_process_run"><code>rea_process_run</code></h3>
+<p>Süreç koşusu kaydı.</p>
+<ul><li>Girdi alanları:</li><li><code>cmd</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: kayıt, ok, summary, tool)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_pwn_elf_layout"><code>rea_pwn_elf_layout</code></h3>
+<p>ELF layout + mitigation.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: yok</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_pwn_gadgets"><code>rea_pwn_gadgets</code></h3>
+<p>Gadget ipucu.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_r2_callgraph"><code>rea_r2_callgraph</code></h3>
+<p>r2 fonksiyon çağrı grafı.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, fonksiyonlar, hedef, ok)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_r2_debug"><code>rea_r2_debug</code></h3>
+<p>r2 toplu debug (bp+regs).</p>
+<ul><li>Girdi alanları:</li><li><code>addr</code> (string, zorunlu)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, bpAddr, cikti, hedef, not, ok)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_r2_esil"><code>rea_r2_esil</code></h3>
+<p>r2 ESIL emülasyon regs.</p>
+<ul><li>Girdi alanları:</li><li><code>addr</code> (string, zorunlu)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: addr, adim, arac, hedef, ok, regs)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_readiness"><code>rea_readiness</code></h3>
+<p>Reconstruction hazırlık skoru.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, eksik, ok, seviye, skor)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_recon_funcs"><code>rea_recon_funcs</code></h3>
+<p>Pseudo-code fonksiyon listesi.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_recon_harness"><code>rea_recon_harness</code></h3>
+<p>C harness iskeleti.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_recon_tag"><code>rea_recon_tag</code></h3>
+<p>Vaka etiketi.</p>
+<ul><li>Girdi alanları: yok</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_registry_izi"><code>rea_registry_izi</code></h3>
+<p>API olaylarından registry yazma.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_scan_repo"><code>rea_scan_repo</code></h3>
+<p>Repo taraması (tip+plan).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_scan_repo_paralel"><code>rea_scan_repo_paralel</code></h3>
+<p>Paralel repo taraması (4'lü havuz, iptalli).</p>
+<ul><li>Girdi alanları:</li><li><code>eszamanlilik</code> (integer, opsiyonel)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, iptalEdildi, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_sniff"><code>rea_sniff</code></h3>
+<p>Dosya tip + motor önerisi (magic-byte).</p>
+<ul><li>Girdi alanları:</li><li><code>b64dosya</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: motor, tip)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_storage_dump"><code>rea_storage_dump</code></h3>
+<p>Cookies + localStorage.</p>
+<ul><li>Girdi alanları:</li><li><code>url</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_typedef_oner"><code>rea_typedef_oner</code></h3>
+<p>Argüman adı önerisi + yayılım.</p>
+<ul><li>Girdi alanları:</li><li><code>text</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, ok, oneriler, sayi)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_unpack_hunt"><code>rea_unpack_hunt</code></h3>
+<p>Bilinmeyen packer rehberli akışı.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: adimlar, arac, karar, ok)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_unpack_try"><code>rea_unpack_try</code></h3>
+<p>Otomatik unpack yönlendirme.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: sonuc, yontem)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_upx_info"><code>rea_upx_info</code></h3>
+<p>UPX sıkışık mı bilgisi.</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, cikti, dosya, not, ok, sikisik)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_upx_unpack"><code>rea_upx_unpack</code></h3>
+<p>UPX açma.</p>
+<ul><li>Girdi alanları:</li><li><code>out</code> (string, zorunlu)</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, cikti, dosya, log, ok)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_wasm_decode"><code>rea_wasm_decode</code></h3>
+<p>WASM/WAT çözümleme (wabt).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="rea_wasm_exports"><code>rea_wasm_exports</code></h3>
+<p>WAT export listesi (offline).</p>
+<ul><li>Girdi alanları:</li><li><code>wat</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_wasm_imports"><code>rea_wasm_imports</code></h3>
+<p>WASM import listesi.</p>
+<ul><li>Girdi alanları:</li><li><code>b64</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_wasm_sections"><code>rea_wasm_sections</code></h3>
+<p>WASM section tablosu.</p>
+<ul><li>Girdi alanları:</li><li><code>b64</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: details, ok, summary, tool)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="rea_wasm_validate"><code>rea_wasm_validate</code></h3>
+<p>WASM doğrulama (wasm-validate).</p>
+<ul><li>Girdi alanları:</li><li><code>path</code> (string, zorunlu)</li><li>outputSchema: var (alanlar: arac, detay, ok, ozet)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="session_close"><code>session_close</code></h3>
+<p>Drop an application session and its event buffer.</p>
+<ul><li>Girdi alanları:</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: closed, session_id)</li><li>annotations: var (destructiveHint=true, openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="session_list"><code>session_list</code></h3>
+<p>List application sessions held in this process.</p>
+<ul><li>Girdi alanları: yok</li><li>outputSchema: var (alanlar: sessions)</li><li>annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)</li></ul>
+<h3 id="session_open"><code>session_open</code></h3>
+<p>Open an application session for an engine. Returns session_id for later tool arguments.</p>
+<ul><li>Girdi alanları:</li><li><code>engine</code> (enum, zorunlu)</li><li>outputSchema: var (alanlar: createdAt, engine, session_id)</li><li>annotations: var (destructiveHint=false, idempotentHint=false, openWorldHint=false, readOnlyHint=false)</li></ul>
+<h3 id="static_info"><code>static_info</code></h3>
+<p>Report radare2 static-engine capabilities, r2 availability, and the open target (if any).</p>
+<ul><li>Girdi alanları:</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: capabilities, engine, r2, session_id, target)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="strings"><code>strings</code></h3>
+<p>Strings found in the binary (address, section, length, text).</p>
+<ul><li>Girdi alanları:</li><li><code>limit</code> (integer, opsiyonel) — Max strings returned (default 200).</li><li><code>min_length</code> (integer, opsiyonel) — Keep strings with length &gt;= this (default 0).</li><li><code>offset</code> (integer, opsiyonel) — Skip this many matches (default 0).</li><li><code>section</code> (string, opsiyonel) — Only strings from this section, e.g. &quot;.rodata&quot;.</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: offset, session_id, strings, total)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h3 id="xrefs"><code>xrefs</code></h3>
+<p>Cross-references to and/or from an address (code and data).</p>
+<ul><li>Girdi alanları:</li><li><code>address</code> (string | number, zorunlu) — Target address as hex (&quot;0x400200&quot;), decimal, or flag name (&quot;entry0&quot;).</li><li><code>direction</code> (enum, opsiyonel)</li><li><code>session_id</code> (string, zorunlu) — Application session id. Not an MCP protocol session.</li><li>outputSchema: var (alanlar: address, from, session_id, to)</li><li>annotations: var (openWorldHint=true, readOnlyHint=false)</li></ul>
+<h2 id="resources">Resources</h2>
+<ul><li><code>rea-plus://capabilities-safety</code> — ad: <code>capabilities-safety</code> — mimeType: <code>application/json</code> — Statik yetenek ve guvenlik kurallari ozeti (salt-okunur).</li><li><code>rea-plus://server-info</code> — ad: <code>server-info</code> — mimeType: <code>application/json</code> — Statik sunucu kimligi ve yuzey ozeti (salt-okunur).</li></ul>
+<h2 id="prompts">Prompts</h2>
+<ul><li><code>android-triage</code> — argümanlar: <code>focus</code> (opsiyonel), <code>path</code> (zorunlu) — APK icin jadx tabanli statik triage akisi (yan etkisiz prompt).</li><li><code>dotnet-malware-triage</code> — argümanlar: <code>focus</code> (opsiyonel), <code>path</code> (zorunlu) — .NET ornegi icin statik zararli-yazilim triage akisi (yan etkisiz prompt).</li><li><code>packer-triage</code> — argümanlar: <code>focus</code> (opsiyonel), <code>path</code> (zorunlu) — Packer/koruma tespiti icin sirali, statik-oncelikli rea akisi (yan etkisiz prompt).</li></ul>
+</body>
+</html>

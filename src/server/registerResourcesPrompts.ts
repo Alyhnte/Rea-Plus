@@ -38,7 +38,7 @@ export function buildServerInfo(info: ReaServerInfoInput) {
     version: info.version,
     description: "Conduit live-debug core + Rea static reverse-engineering domains over stdio/HTTP.",
     transports: ["stdio", "streamable-http"],
-    tools: { total: 187, conduit: 30, rea: 157 },
+    tools: { total: 191, conduit: 30, rea: 161 },
     resources: [REA_SERVER_INFO_URI, REA_CAPABILITIES_SAFETY_URI],
     prompts: [...REA_PROMPT_NAMES],
   };
@@ -47,7 +47,7 @@ export function buildServerInfo(info: ReaServerInfoInput) {
 export function buildCapabilitiesSafety() {
   return {
     capabilities: {
-      tools: { total: 187, conduit: 30, rea: 157 },
+      tools: { total: 191, conduit: 30, rea: 161 },
       resources: { subscribe: false, uris: [REA_SERVER_INFO_URI, REA_CAPABILITIES_SAFETY_URI] },
       prompts: { names: [...REA_PROMPT_NAMES], sideEffectFree: true },
     },

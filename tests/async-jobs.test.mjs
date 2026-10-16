@@ -188,9 +188,9 @@ describe("stdio JSON-RPC: async jobs (REA_ASYNC_JOBS=1)", () => {
     if (dir) rmSync(dir, { recursive: true, force: true });
   });
 
-  it("opt-in yuzey 192 arac: 187 + 5 job araci", async () => {
+  it("opt-in yuzey 196 arac: 191 + 5 job araci", async () => {
     const sayfa = await istek("tools/list", {});
-    assert.equal(sayfa.tools.length, 192);
+    assert.equal(sayfa.tools.length, 196);
     for (const ad of ["rea_job_start", "rea_job_status", "rea_job_result", "rea_job_cancel", "rea_job_list"]) {
       assert.ok(sayfa.tools.some((t) => t.name === ad), `${ad} listede olmali`);
     }

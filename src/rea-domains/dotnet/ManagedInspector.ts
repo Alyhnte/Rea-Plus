@@ -1,6 +1,6 @@
 // Managed (.NET) denetçi: metadata + CIL okuma iskeleti (hedef ASLA çalıştırılmaz).
 import { execFileSync, spawnSync } from "node:child_process";
-import { closeSync, existsSync, openSync, readSync, statSync, mkdtempSync, readdirSync } from "node:fs";
+import { closeSync, existsSync, openSync, readFileSync, readSync, statSync, mkdtempSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -184,4 +184,74 @@ export function rea_il2cpp_dump(metaYolu: string, assemblyYolu?: string) {
   } catch (e) {
     return il2cppKapi(`Il2CppDumper çalışmadı: ${(e as Error)?.message ?? e}`);
   }
+}
+
+// --- IL2CPP method imzaları: string tablosu + method girdisi eşlemesi (saf TS) ---
+// Düzen (Perfare/Il2CppDumper MetadataClass.cs alan sırası): method girdisi
+// nameIndex, declaringType, returnType, parameterStart, genericContainerIndex,
+// token, flags, iflags, slot, parameterCount = 5*u32 + u32 + 4*u16 = 32 bayt;
+// bu sıra sürüm 25-30 aralığında sabittir (24.1 ve altında ek alanlar, 31+ da
+// returnParameterToken vardır). Başlıkta string tablosu @24/@28, methods @48/@52.
+// Ad, string tablosundaki nameIndex karşılığıdır; tam prototip (dönüş/parametre
+// tip adları) için Il2CppDumper gerekir — bu sınır `not` alanında belirtilir.
+const IL2CPP_IMZA_SURUM_ENAZ = 25;
+const IL2CPP_IMZA_SURUM_ENCOK = 30;
+const IL2CPP_METHOD_GIRDI = 32;
+
+export interface Il2cppImza { ad: string; nameIndex: number; declaringType: number; returnType: number }
+
+export function rea_il2cpp_methods(datYolu: string, limit = 200) {
+  const meta = rea_il2cpp_metadata(datYolu);
+  if (!meta.ok) return meta;
+  const surum = meta.surum;
+  const metodSayisi = meta.metodSayisi;
+  const bos = (imzalar: Il2cppImza[], sinirli: boolean, not: string) => ({
+    ok: true as const, arac: "rea_il2cpp_methods", dosya: datYolu, surum, metodSayisi,
+    imzalar, imzaSayisi: imzalar.length, sinirli, not,
+  });
+  if (surum < IL2CPP_IMZA_SURUM_ENAZ || surum > IL2CPP_IMZA_SURUM_ENCOK) {
+    return bos([], true,
+      `sürüm ${surum} imza düzeni desteklenmiyor (destek: ${IL2CPP_IMZA_SURUM_ENAZ}-${IL2CPP_IMZA_SURUM_ENCOK}; sınırlı: yalnız sayı; tam döküm için Il2CppDumper)`);
+  }
+  let buf: Buffer;
+  try { buf = readFileSync(datYolu); }
+  catch { return il2cppKapi(`Dosya okunamadı: ${datYolu}`); }
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const u32 = (o: number): number | null =>
+    (o >= 0 && o + 4 <= buf.length ? dv.getUint32(o, true) : null);
+  const strOff = u32(24);
+  const strBoy = u32(28);
+  const metOff = u32(48);
+  if (strOff === null || strBoy === null || metOff === null) return il2cppKapi("başlık penceresi okunamadı");
+  if (strBoy > 200_000_000) return il2cppKapi("string tablosu tutarsız (aşırı büyük)");
+  if (strOff + strBoy > buf.length) {
+    return bos([], true, "string tablosu dosya dışında (sınırlı: yalnız sayı; tam döküm için Il2CppDumper)");
+  }
+  if (metOff + metodSayisi * IL2CPP_METHOD_GIRDI > buf.length) {
+    return bos([], true, "method tablosu dosya dışında (sınırlı: yalnız sayı; tam döküm için Il2CppDumper)");
+  }
+  const lim = Math.max(0, limit);
+  const imzalar: Il2cppImza[] = [];
+  let cozulemeyen = 0;
+  const n = Math.min(metodSayisi, lim);
+  for (let i = 0; i < n; i++) {
+    const o = metOff + i * IL2CPP_METHOD_GIRDI;
+    const adEndeksi = dv.getUint32(o, true);
+    if (adEndeksi >= strBoy) { cozulemeyen++; continue; }
+    const bas = strOff + adEndeksi;
+    let bit = bas;
+    const son = Math.min(bas + 512, strOff + strBoy);
+    while (bit < son && buf[bit] !== 0) bit++;
+    if (bit >= son || bit === bas) { cozulemeyen++; continue; }
+    imzalar.push({
+      ad: buf.subarray(bas, bit).toString("utf8"),
+      nameIndex: adEndeksi,
+      declaringType: dv.getInt32(o + 4, true),
+      returnType: dv.getInt32(o + 8, true),
+    });
+  }
+  const arac = disAracBul("REA_IL2CPPDUMPER_BIN", ["Il2CppDumper", "il2cppdumper"]);
+  const sonuc = bos(imzalar, false,
+    "string tablosu + method nameIndex eşlemesi (saf okuma); tam prototip (dönüş/parametre tip adları) için Il2CppDumper");
+  return { ...sonuc, cozulemeyen, il2cppdumper: arac === null ? "yok" : "var" };
 }

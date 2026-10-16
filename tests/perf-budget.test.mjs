@@ -160,7 +160,7 @@ describe("perf bütçeleri (saf, timersız InMemory)", () => {
   });
 
   it("(a) tools/list medyanı bütçe altında", () => {
-    assert.equal(olcum.aracSayisi, 187, "araç sayısı 187 olmalı (gerçek değer)");
+    assert.equal(olcum.aracSayisi, 191, "araç sayısı 191 olmalı (gerçek değer)");
     assert.ok(olcum.listMed < BUTCE.listMs, `tools/list medyan ${olcum.listMed.toFixed(1)}ms bütçe ${BUTCE.listMs}ms üstünde`);
   });
 

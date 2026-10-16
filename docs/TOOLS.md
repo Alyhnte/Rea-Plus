@@ -7,11 +7,11 @@
 ## Özet
 
 - Sunucu: `rea-plus` 0.9.0
-- Toplam araç: 187
+- Toplam araç: 191
 - Toplam resource: 2
 - Toplam prompt: 3
-- outputSchema taşıyan araç: 183
-- annotations taşıyan araç: 187
+- outputSchema taşıyan araç: 187
+- annotations taşıyan araç: 191
 
 ## Araçlar
 
@@ -1073,6 +1073,15 @@ Ghidra xref listesi.
 - outputSchema: var (alanlar: addr, arac, hedef, ok, xrefs)
 - annotations: var (openWorldHint=true, readOnlyHint=false)
 
+### `rea_go_buildinfo`
+
+Go build-id + modül bağımlılıkları.
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: details, ok, summary, tool)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
 ### `rea_go_funclines`
 
 Go fonksiyon + dosya:satır eşlemesi.
@@ -1181,6 +1190,15 @@ IL2CPP global-metadata sınıf/metod sayımı.
 - Girdi alanları:
   - `path` (string, zorunlu)
 - outputSchema: var (alanlar: arac, assemblySayisi, dosya, goruntuSayisi, metodSayisi, not, ok, ozet, sinifSayisi, surum)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
+### `rea_il2cpp_methods`
+
+IL2CPP method imzaları (sınırlıysa dürüst işaret).
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: arac, dosya, imzaSayisi, imzalar, metodSayisi, not, ok, sinirli, surum)
 - annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
 
 ### `rea_ilspy_decompile`
@@ -1318,6 +1336,15 @@ Source-map çözümleme.
 - outputSchema: var (alanlar: ok, summary, tool)
 - annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
 
+### `rea_macho_classdump`
+
+class-dump çıktısı (yoksa dürüst hata).
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: details, ok, summary, tool)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
 ### `rea_macho_info`
 
 Mach-O başlık (mimari + dosya tipi).
@@ -1330,6 +1357,15 @@ Mach-O başlık (mimari + dosya tipi).
 ### `rea_macho_loads`
 
 Mach-O load komutları (segment/dylib).
+
+- Girdi alanları:
+  - `path` (string, zorunlu)
+- outputSchema: var (alanlar: details, ok, summary, tool)
+- annotations: var (destructiveHint=false, idempotentHint=true, openWorldHint=false, readOnlyHint=true)
+
+### `rea_macho_objc`
+
+ObjC sınıf/kategori listesi (saf okuma).
 
 - Girdi alanları:
   - `path` (string, zorunlu)
