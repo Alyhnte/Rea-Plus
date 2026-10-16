@@ -51,6 +51,23 @@ transfer(address,uint256) -> 0xa9059cbb
 [![Add to Cursor](https://img.shields.io/badge/Add%20to%20Cursor-000000?style=for-the-badge&logo=cursor&logoColor=white)](https://cursor.com/install-mcp?name=rea-plus&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsInJlYS1wbHVzIl19)
 [![Install in VS Code](https://img.shields.io/badge/Install%20in%20VS%20Code-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=rea-plus&config=%7B%22type%22%3A%22stdio%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22rea-plus%22%5D%7D)
 
+### Setup wizard (standalone download)
+
+No npm? Download [`setup.mjs`](https://github.com/Alyhnte/ReaPlus/releases/latest/download/setup.mjs) (+ Windows [`setup.ps1`](https://github.com/Alyhnte/ReaPlus/releases/latest/download/setup.ps1)) from the [latest release](https://github.com/Alyhnte/ReaPlus/releases/latest) — needs only Node.js 20+:
+
+```bash
+node setup.mjs --list        # detect installed clients
+node setup.mjs --dry-run     # preview without writing
+node setup.mjs --yes         # write MCP config (asks unless --yes)
+```
+
+```powershell
+.\setup.ps1 --list
+.\setup.ps1 --yes
+```
+
+Or inside the package: `npx -y rea-plus rea-plus-cli setup` (same wizard).
+
 ### npx (no clone)
 
 Any stdio MCP client can launch it straight from the npm registry:
