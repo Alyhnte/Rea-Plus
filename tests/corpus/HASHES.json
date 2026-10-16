@@ -26,6 +26,11 @@
       "sha256": "8cd8f7f06f06676e70cc60c3c8f578a6f7dab572d781a2d42487876e925cf487",
       "kaynak": "scripts/korpus-kur.mjs ile uretildi (deterministik)",
       "lisans": "bilinmiyor"
+    },
+    "mini.dex": {
+      "sha256": "57cfe8878be74cad8bbc5e409b0964d4b13c35e8783d931ef7366881f8d548c2",
+      "kaynak": "scripts/dex-fixture-uret.mjs ile uretildi (deterministik, sentetik minimal DEX)",
+      "lisans": "bilinmiyor"
     }
   }
 }

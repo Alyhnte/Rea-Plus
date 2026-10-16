@@ -15,9 +15,9 @@ export type ReaRepoScanSonuc =
   | { ok: false; code: "capability_unsupported"; reason: string };
 
 // Uzantı ipucu: yalnız bu uzantılar taranır.
-const UZANTI_TIP: Record<string, string> = { ".exe": "pe", ".dll": "pe", ".elf": "elf", ".so": "elf", ".apk": "apk", ".js": "js", ".mjs": "js", ".cjs": "js", ".wasm": "wasm" };
+const UZANTI_TIP: Record<string, string> = { ".exe": "pe", ".dll": "pe", ".elf": "elf", ".so": "elf", ".apk": "apk", ".dex": "dex", ".js": "js", ".mjs": "js", ".cjs": "js", ".wasm": "wasm" };
 // Tip aday motorları (confidence skor tablosuyla uyumlu).
-const ADAYLAR: Record<string, string[]> = { pe: ["cutter", "ghidra", "x64dbg"], elf: ["radare2", "ghidra", "cutter"], apk: ["jadx", "apktool"], js: ["js"], wasm: ["wabt"] };
+const ADAYLAR: Record<string, string[]> = { pe: ["cutter", "ghidra", "x64dbg"], elf: ["radare2", "ghidra", "cutter"], apk: ["jadx", "apktool"], dex: ["jadx"], js: ["js"], wasm: ["wabt"] };
 // Gezmede girilmeyen dizin adları.
 const ATLANAN = new Set([".git", "node_modules", "dist"]);
 // Paylaşılan canlı worker-cache bağı (Dalga I/2): dosya çözümü içerik-adresli
