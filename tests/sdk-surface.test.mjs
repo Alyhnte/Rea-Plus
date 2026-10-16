@@ -591,11 +591,11 @@ describe("sdk yuzeyi (stdio JSON-RPC)", () => {
       ["rea_dos_com", { path: WASM }, (s) => assert.deepEqual(s.details, { boyut: 11, com: true })],
       ["rea_hopper_tara", { path: JS, desen: "selamla" }, (s) => { assert.equal(s.sayi, 3); assert.equal(s.eslesmeler[0].satir, 4); }],
       ["rea_ida_flirt", { path: JS }, (s) => { assert.equal(s.sayi, 0); assert.deepEqual(s.eslesmeler, []); }],
-      ["rea_fs_snapshot", { path: corpus }, (s) => assert.deepEqual(Object.keys(s["kayıt"].dosyalar).filter((f) => !["HASHES.json", "README.md"].includes(f)).sort(), ["mini_branch.elf", "mini_pe_x64.exe", "ornek.js", "ornek.wasm", "sahte.apk"])],
+      ["rea_fs_snapshot", { path: corpus }, (s) => assert.deepEqual(Object.keys(s["kayıt"].dosyalar).filter((f) => !["HASHES.json", "README.md"].includes(f)).sort(), ["mini.dex", "mini_branch.elf", "mini_pe_x64.exe", "ornek.js", "ornek.wasm", "sahte.apk"])],
       ["rea_js_require", { path: corpus }, (s) => assert.deepEqual(s.details.graf, { "ornek.js": ["node:path", "node:fs"] })],
       ["rea_js_export_shape", { path: JS }, (s) => { assert.deepEqual(s.details.fonksiyonlar, ["selamla"]); assert.equal(s.details.defaultVarMi, true); }],
       ["rea_investigate", { path: PE }, (s) => { assert.equal(s.tip, "pe"); assert.equal(s.motor, "cutter"); assert.equal(s.plan.length, 3); }],
-      ["rea_scan_repo", { path: corpus }, (s) => { const gercek = s.details.dosyalar.filter((d) => !["HASHES.json", "README.md"].includes((d.yol ?? "").split(/[\\/]/).pop())); assert.equal(gercek.length, 5); assert.deepEqual(s.details.tipler, { elf: 1, pe: 1, js: 1, wasm: 1, apk: 1 }); }],
+      ["rea_scan_repo", { path: corpus }, (s) => { const gercek = s.details.dosyalar.filter((d) => !["HASHES.json", "README.md"].includes((d.yol ?? "").split(/[\\/]/).pop())); assert.equal(gercek.length, 6); assert.deepEqual(s.details.tipler, { elf: 1, pe: 1, js: 1, wasm: 1, apk: 1, dex: 1 }); }],
     ];
     assert.equal(cagrilar.length, 28);
     let paket;
