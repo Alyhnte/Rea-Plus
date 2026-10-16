@@ -1,8 +1,9 @@
 # ROADMAP — ReaPlus yol haritası
 
-> Durum: v0.10.0 yayında (npm + MCP Registry + CI yeşil). Bu belge ilk
+> Durum: v0.10.1 yayında (npm + MCP Registry + CI yeşil). Bu belge ilk
 > 2026-10-12 incelemesinin bulgularıyla doğmuş, her dalga sonunda gerçekleşenle
-> senkronlanmıştır. Sayılar derlenmiş sunucunun gerçek yüzeyindendir
+> senkronlanmıştır. v0.10.1 P1 kod maddelerini kapattı (ölü facade temizliği +
+> golden DEX fixture); araç yüzeyi değişmedi. Sayılar derlenmiş sunucunun gerçek yüzeyindendir
 > ([`TOOLS.md`](TOOLS.md) üretim çıktısı).
 >
 > **Ölçütler:** Etki = kullanıcı/ajan değerine katkı · Efor = S (günler) / M (1-2 hafta) / L (ay+)
@@ -108,7 +109,7 @@
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
 | ✅ Worker cache canlı bağlama | KAPANDI (v0.10.0): reposcan yolu sayaç-kanıtlı | Hızlı tekrar | M | — |
-| Ölü facade temizliği (`probeCache`/`parallelProbe`) | Kod bağlı ama test `probe.test.mjs` bağlı; silme test taşımayı gerektirir | Ölü kod kalkar | S | P1 |
+| ✅ Ölü facade temizliği (`probeCache`/`parallelProbe`) | KAPANDI (v0.10.1): davranış `workerCache`'e taşındı (`ResultCache` TTL + `runProbes`); `probe.test.mjs` `worker-cache.test.mjs` altına taşındı | Ölü kod kalktı | S | — |
 | ✅ Paralel tarama (4'lü havuz) | KAPANDI (v0.10.0): sıralı birleştirme + iptal + hata izolasyonu | CI entegrasyonu | M | — |
 | ✅ Şema bütçesi | KAPANDI (v0.10.0): ölçülü eşikler (200KB/110KB/600B) | Şişme biter | S | — |
 | Şema bütçesi CI zorlaması | Test var, CI adımı yok | Bütçe CI'da kırar | S | P2 |
@@ -118,7 +119,7 @@
 
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
-| ◐ Golden korpus manifesti | KISMEN (v0.10.0): HASHES + normalize doğrulayıcı; repo-içi DEX fixture yok | Regresyon erken yakalanır | M | P1 |
+| ✅ Golden korpus manifesti | KAPANDI (v0.10.1): `tests/corpus/mini.dex` (sentetik minimal DEX v035, `scripts/dex-fixture-uret.mjs`) + `dex-golden` 7 test + HASHES girdisi | Regresyon erken yakalanır | M | — |
 | Self-hosted Windows runner | Frida/debug testleri CI'da koşmuyor | En riskli yüzey sürekli doğrulanır | M | P0 |
 | ✅ Parser fuzz CI smoke | KAPANDI (v0.10.0): deterministik mutasyon, crash/hang=0 | Sessiz sınıflar yakalanır | M | — |
 | ✅ HTTP e2e varsayılan kümede | KAPANDI (v0.10.0): LIVE'dan çıkarıldı, flake yok | Transport regresyonu görünür | S | — |
@@ -137,6 +138,6 @@
 
 ---
 
-**Önerilen sıra (açık kalanlar):** Frida canlı VM → runner → DEX korpusu → trusted publisher → örnek oturumlar → Pages deployu → ölü facade silme → P3 araştırma.
-v0.10.0'da kapananlar: I/J/K dalgalarının tamamı (yukarıda ✅ işaretliler).
+**Önerilen sıra (açık kalanlar):** Frida canlı VM → runner → trusted publisher → örnek oturumlar → Pages deployu → P3 araştırma.
+v0.10.1'de kapananlar: ölü facade temizliği + golden DEX korpusu (yukarıda ✅ işaretliler); v0.10.0'da kapananlar: I/J/K dalgalarının tamamı.
 
