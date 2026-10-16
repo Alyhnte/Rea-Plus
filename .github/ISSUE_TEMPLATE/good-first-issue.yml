@@ -1,0 +1,58 @@
+name: "Good first issue"
+description: "Yeni baslayanlar icin kucuk, tek konulu gorev onerisi"
+title: "[good-first] "
+labels: ["good-first-issue"]
+body:
+  - type: markdown
+    attributes:
+      value: "Bu form yeni baslayanlara uygun kucuk isler icindir. Baslamadan once CONTRIBUTING.md dosyasini okuyun."
+  - type: textarea
+    id: gorev
+    attributes:
+      label: "Gorev tanimi"
+      description: "Ne yapilacak, tek cumleyle ve tek konulu olsun."
+      placeholder: "Ornek: README sayi senkronu tutarsizligi"
+    validations:
+      required: true
+  - type: textarea
+    id: kabul
+    attributes:
+      label: "Kabul kriteri"
+      description: "Isin bittigi nasil anlasilir (komut ve beklenen sonuc)."
+      placeholder: "Ornek: npm run typecheck ve npm test yesil"
+    validations:
+      required: true
+  - type: dropdown
+    id: alan
+    attributes:
+      label: "Alan"
+      description: "Gorevin dokundugu alan."
+      options:
+        - "docs"
+        - "sayi-senkronu"
+        - "korpus-koken"
+        - "test"
+        - "kucuk-hata"
+        - "diger"
+    validations:
+      required: true
+  - type: input
+    id: dosya
+    attributes:
+      label: "Ilgili dosya ya da alan"
+      description: "Ornek: tests/corpus/README.md"
+      placeholder: "yol ya da alan adi"
+    validations:
+      required: false
+  - type: checkboxes
+    id: uygunluk
+    attributes:
+      label: "Yeni baslayan uygunlugu"
+      description: "Bu is gercekten ilk PR olabilir mi?"
+      options:
+        - label: "Tek PR boyutunda, tek konulu"
+          required: true
+        - label: "Canli enjeksiyon, debugger, paket yakalama ya da ag indirmesi gerektirmez"
+          required: true
+        - label: "Conduit cekirdek arac adi eklemez ya da degistirmez"
+          required: true
