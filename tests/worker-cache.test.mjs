@@ -10,6 +10,7 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ResultCache, WorkerPool, dosyaHashi } from "../dist/facade/workerCache.js";
+import { rea_scan_repo, reposcanSonucCache, reposcanIsciHavuzu } from "../dist/rea-domains/reposcan/RepoScan.js";
 
 // Kısa uyku: cache ıskalamadaki pahalı işi taklit eder.
 const bekle = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -223,6 +224,96 @@ describe("WorkerPool kalıcılık", () => {
       assert.equal(await cache.calistir(girdi, uret, havuz), "w-sonuc");
       assert.equal(sayac, 1);
       assert.equal(havuz.tamamlanan, 1); // yalnız ıskalama havuza indi
+    } finally {
+      await havuz.kapat();
+    }
+  });
+});
+
+describe("RepoScan canli worker-cache bagi (Dalga I/2)", () => {
+  // Baglanan yol: rea_scan_repo dosya cozumunu paylasilan ResultCache +
+  // kalici WorkerPool uzerinden kosar. Sayac kaniti = cache/havuz delta'lari.
+  // (Turkce karaktersiz yazildi: dosya duzeni ASCII kilitli.)
+  const h = (hex) => Buffer.from(hex, "hex");
+  function besliSahne(one) {
+    const dir = taze(`bag-${one}`);
+    writeFileSync(join(dir, "uygulama.exe"), h("4d5a900003000000"));
+    writeFileSync(join(dir, "kitaplik.elf"), h("7f454c4602010100"));
+    writeFileSync(join(dir, "mobil.apk"), h("504b030414000000"));
+    writeFileSync(join(dir, "index.js"), `console.log('${one}');\n`);
+    writeFileSync(join(dir, "mod.wasm"), h("0061736d01000000"));
+    return dir;
+  }
+
+  it("(a) ikinci tarama cache'ten gelir: 5 iskalama, sonra 5 vurus; havuz yalniz ilk turda 5 is yapar", async () => {
+    const dir = besliSahne("a");
+    try {
+      const v0 = reposcanSonucCache.vurus;
+      const i0 = reposcanSonucCache.iskalama;
+      const h0 = reposcanIsciHavuzu.tamamlanan;
+      const ilk = await rea_scan_repo(dir);
+      assert.equal(ilk.ok, true);
+      assert.equal(ilk.details.dosyalar.length, 5);
+      assert.equal(reposcanSonucCache.iskalama - i0, 5);
+      assert.equal(reposcanSonucCache.vurus - v0, 0);
+      assert.equal(reposcanIsciHavuzu.tamamlanan - h0, 5);
+      const v1 = reposcanSonucCache.vurus;
+      const i1 = reposcanSonucCache.iskalama;
+      const h1 = reposcanIsciHavuzu.tamamlanan;
+      const ikinci = await rea_scan_repo(dir);
+      assert.equal(ikinci.ok, true);
+      assert.deepEqual(ikinci, ilk); // davranis birebir ayni
+      assert.equal(reposcanSonucCache.vurus - v1, 5); // sayac kaniti
+      assert.equal(reposcanSonucCache.iskalama - i1, 0);
+      assert.equal(reposcanIsciHavuzu.tamamlanan - h1, 0); // vurus havuza inmez
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("(c) REA_CACHE=0 iken tarama baypaslanir: sayaclar kipirdamaz, sonuc aynidir", async () => {
+    const eski = process.env.REA_CACHE;
+    const dir = besliSahne("c");
+    try {
+      const acik = await rea_scan_repo(dir);
+      assert.equal(acik.ok, true);
+      process.env.REA_CACHE = "0";
+      const v0 = reposcanSonucCache.vurus;
+      const i0 = reposcanSonucCache.iskalama;
+      const b0 = reposcanSonucCache.boyut();
+      const r1 = await rea_scan_repo(dir);
+      const r2 = await rea_scan_repo(dir);
+      assert.deepEqual(r1, acik);
+      assert.deepEqual(r2, acik);
+      assert.equal(reposcanSonucCache.vurus - v0, 0);
+      assert.equal(reposcanSonucCache.iskalama - i0, 0);
+      assert.equal(reposcanSonucCache.boyut(), b0);
+    } finally {
+      if (eski === undefined) delete process.env.REA_CACHE;
+      else process.env.REA_CACHE = eski;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("WorkerPool hata izolasyonu (runProbes karsiligi, Dalga I/2)", () => {
+  // probe.test.mjs'deki "firlatan prob digerlerini durdurmaz" kapsami,
+  // olu parallelProbe silinmeden once yeni yola tasindi: kalici havuzda
+  // patlayan is reddedilir, saglamlar cozulur, havuz kullanilabilir kalir.
+  it("patlayan is digerlerini durdurmaz, havuz saglam kalir", async () => {
+    const havuz = new WorkerPool(2);
+    try {
+      const iyi1 = havuz.gonder(async () => "bir");
+      const kotu = havuz.gonder(async () => {
+        throw new Error("sahte patlama");
+      });
+      const iyi2 = havuz.gonder(async () => "iki");
+      assert.equal(await iyi1, "bir");
+      await assert.rejects(kotu, /sahte patlama/);
+      assert.equal(await iyi2, "iki");
+      assert.equal(havuz.tamamlanan, 3);
+      assert.equal(await havuz.gonder(async () => "uc"), "uc");
+      assert.equal(havuz.tamamlanan, 4);
     } finally {
       await havuz.kapat();
     }

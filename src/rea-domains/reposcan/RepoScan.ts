@@ -1,8 +1,8 @@
-// rea-domains/reposcan: repo recursive tarama + sniff+motor + mtime önbelleği.
+// rea-domains/reposcan: repo recursive tarama + sniff+motor + worker-cache.
 // Uzantı ipucu + sihirli bayt birleşir; 4'lü worker havuzuyla işlenir.
 import { existsSync, readdirSync, statSync, readFileSync } from "node:fs";
 import { extname, join, relative } from "node:path";
-import { ProbeCache } from "../../facade/probeCache.js";
+import { ResultCache, WorkerPool } from "../../facade/workerCache.js";
 import { sniffBytes } from "../../facade/sniff.js";
 import { bestMotor } from "../../facade/confidence.js";
 
@@ -20,8 +20,12 @@ const UZANTI_TIP: Record<string, string> = { ".exe": "pe", ".dll": "pe", ".elf":
 const ADAYLAR: Record<string, string[]> = { pe: ["cutter", "ghidra", "x64dbg"], elf: ["radare2", "ghidra", "cutter"], apk: ["jadx", "apktool"], js: ["js"], wasm: ["wabt"] };
 // Gezmede girilmeyen dizin adları.
 const ATLANAN = new Set([".git", "node_modules", "dist"]);
-// mtime anahtarlı sonuç önbelleği (ikinci tur disk okumaz).
-const önbellek = new ProbeCache(60_000);
+// Paylaşılan canlı worker-cache bağı (Dalga I/2): dosya çözümü içerik-adresli
+// ResultCache + kalıcı WorkerPool üzerinden koşar. Sayaçlar (vurus/iskalama,
+// tamamlanan) test kanıtıdır; REA_CACHE=0 baypası ResultCache.calistir içindedir
+// (davranış birebir aynı, sayaçlar kımıldamaz).
+export const reposcanSonucCache = new ResultCache();
+export const reposcanIsciHavuzu = new WorkerPool(PARALEL_TAVAN);
 
 // Recursive toplama: atlanan dizine girmez, listedışı uzantıyı almaz.
 function yürü(cur: string, out: string[]): void {
@@ -36,22 +40,23 @@ function yürü(cur: string, out: string[]): void {
   }
 }
 
-// Tek dosya: önbellek vurursa döner, yoksa sniff+ipucu+bestMotor koşar.
+// Tek dosya: paylaşılan ResultCache vurursa üretici koşmaz (havuza inmez),
+// yoksa sniff+ipucu+bestMotor kalıcı havuz diliminde koşar. Anahtar = araç +
+// dosya-özeti + göreli yol: içerik değişince kendiliğinden ıskalar, aynı baytlı
+// farklı yollar çakışmaz. Okunamaz dosya önbelleğe yazılmaz (yanlış vuruş yok).
 async function dosyayıİşle(tam: string, kok: string): Promise<{ yol: string; tip: string; motor: string } | null> {
-  let mtime = 0;
-  try { mtime = statSync(tam).mtimeMs; } catch { return null; }
-  const anahtar = `${tam}:${mtime}`;
-  const hazır = önbellek.get(anahtar) as { yol: string; tip: string; motor: string } | undefined;
-  if (hazır) return hazır;
-  let tip = UZANTI_TIP[extname(tam).toLowerCase()] ?? "bilinmiyor";
-  try {
-    const s = sniffBytes(readFileSync(tam).subarray(0, 4096));
-    if (s.tip !== "bilinmiyor") tip = s.tip;
-  } catch { /* okunamazsa ipucu kalır */ }
-  const motor = bestMotor(tip, ADAYLAR[tip] ?? ["radare2"]) || "radare2";
-  const kayıt = { yol: relative(kok, tam).replace(/\\/g, "/"), tip, motor };
-  önbellek.set(anahtar, kayıt);
-  return kayıt;
+  try { statSync(tam); } catch { return null; }
+  const yol = relative(kok, tam).replace(/\\/g, "/");
+  const uret = async (): Promise<{ yol: string; tip: string; motor: string }> => {
+    let tip = UZANTI_TIP[extname(tam).toLowerCase()] ?? "bilinmiyor";
+    try {
+      const s = sniffBytes(readFileSync(tam).subarray(0, 4096));
+      if (s.tip !== "bilinmiyor") tip = s.tip;
+    } catch { /* okunamazsa ipucu kalır */ }
+    const motor = bestMotor(tip, ADAYLAR[tip] ?? ["radare2"]) || "radare2";
+    return { yol, tip, motor };
+  };
+  return reposcanSonucCache.calistir({ dosya: tam, arac: "rea_scan_repo", argumanlar: { yol } }, uret, reposcanIsciHavuzu);
 }
 
 // Sınırlı worker havuzu: en fazla `eszamanlilik` (tavan: PARALEL_TAVAN) iş

@@ -8,6 +8,8 @@
 //  (d) Iptal (notifications/cancelled) -> bekleyen is duser, kuyruk devam eder.
 //  (e) Kuyruk devre disiyken mevcut davranis degismez (171 arac, status araci yok).
 //  (+) Bekleyen is makul surede islenemezse acik hatayla duser (session_queue_timeout), kuyruk kilitlenmez.
+//  (+) REA_SESSION_SERIALIZE=1 (Dalga I/1): tek basina kuyrugu acar; ayni oturum TAM seri
+//      (zaman damgasi kanitli), farkli oturum paralel; timeout+iptal korunur, kilit yok.
 // Duzeyler: (1) sahte sunucu + dogrudan SessionQueue birimi, (2) gercek derlenmis sunucu (stdio JSON-RPC).
 // Canli Frida/debugger/enjeksiyon yok; dogan her surec oldurulur; corpus'a dokunulmaz.
 import { after, before, describe, it } from "node:test";
@@ -19,6 +21,7 @@ import {
   SessionQueue,
   parseSessionQueueConfig,
   sessionQueueEnabled,
+  sessionSerializeEnabled,
   SESSION_QUEUE_STATUS_TOOL,
   DEFAULT_SESSION_QUEUE_MAX,
   DEFAULT_SESSION_QUEUE_TIMEOUT_MS,
@@ -175,6 +178,134 @@ describe("SessionQueue birimi (sahte kosucular)", () => {
   });
 });
 
+describe("sessionSerializeEnabled + TAM serilestirme (Dalga I/1, birim)", () => {
+  it("serialize opt-in yalniz tam '1' ile acilir", () => {
+    assert.equal(sessionSerializeEnabled({ REA_SESSION_SERIALIZE: "1" }), true);
+    assert.equal(sessionSerializeEnabled({ REA_SESSION_SERIALIZE: "0" }), false);
+    assert.equal(sessionSerializeEnabled({ REA_SESSION_SERIALIZE: "true" }), false);
+    assert.equal(sessionSerializeEnabled({}), false);
+    assert.equal(sessionSerializeEnabled(undefined), false);
+  });
+
+  it("kuyruk QUEUE=1 veya SERIALIZE=1 ile acilir; ikisi de yoksa kapali (mevcut davranis korunur)", () => {
+    assert.equal(sessionQueueEnabled({ REA_SESSION_QUEUE: "1" }), true);
+    assert.equal(sessionQueueEnabled({ REA_SESSION_SERIALIZE: "1" }), true);
+    assert.equal(sessionQueueEnabled({ REA_SESSION_QUEUE: "1", REA_SESSION_SERIALIZE: "1" }), true);
+    assert.equal(sessionQueueEnabled({}), false);
+    assert.equal(sessionQueueEnabled({ REA_SESSION_QUEUE: "0" }), false);
+    assert.equal(sessionQueueEnabled({ REA_SESSION_QUEUE: "0", REA_SESSION_SERIALIZE: "0" }), false);
+  });
+
+  it("parse SERIALIZE=1 ile acilir; limit override'lar calisir", () => {
+    const v = parseSessionQueueConfig({ REA_SESSION_SERIALIZE: "1" });
+    assert.equal(v.enabled, true);
+    assert.equal(v.maxDepth, 32);
+    assert.ok(v.timeoutMs >= 1000);
+    const ozel = parseSessionQueueConfig({ REA_SESSION_SERIALIZE: "1", REA_SESSION_QUEUE_MAX: "3", REA_SESSION_QUEUE_TIMEOUT_MS: "500" });
+    assert.equal(ozel.enabled, true);
+    assert.equal(ozel.maxDepth, 3);
+    assert.equal(ozel.timeoutMs, 500);
+  });
+
+  it("(a) TAM seri: ayni oturumda 2 uzun is cakismaz (zaman damgasi kanitli)", async () => {
+    const q = new SessionQueue({ maxDepth: 10, timeoutMs: 5000 });
+    const iz = {};
+    const is = (ad, ms) => async () => {
+      iz[ad] = { basla: Date.now() };
+      await bekle(ms);
+      iz[ad].bit = Date.now();
+      return ad;
+    };
+    const t0 = Date.now();
+    const [a, b] = await Promise.all([
+      q.enqueue("oturum-seri", "r1", is("bir", 120), { tool: "test" }),
+      q.enqueue("oturum-seri", "r2", is("iki", 120), { tool: "test" }),
+    ]);
+    const toplam = Date.now() - t0;
+    assert.equal(a, "bir");
+    assert.equal(b, "iki");
+    // Seri ispat: 2x120ms is ~240ms surer; paralel olsaydi ~120ms olurdu.
+    assert.ok(toplam >= 200, `seri beklenen >=200ms, gelen ${toplam}ms`);
+    // Cakisma yok: ikinci is, birinci bitmeden baslamaz (gercekten tek is kosar).
+    assert.ok(iz.iki.basla >= iz.bir.bit, `cakisma: bir=[${iz.bir.basla},${iz.bir.bit}] iki basla=${iz.iki.basla}`);
+  });
+
+  it("(b) farkli oturumlar paralel: araliklar ortusur", async () => {
+    const q = new SessionQueue({ maxDepth: 10, timeoutMs: 5000 });
+    const iz = {};
+    const is = (ad, ms) => async () => {
+      iz[ad] = { basla: Date.now() };
+      await bekle(ms);
+      iz[ad].bit = Date.now();
+      return ad;
+    };
+    const t0 = Date.now();
+    const [a, b] = await Promise.all([
+      q.enqueue("oturum-p1", "r1", is("a", 120), { tool: "test" }),
+      q.enqueue("oturum-p2", "r2", is("b", 120), { tool: "test" }),
+    ]);
+    const toplam = Date.now() - t0;
+    assert.equal(a, "a");
+    assert.equal(b, "b");
+    // Paralel ispat: ~120ms; seri olsaydi ~240ms surerdi.
+    assert.ok(toplam < 200, `paralel beklenen <200ms, gelen ${toplam}ms`);
+    // Ortusme: ikinci, birinci bitmeden baslar.
+    assert.ok(iz.b.basla < iz.a.bit, `ortusme beklenir: a=[${iz.a.basla},${iz.a.bit}] b basla=${iz.b.basla}`);
+  });
+
+  it("(d) iptal sonrasi seri devam eder, kuyruk kilitlenmez", async () => {
+    const q = new SessionQueue({ maxDepth: 10, timeoutMs: 5000 });
+    const ac = new AbortController();
+    const iz = {};
+    const is = (ad, ms) => async () => {
+      iz[ad] = { basla: Date.now() };
+      await bekle(ms);
+      iz[ad].bit = Date.now();
+      return ad;
+    };
+    const uzun = q.enqueue("oturum-k", "r1", is("bir", 120), { tool: "test" });
+    const iptalEdilecek = q.enqueue("oturum-k", "r2", is("iki", 10), { tool: "test", signal: ac.signal });
+    ac.abort(new Error("test iptali"));
+    const devam = q.enqueue("oturum-k", "r3", is("uc", 10), { tool: "test" });
+    let hata;
+    try { await iptalEdilecek; } catch (e) { hata = e; }
+    assert.ok(hata, "iptal edilen is reddedilmeli");
+    assert.equal(hata.code ?? hata.error, "cancelled");
+    assert.equal(await uzun, "bir");
+    assert.equal(await devam, "uc");
+    assert.ok(!("bit" in (iz.iki ?? {})), "iptal edilen isin kosucusu cagrilmamali");
+    // Seri korunur: uc, bir bitmeden baslamaz.
+    assert.ok(iz.uc.basla >= iz.bir.bit, `seri korunmali: bir bit=${iz.bir.bit} uc basla=${iz.uc.basla}`);
+    const d = q.status("oturum-k");
+    assert.equal(d.pending, 0);
+    assert.equal(d.running, false);
+  });
+
+  it("(d2) timeout sonrasi seri devam eder, kuyruk kilitlenmez", async () => {
+    const q = new SessionQueue({ maxDepth: 5, timeoutMs: 60 });
+    const iz = {};
+    const uzun = q.enqueue("oturum-t2", "r1", async () => {
+      iz.bir = { basla: Date.now() };
+      await bekle(200);
+      iz.bir.bit = Date.now();
+      return "uzun";
+    }, { tool: "test" });
+    let hata;
+    try {
+      await q.enqueue("oturum-t2", "r2", async () => "bekleyen", { tool: "test" });
+    } catch (e) { hata = e; }
+    assert.ok(hata, "timeout hata vermeli");
+    assert.equal(hata.code ?? hata.error, "session_queue_timeout");
+    assert.equal(await uzun, "uzun");
+    const sonra = await q.enqueue("oturum-t2", "r3", async () => {
+      iz.uc = { basla: Date.now() };
+      return "sonra";
+    }, { tool: "test" });
+    assert.equal(sonra, "sonra");
+    assert.ok(iz.uc.basla >= iz.bir.bit, "timeout sonrasi seri korunmali");
+  });
+});
+
 // ------------------------------------------------------- gercek stdio ---
 function stdioIstemci(env) {
   const s = {
@@ -278,6 +409,29 @@ describe("stdio: (e) kuyruk devre disiyken mevcut davranis degismez", () => {
     const cek = await istemci.istek("tools/call", { name: "events_pull", arguments: { session_id: sid } }).soz;
     assert.equal(cek.isError, undefined);
     assert.ok(Array.isArray(govde(cek).events));
+  });
+});
+
+describe("stdio: SERIALIZE=1 tek basina kuyrugu acar (kapali davranis korunur)", () => {
+  let istemci;
+  before(async () => {
+    const env = temizEnv({ REA_SESSION_SERIALIZE: "1" });
+    delete env.REA_SESSION_QUEUE;
+    istemci = await stdioIstemci(env).baslat();
+  });
+  after(async () => { await istemci.kapat(); });
+
+  it("arac sayisi 188 olur, status araci vardir", async () => {
+    const sayfa = await istemci.istek("tools/list", {}).soz;
+    assert.equal(sayfa.tools.length, 188);
+    assert.ok(sayfa.tools.some((t) => t.name === "session_queue_status"), "status araci listede olmali");
+  });
+
+  it("oturum akisi aynen calisir (kilit yok)", async () => {
+    const sid = await oturumAc(istemci);
+    const cek = await istemci.istek("tools/call", { name: "events_pull", arguments: { session_id: sid } }).soz;
+    assert.equal(cek.isError, undefined);
+    assert.equal(govde(cek).session_id, sid);
   });
 });
 

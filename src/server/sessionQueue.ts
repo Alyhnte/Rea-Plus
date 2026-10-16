@@ -8,8 +8,9 @@
 // - notifications/cancelled SDK'da AbortSignal'e donusur; kuyruktaki bekleyen is duser.
 // - Kuyruk durumu session_queue_status araciyla okunur (pending + running).
 // - Bekleyen is timeoutMs icinde baslayamazsa acik hatayla duser (session_queue_timeout); kuyruk kilitlenmez.
-// - Opt-in: yalniz REA_SESSION_QUEUE=1 ile etkinlesir (asyncJobs pilotuyla ayni desen);
-//   devre disiyken kayit ve davranis birebir korunur (171 arac, status araci yok).
+// - Opt-in: REA_SESSION_QUEUE=1 veya REA_SESSION_SERIALIZE=1 (Dalga I/1) ile
+//   etkinlesir (asyncJobs pilotuyla ayni desen); ikisi de yoksa kayit ve
+//   davranis birebir korunur (status araci yok).
 // - Tum hata zarflari durusttur: isError:true + structuredContent, sahte ok:true YOK.
 import type { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
@@ -19,7 +20,13 @@ export const DEFAULT_SESSION_QUEUE_MAX = 32;
 export const DEFAULT_SESSION_QUEUE_TIMEOUT_MS = 30_000;
 
 export function sessionQueueEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env?.REA_SESSION_QUEUE === "1";
+  return env?.REA_SESSION_QUEUE === "1" || sessionSerializeEnabled(env);
+}
+
+// Dalga I/1: oturum basina TAM serilestirme anahtari. Tek basina kuyrugu acar:
+// ayni oturumun isleri kesinlikle seri kosar, farkli oturumlar paralel ilerler.
+export function sessionSerializeEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env?.REA_SESSION_SERIALIZE === "1";
 }
 
 function parsePozitifInt(name: string, raw: string | undefined, fallback: number): number {
