@@ -3,6 +3,33 @@
 Tüm önemli değişiklikler bu dosyada tutulur. Format: Keep a Changelog + SemVer.
 All notable changes are documented here (Türkçe özet + English detail).
 
+## [0.10.0] — 2026-10-16
+
+Sürüm 0.10.0: 4 yeni araç (187→191), serileştirme kuyruğu, worker-cache
+bağlama, dağıtım hazırlığı (SEA fizibilite, manifestler, SBOM, sandbox),
+kalıcı kalite (şema bütçesi, docs sitesi, prompt kütüphanesi, ObjC/IL2CPP/Go
+derinliği). 187 `outputSchema`, 191 annotations. 91/91 varsayılan test yeşil.
+
+### Eklendi / Added
+
+- `rea_macho_objc/classdump`, `rea_il2cpp_methods`, `rea_go_buildinfo`.
+- Tam serileştirme (`REA_SESSION_SERIALIZE=1`, zaman-damga kanıtlı).
+- Worker-cache canlı bağlama (reposcan yolu, sayaç kanıtlı).
+- SEA fizibilite raporu + pilot script; winget/scoop/homebrew manifestleri.
+- SBOM (CycloneDX) + `docs/SANDBOX.md` (Hyper-V/VirtualBox).
+- Şema bütçesi (ölçülü eşikler), docs sitesi (7 sayfa), `docs/PROMPTS.md`.
+
+### Düzeltildi / Fixed
+
+- POSIX jadx keşfi (PATH taraması + X_OK).
+- Hopper POSIX benzerlik kapısı.
+- cdb-async CI-Linux uyumu; korpus normalize.
+
+### Henüz yapılmadı / Not yet done
+
+- Frida canlı VM onayı; self-hosted Windows runner.
+- Ölü facade silme (probe testi bağlılığı); P3 araştırma.
+
 ## [0.9.0] — 2026-10-15
 
 Sürüm 0.9.0: 15 yeni araçla varsayılan yüzey 172→187 (30 conduit + 157 rea),
