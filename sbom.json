@@ -1,0 +1,184 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:9dbc3ea0-c020-4c98-b95d-af3b8e72b5e3",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-10-16T00:38:59.367Z",
+    "tools": [
+      {
+        "vendor": "ReaPlus",
+        "name": "scripts/sbom-uret.mjs",
+        "version": "0.9.0"
+      }
+    ],
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:npm/rea-plus@0.9.0",
+      "name": "rea-plus",
+      "version": "0.9.0",
+      "description": "Conduit live-debug core + Rea static domains. 30 frozen tools + prefixed rea domains over stdio/HTTP.",
+      "purl": "pkg:npm/rea-plus@0.9.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/rea-plus/-/rea-plus-0.9.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d2ef76754e5a582f6a005f62bab20ac48aa3b8d15b930ddc99064cc3ef925fb0"
+        },
+        {
+          "alg": "SHA-512",
+          "content": "68e84ac4d15799fa64aae8d582016a8ba70fdb6281ed45c39f6226f33c702cc81a437f833ceb6c0c0b62e0c101171adf82481b45b1c5c0c785a7c06e39612a02"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@modelcontextprotocol/node@2.1.1",
+      "name": "@modelcontextprotocol/node",
+      "version": "2.1.1",
+      "purl": "pkg:npm/@modelcontextprotocol/node@2.1.1",
+      "scope": "required",
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "118f763805cddb160beed352fcc56c5895b5bfc54700fc25f41e026b7a42ae39afab20be4b50bfe941ec3311761a814fada4b9632839eaf173f5bad5a45a2330"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@modelcontextprotocol/node/-/node-2.1.1.tgz"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@modelcontextprotocol/server@2.3.1",
+      "name": "@modelcontextprotocol/server",
+      "version": "2.3.1",
+      "purl": "pkg:npm/@modelcontextprotocol/server@2.3.1",
+      "scope": "required",
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "7b9f4c7d6b92b2c8fa0e843de89093a9d5b50174f9fd7b674e5d1659de8c53529ae37e1f154186a2c08b25b18dc920e11c6bf1416a1158ad77ec55d816460d5b"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@modelcontextprotocol/server/-/server-2.3.1.tgz"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/frida@17.23.3",
+      "name": "frida",
+      "version": "17.23.3",
+      "purl": "pkg:npm/frida@17.23.3",
+      "scope": "required",
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "87750f73bef4a07c5d1d8e865f6e24c444864d2306368fd26b73ed31c18a7c6a7f4cda01bbe2effae7d29adca1c79f7ef0de67e8b6b569358453ce9aa81099ae"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "LGPL-2.0 WITH WxWindows-exception-3.1"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/frida/-/frida-17.23.3.tgz"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/js-sha3@0.13.0",
+      "name": "js-sha3",
+      "version": "0.13.0",
+      "purl": "pkg:npm/js-sha3@0.13.0",
+      "scope": "required",
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "bf6ab2f46bb0f1730e6056ae39bb46d645cb7eeb7b01c4918013f6aeae11d788151403b67d6e648dc1dc3d6900d885036d8d1c186672a43314b8ffe491bbcd1b"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/js-sha3/-/js-sha3-0.13.0.tgz"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/zod@4.6.6",
+      "name": "zod",
+      "version": "4.6.6",
+      "purl": "pkg:npm/zod@4.6.6",
+      "scope": "required",
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "e149b34141797f1bdf7181e56e30667a353ec3e85b0e7585c78692f24071ee73c11dc3b64aa3dba401bcb276dd83e5ec7b8a5179f47df2182316020c088fd484"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/zod/-/zod-4.6.6.tgz"
+        }
+      ]
+    }
+  ]
+}

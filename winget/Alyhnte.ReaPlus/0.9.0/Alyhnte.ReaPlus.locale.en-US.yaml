@@ -1,0 +1,16 @@
+# winget/Alyhnte.ReaPlus/0.9.0/Alyhnte.ReaPlus.locale.en-US.yaml — yerellik manifesti.
+# Surum kaynagi: package.json (0.9.0). Magaza yayini YOK (`winget submit` kosulmadi).
+PackageIdentifier: Alyhnte.ReaPlus
+PackageVersion: 0.9.0
+PackageLocale: en-US
+Publisher: Alyhnte
+PackageName: ReaPlus
+ShortDescription: Conduit live-debug core + Rea static domains over MCP stdio/HTTP.
+License: MIT
+Homepage: https://github.com/Alyhnte/ReaPlus
+Tags:
+  - mcp-server
+  - reverse-engineering
+  - ghidra
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

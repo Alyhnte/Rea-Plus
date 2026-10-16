@@ -1,0 +1,18 @@
+# winget/Alyhnte.ReaPlus/0.9.0/Alyhnte.ReaPlus.installer.yaml — kurulum manifesti.
+# Surum kaynagi: package.json (0.9.0). Magaza yayini YOK (`winget submit` kosulmadi).
+# NOT: InstallerSha256 henuz olculemedi (surum etiketi arsivi agdan cekilip
+# hash'lenmedi) -> "bilinmiyor". Submit oncesi `wingetcreate update` ile guncelleyin.
+# Uydurma hash YOK.
+PackageIdentifier: Alyhnte.ReaPlus
+PackageVersion: 0.9.0
+InstallerType: zip
+InstallModes:
+  - interactive
+  - silent
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/Alyhnte/ReaPlus/archive/refs/tags/v0.9.0.tar.gz
+    InstallerSha256: bilinmiyor
+    Scope: user
+ManifestType: installer
+ManifestVersion: 1.6.0
