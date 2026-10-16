@@ -1,0 +1,66 @@
+# rea-plus Pages — main push'ta docs sitesi üretimi + GitHub Pages deploy.
+# Sıra: kapılar (npm ci -> build -> TOOLS güncellik -> site-uret) -> artifact (docs/site)
+# -> deploy-pages (github-pages ortamı). PR'da koşmaz; canlı enjeksiyon/debug yok.
+name: pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 22 kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Temiz kurulum (npm ci)
+        run: npm ci
+
+      - name: Derle
+        run: npm run build
+
+      - name: Araç referansı güncellik kapısı (TOOLS.md gerçek yüzeyle eşleşmeli)
+        run: node scripts/generate-tool-reference.mjs --check
+
+      - name: Site üret (docs/site)
+        run: node scripts/site-uret.mjs
+
+      - name: Pages yapılandır
+        uses: actions/configure-pages@v5
+
+      - name: Artifact yükle (docs/site)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Pages deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
