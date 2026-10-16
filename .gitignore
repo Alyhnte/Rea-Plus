@@ -1,6 +1,7 @@
 # rea-plus .gitignore — derleme çıktıları ve yerel sırlar repoya girmez.
 node_modules/
 dist/
+dist-release/
 *.log
 .env
 coverage/
