@@ -1,22 +1,26 @@
 # ROADMAP — ReaPlus yol haritası
 
-> Durum: v0.9.0 release hazırlığı (orkest-rel). Bu belge `ROADMAP-NEXT.md`'nin yerini alır; oradaki
-> orkestrasyon (`rea_investigate`) ve typedef maddeleri gerçekleşti, kalanlar buraya taşındı
-> ve 2026-10-12 incelemesinin bulgularıyla genişletildi.
+> Durum: v0.10.0 yayında (npm + MCP Registry + CI yeşil). Bu belge ilk
+> 2026-10-12 incelemesinin bulgularıyla doğmuş, her dalga sonunda gerçekleşenle
+> senkronlanmıştır. Sayılar derlenmiş sunucunun gerçek yüzeyindendir
+> ([`TOOLS.md`](TOOLS.md) üretim çıktısı).
 >
 > **Ölçütler:** Etki = kullanıcı/ajan değerine katkı · Efor = S (günler) / M (1-2 hafta) / L (ay+)
-> · Öncelik = P0 (sıradaki sürüm) → P3 (uzun vade).
+> · Öncelik = P0 (dış kapı) → P3 (uzun vade).
 
-## v0.8.1 tabanıyla kapananlar (özet)
+## v0.10.0 tabanıyla kapananlar (özet)
 
-- MCP yüzeyi: 172 araç + 2 resource + 3 prompt; üretilmiş tam referans [`TOOLS.md`](TOOLS.md).
-- `REA_TOOLSETS` profilleri: `all` 172 (varsayılan), `minimal` 8, `static` 98, `android` 27, `dotnet` 20, `web` 26, `debug` 50; virgüllü birleşim, bilinmeyen profil açılış hatası. Yeni araç yalnız `all`'da (fail-closed).
-- `REA_WORKSPACE_ROOT`: `rea_*` + conduit yolları + kullanıcıya görünür türev yazmalar kök içinde; operatör temp/cache yüzeyleri bilinçli istisna.
-- Tokensiz HTTP: 44 salt-okunur araçlık allowlist (toolset ile kesişim) + `REA_AUDIT_LOG` (argümansız JSONL) + `REA_HTTP_RATE_LIMIT_PER_MIN` (varsayılan 120) ve `REA_HTTP_MAX_CONCURRENT` (varsayılan 16).
-- Tip tabanı: 187 `outputSchema`, 191 annotations (4 araç kalıcı şemasız: string/dizi dönenler + hep-kapıdan-dönenler).
-- Async job: `REA_ASYNC_JOBS=1` ile 5 job aracı (177 yüzey); kuyruk tavanı 2, whitelist `rea_process_run` + `rea_scan_repo` + `rea_behavior_run`, kayıtlar süreç-içi.
-- Oturum kuyruğu (`REA_SESSION_QUEUE=1` opt-in, FIFO-32), oturum TTL (30dk varsayılan), Roots modern MRTR, progress genelleme, PDB indirme kaydı, golden korpus manifesti.
-- Yayın: `rea-plus@0.8.1` npm'de, `io.github.Alyhnte/rea-plus` MCP Registry'de. **Frida canlı VM onayı açık kapı olarak durur** (aşağıda kapatılmadı).
+- MCP yüzeyi: 191 araç + 2 resource + 3 prompt; üretilmiş tam referans [`TOOLS.md`](TOOLS.md).
+- `REA_TOOLSETS` profilleri: `all` 191 (varsayılan), `minimal` 8, `static` 98, `android` 27, `dotnet` 20, `web` 26, `debug` 50; virgüllü birleşim, bilinmeyen profil açılış hatası. Yeni araç yalnız `all`'da (fail-closed).
+- `REA_WORKSPACE_ROOT`: `rea_*` + conduit yolları + kullanıcıya görünür türev yazmalar kök içinde; operatör temp/cache yüzeyleri bilinçli istisna. Roots (legacy + modern MRTR) yalnız daraltır.
+- Tokensiz HTTP: 44 salt-okunur araçlık allowlist (toolset ile kesişim) + `REA_AUDIT_LOG` (argümansız JSONL) + rate limit (120/dk) + eşzamanlılık tavanı (16) + oturum TTL (30dk).
+- Tip tabanı: 187 `outputSchema`, 191 annotations (sıfır işaretsiz; 4 araç kalıcı şemasız).
+- Async job (5 araç, 177→192 yüzey) + oturum FIFO kuyruğu + tam serileştirme + worker cache + progress genelleme.
+- Motor sağlamlığı: Frida kurulum timeout'ları, cdb async pause+push, x64dbg provizyonu, jadx `-cp` düzeltmesi + canlı APK kabulü.
+- Statik dürüstlük: browser scenario, FLIRT, Wasm/DWARF, PE/PDB, Mach-O, IL2CPP/Go/Flutter, binary diff, PCAP/TLS, Android reçete.
+- Kurulum: `setup` sihirbazı + `doctor --fix`; manifestler (winget/scoop/brew) + SBOM + sandbox reçetesi; SEA fizibilitesi.
+- Kalite: golden korpus manifesti, fuzz smoke (CI), e2e varsayılan, perf + şema bütçeleri, docs sitesi + prompt kütüphanesi.
+- Yayın: `rea-plus@0.10.0` npm'de, `io.github.Alyhnte/rea-plus` MCP Registry'de, tag zinciri (npm→bekle→registry) tek tetikleyicili. **Frida canlı VM onayı açık kapı olarak durur** (aşağıda kapatılmadı).
 
 ## 0.7.2 + 0.7.3 ile kapananlar (özet)
 
@@ -29,47 +33,48 @@
 
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
-| ✅ npm'e yayın (`rea-plus`) | KAPANDI (v0.8.0): `rea-plus@0.8.0` registry'de, tüketici kurulumu doğrulandı (`npm install` + 171 araç); provenance/trusted publisher sonraki adım | Kurulum tek komut: `npx -y rea-plus` | S | — |
-| ✅ MCP Registry kaydı (`mcp-publisher`) | KAPANDI (v0.8.0): `io.github.Alyhnte/rea-plus` registry'de yayında (GHA + OIDC, tag/manuel tetikleme); `publish-registry.yml` korur | Resmi katalogda keşfedilebilirlik | S | — |
-| ✅ GHCR imajını ilk release ile basma | KAPANDI (v0.7.4): `ghcr.io/alyhnte/reaplus` için `0.7.4` ve `latest` etiketleri yayımlandı ve anonim çekilebilirliği doğrulandı | Docker kullanıcılarına sıfır kurulum | S | — |
-| `rea-plus-cli setup` sihirbazı | Config dosyaları elle kopyalanıyor | İstemciyi (Cursor/Claude/VS Code/Codex) algılayıp config'e yazar; en büyük sürtünme gider | M | P1 |
-| `doctor --fix` | doctor yalnız raporluyor | Eksik araç için onaylı kurulum komutu önerir/çalıştırır (winget/brew/apt) | M | P1 |
-| Tek dosya Windows exe (Node SEA) | Node kurulu olmayan makinede çalışmıyor | Node'suz dağıtım; release asset'i olarak | M | P2 |
-| winget/scoop/homebrew manifesti | Yok | Paket yöneticisiyle keşif ve güncelleme | S | P2 |
-|İmzalı release + SBOM | Release'ler imzasız | Tedarik zinciri güveni (özellikle güvenlik aracı için) | S | P2 |
+| ✅ npm'e yayın (`rea-plus`) | KAPANDI (v0.8.0, zincir v0.9.0+): `rea-plus@0.10.0` registry'de; tag zinciri (npm→bekle→registry, tek tetikleyici) | Kurulum tek komut: `npx -y rea-plus` | S | — |
+| ✅ MCP Registry kaydı (`mcp-publisher`) | KAPANDI (v0.8.0, zincir v0.9.0+): `io.github.Alyhnte/rea-plus` yayında | Resmi katalogda keşfedilebilirlik | S | — |
+| ✅ GHCR imajını ilk release ile basma | KAPANDI (v0.7.4): `ghcr.io/alyhnte/reaplus` için etiketler yayımlandı ve anonim çekilebilirliği doğrulandı | Docker kullanıcılarına sıfır kurulum | S | — |
+| ✅ `rea-plus-cli setup` sihirbazı | KAPANDI (v0.10.0): istemci algısı + onaylı yazma + `.bak` + dry-run; yalnız geçici HOME'da testli | En büyük sürtünme gider | M | — |
+| ✅ `doctor --fix` | KAPANDI (v0.10.0): onay kapılı kurulum önerisi (winget/brew/apt); onaysız çalıştırmaz | Eksik araçta tek komut | M | — |
+| ◐ Tek dosya Windows exe (Node SEA) | FİZİBİLİTE TAMAM (v0.10.0): hello-world SEA çalıştı; tam uygulama 3 engelli (129MB Frida binding, dinamik playwright, imzalama) — alternatif: portable node bundle | Node'suz dağıtım; release asset'i olarak | M | P2 |
+| ✅ winget/scoop/homebrew manifesti | KAPANDI (v0.10.0): üç manifest sürümlü + hash'li; mağaza gönderimi yapılmadı | Paket yöneticisiyle keşif | S | — |
+| ◐ İmzalı release + SBOM | YARIM (v0.10.0): SBOM (CycloneDX) üretildi; imza + provenance/Trusted Publisher yok | Tedarik zinciri güveni | S | P2 |
 
 ## B) MCP protokolü ve ajan deneyimi
 
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
-| ✅ Toolset profilleri (`REA_TOOLSETS=static,debug`) | KAPANDI (v0.9.0): `all` 171, `minimal` 8, `static` 98, `android` 27, `dotnet` 20, `web` 26, `debug` 50; virgüllü birleşim, bilinmeyen profil açılış hatası, resources/prompts filtresiz | Araç listesi bağlamı küçülür, isabet artar | S | — |
-| ✅ Resources | KAPANDI (v0.9.0): 2 statik salt-okunur resource (`rea-plus://server-info`, `rea-plus://capabilities-safety`); keyfi dosya/env açılmaz, subscribe yok | Sunucu kimliği + güvenlik kuralları URI ile okunur | M | — |
-| ✅ Prompts | KAPANDI (v0.9.0): 3 yan etkisiz prompt (`packer-triage`, `dotnet-malware-triage`, `android-triage`); prompt araç çalıştırmaz, yalnız sıralı akış metni döner | Hazır triage akışları tek seçimde | S | — |
-| ✅ `outputSchema` + `structuredContent` | KAPANDI (v0.8.1): 168 araç `outputSchema` taşıyor (4 araç kalıcı şemasız: string/dizi dönenler + hep-kapıdan-dönenler); düz nesne sonuçlarda `structuredContent` metin JSON'uyla aynı — araç başına durum [`TOOLS.md`](TOOLS.md)'de | Tip güvenli tüketim | M | — |
-| ✅ Progress bildirimi + iptal | KAPANDI (v0.8.1): stage yardımcıları (`createStageProgress`/`onAbort`) paced emit + temizlik; `rea_process_run` pilotu + `rea_scan_repo` + `rea_jadx_full` staged | Ajan ilerlemeyi görür, vazgeçebilir | M | — |
-| ✅ Tool annotation'ları | KAPANDI (v0.8.1): 172 araç annotations taşıyor (sıfır işaretsiz); `destructiveHint`/`readOnlyHint` ile istemci onay UX'i | Onay UX'i düzelir | S | — |
-| ✅ Async job modeli (başlat → poll) | KAPANDI (v0.8.1): `REA_ASYNC_JOBS=1` ile `rea_job_start/status/result/cancel/list` (177 yüzey); en fazla 2 eşzamanlı, süreç-içi kayıt, iptal süreç ağacını öldürür; whitelist `rea_process_run` + `rea_scan_repo` + `rea_behavior_run` | Uzun işler çağrıyı kilitlemeden poll edilir | M | — |
-| ✅ Roots desteği | KAPANDI (v0.8.1): legacy stdio pilotu + modern MRTR akışı (`inputRequired`/`inputResponses`); `REA_WORKSPACE_ROOT` hiçbir yolda genişlemez | Çalışma alanı otomatik daralır | S | — |
+| ✅ Toolset profilleri (`REA_TOOLSETS=static,debug`) | KAPANDI: `all` 191, `minimal` 8, `static` 98, `android` 27, `dotnet` 20, `web` 26, `debug` 50; virgüllü birleşim, bilinmeyen profil açılış hatası, resources/prompts filtresiz | Araç listesi bağlamı küçülür, isabet artar | S | — |
+| ✅ Resources | KAPANDI: 2 statik salt-okunur resource (`rea-plus://server-info`, `rea-plus://capabilities-safety`); keyfi dosya/env açılmaz, subscribe yok | Sunucu kimliği + güvenlik kuralları URI ile okunur | M | — |
+| ✅ Prompts | KAPANDI: 3 yan etkisiz prompt (`packer-triage`, `dotnet-malware-triage`, `android-triage`); prompt araç çalıştırmaz, yalnız sıralı akış metni döner | Hazır triage akışları tek seçimde | S | — |
+| ✅ `outputSchema` + `structuredContent` | KAPANDI (v0.10.0): 187 araç `outputSchema` (4 kalıcı şemasız); düz nesne sonuçlarda `structuredContent` metin JSON'uyla aynı — araç başına durum [`TOOLS.md`](TOOLS.md)'de | Tip güvenli tüketim | M | — |
+| ✅ Progress bildirimi + iptal | KAPANDI (v0.10.0): stage yardımcıları + 3 staged araç; senkron handler'lar kapsam dışı (belgeli) | Ajan ilerlemeyi görür, vazgeçebilir | M | — |
+| ✅ Tool annotation'ları | KAPANDI (v0.10.0): 191 annotations (sıfır işaretsiz) | İstemci onay UX'i | S | — |
+| ✅ Async job modeli (başlat → poll) | KAPANDI (v0.10.0): 5 job aracı (192 yüzey); whitelist 3'lü; iptal süreç ağacını öldürür | Uzun işler kilitlemeden poll edilir | M | — |
+| ✅ Roots desteği | KAPANDI (v0.10.0): legacy + modern MRTR; workspace hiçbir yolda genişlemez | Çalışma alanı otomatik daralır | S | — |
+| ✅ Oturum kuyruğu + serileştirme | KAPANDI (v0.10.0): FIFO-32 + `REA_SESSION_SERIALIZE` (zaman-damga kanıtlı), timeout+iptal korunur | Yarışlar biter | M | — |
 
 ## C) Güvenlik
 
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
-| ✅ Çalışma kökü kısıtı (`REA_WORKSPACE_ROOT`) | KAPANDI (v0.9.0): `rea_*` yolları + conduit `open_target`/`debug_open` + türev yazmalar (`.unpacked`/`.extracted`/HAR) realpath ile kök içinde; operatör temp/cache yüzeyleri (browser artifacts, Ghidra tmp, hopper tmp isteği, apktool framework cache) bilinçli istisna | Prompt-injection ile rastgele dosya okuma/yazma yüzeyi kapanır | M | — |
-| ✅ Token'sız HTTP'de salt-okunur kip | KAPANDI (v0.9.0): token yokken HTTP yalnız 44 araçlık, yol almayan allowlist'i kaydeder; sonuç `REA_TOOLSETS` ile kesişimdir, liste dışı/yeni araç görünmez | Yanlışlıkla açık bırakılan port zararsızlaşır | S | — |
-| ✅ Audit log (JSONL) | KAPANDI (v0.9.0): `REA_AUDIT_LOG`, iki transportta da satır başına yalnız `ts`/`transport`/`tool`/`durationMs`/`isError`; argüman/token/yol/içerik yazılmaz, yazma hatası sunucuyu çökertmez | Olay incelemesi ve kurumsal kabul | S | — |
-| ✅ Rate limit + eşzamanlı istek tavanı + oturum TTL | KAPANDI (v0.8.1): `REA_HTTP_RATE_LIMIT_PER_MIN` (varsayılan 120/IP/dk) + `REA_HTTP_MAX_CONCURRENT` (varsayılan 16), aşımda `429`, geçersiz değer açılış hatası; oturum TTL `REA_SESSION_TTL_MS` (varsayılan 30dk, 0=kapalı) | HTTP dayanımı + oturum hijyeni | S | — |
-| Sandbox reçetesi (VM profili dokümanı) | "VM'de çalıştır" demekle kalınıyor | Hazır izole ortam tarifi (ağsız snapshot'lı VM) | S | P2 |
+| ✅ Çalışma kökü kısıtı (`REA_WORKSPACE_ROOT`) | KAPANDI: `rea_*` + conduit yolları + türev yazmalar realpath ile kök içinde; operatör temp/cache istisna | Prompt-injection yüzeyi kapanır | M | — |
+| ✅ Token'sız HTTP'de salt-okunur kip | KAPANDI: token yokken 44 araçlık allowlist; toolset ile kesişim | Açık port zararsızlaşır | S | — |
+| ✅ Audit log (JSONL) | KAPANDI: satır başına `ts`/`transport`/`tool`/`durationMs`/`isError`; sır yazılmaz | Olay incelemesi | S | — |
+| ✅ Rate limit + eşzamanlılık + oturum TTL | KAPANDI: 120/dk + 16 eşzamanlı + 30dk TTL; geçersiz değer açılış hatası | Dayanım + hijyen | S | — |
+| ✅ Sandbox reçetesi (VM profili dokümanı) | KAPANDI (v0.10.0): `docs/SANDBOX.md` (Hyper-V + VirtualBox, snapshot + geri yükleme) | Hazır izole ortam | S | — |
 
 ## D) Debugger motorları
 
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
-| Oturum başına tam serileştirme kuyruğu | Üzerine-yazma koruması var, komut kuyruğu yok | Eşzamanlı çağrılarda yarış tamamen biter | M | P1 |
-| ◐ Frida ajanında gerçek exception raporlama | KOD TABANI GELDİ, CANLI KAPI AÇIK: slot dışı exception artık `false` ile gerçek akışa bırakılıyor ve canlı olmayan testle kilitli; Frida canlı VM onayı tamamlanmadı, madde kapanmış sayılmaz | Gerçek çökmeler görünür olur (doğruluk) | S | **P0** (canlı VM) |
-| Frida attach/createScript/load timeout'ları | RPC'ler sınırlı, kurulum adımları değil | Kötü hedefte asılı kalma biter | S | P1 |
-| cdb: async pause + gerçek push olayları | Pause senkron PowerShell ile event loop'u blokluyor; `onPush` ölü | Çok oturumlu kullanım rahatlar | M | P1 |
-| x64dbg eklenti oto-provizyonu | Bridge dosyaları elle bekleniyor | İlk kurulum sürtünmesi kalkar | M | P1 |
+| ✅ Oturum kuyruğu + serileştirme | KAPANDI (v0.10.0): FIFO-32 + tam seri modu; timeout+iptal korunur | Yarışlar biter | M | — |
+| ◐ Frida ajanında gerçek exception raporlama | KOD + KİLİT TAMAM, CANLI KAPI AÇIK: slot dışı `false`, kurulum timeout'ları; Frida canlı VM onayı yok | Gerçek çökmeler görünür olur | S | **P0** (canlı VM) |
+| ✅ Frida attach/createScript/load timeout'ları | KAPANDI (v0.10.0): 15/10/15sn + env override + temizlikli `engine_timeout` | Asılma biter | S | — |
+| ✅ cdb: async pause + gerçek push olayları | KAPANDI (v0.10.0): event loop bloklanmaz, aboneye push | Çok oturumlu rahatlık | M | — |
+| ✅ x64dbg eklenti oto-provizyonu | KAPANDI (v0.10.0): doctor + setup, idempotent + hash doğrulamalı | Kurulum sürtünmesi kalkar | M | — |
 | LLDB motoru (Linux/macOS) | Canlı debug yalnız Windows | Platform kapsamı genişler | L | P3 |
 | WinDbg TTD kayıtlarını okuma | Yok | Zaman yolculuğu analizi | L | P3 |
 
@@ -77,26 +82,24 @@
 
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
-| ◐ jadx gerçek manifest/sınıf alanları | KOD + CANLI KABUL (v0.8.0 sonrası): `java -jar` asılması `-cp jadx.cli.JadxCLI` ile düzeltildi; gerçek APK (`com.zb.test`, 7 izin, 5 sınıf) ile manifest/classes/decompile birebir doğrulandı. Kalıcı golden korpus (repo içi fixture + hash) açık iş | Android çıktısı güvenilir olur | S | P1 (kalıcı korpus) |
-| Browser scenario'yu gerçekten çalıştırma | Adımlar yalnız JSON'a yazılıyor | Adı gibi çalışır; yoksa araca dürüst isim | M | P1 |
-| `rea_ida_flirt` gerçek FLIRT veya yeniden adlandırma | String taraması FLIRT diye sunuluyor | Güven (inceleme bulgusu) | S | P1 |
-| WasmInfo import/LEB düzeltmeleri | Import gövdesi tek-LEB sanılıyor; taşmada negatif boyut | Sessiz yanlış sonuç biter | S | P1 |
-| DWARF v5 + abbrev_offset + çoklu FORM | v4 varsayımı, tek form; çoğu ELF'te boş özet | Linux binary'lerinde gerçek özet | M | P1 |
-| PE okuyucu tekilleştirme + `SizeOfOptionalHeader` | Sabit 224/240 offset; PeReader/PdbReader kopya kod | Yanlış import adları biter, bakım kolaylaşır | S | P2 |
-| Sembol/PDB çekme (Microsoft symbol server) | PDB yolu okunuyor, indirilmiyor | İsimlendirilmiş analiz kalitesi sıçrar | M | P1 |
-| Mach-O / iOS (otool, class-dump köprüsü) | Kapsam dışı | Apple hedefleri açılır | M | P2 |
-| Unity IL2CPP (Il2CppDumper), GoReSym, Flutter/Dart AOT (blutter) | Sinyal/giriş var, derinlik yok | Oyun/uygulama RE'sinde büyük pazar | L | P2 |
-| Binary diff (sürümden sürüme) | Yol haritasında vaadi var, araç yok | Yama analizi iş akışı | M | P2 |
-| Hopper gerçek köprü (headless API araştırması) | Yalnız istek JSON'u yazılıyor | Lisanslı kullanıcıda gerçek veri | L | P3 |
+| ✅ jadx gerçek manifest/sınıf alanları | KAPANDI (v0.10.0): `-cp` düzeltmesi + gerçek APK birebir + POSIX keşif taramalı | Android çıktısı güvenilir | S | — |
+| ✅ Browser scenario | KAPANDI (v0.10.0): adımlar gerçekten koşar + kanıtlı + dry-run | Adı gibi çalışır | M | — |
+| ✅ FLIRT dürüstlüğü | KAPANDI (v0.10.0): `string-heuristic` + güven skoru | Güven | S | — |
+| ✅ Wasm/DWARF | KAPANDI (v0.10.0): çok-bayt LEB + v5/abbrev_offset | Gerçek özet | S/M | — |
+| ✅ PE + PDB | KAPANDI (v0.10.0): gerçek header + indirme + önbellek | Doğru adlar + sembol | S/M | — |
+| ✅ Mach-O/iOS | KAPANDI (v0.10.0): saf TS + fat + ObjC listesi | Apple hedefleri | M | — |
+| ✅ IL2CPP/Go/Flutter | KAPANDI (v0.10.0): sayım + eşleme + snapshot; araç yoksa dürüst dal | RE derinliği | L | — |
+| ✅ Binary diff | KAPANDI (v0.10.0): eklenen/çıkarılan/değişen + streaming | Yama analizi | M | — |
+| ◐ Hopper gerçek köprü | ARAŞTIRMA TAMAM: headless API YOK (resmi kaynaklı) → istek-hazırlama olarak dürüst; POSIX benzerlik kapısı eklendi | Lisanslıda gerçek veri | L | P3 |
 
 ## F) Davranış ve dinamik analiz
 
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
-| Syscall numara matrisi + CreateFileW/RegSet profilleri | API tracer var, syscall katmanı yok | Davranış raporu derinleşir | S | P1 |
-| Toplama dahil davranış koşusu (spawn+trace+capture tek çağrı) | `rea_behavior_full` hazır olay listelerini birleştiriyor; olayları kendisi toplamıyor | Ajan 1 çağrıda uçtan uca profil alır | M | P1 |
-| PCAP analizi (tshark) + TLS keylog çözme | HAR var; şifreli trafik kapalı | C2 trafiği okunur hale gelir | M | P2 |
-| Android dinamik reçete (emülatör + frida-server + pinning) | USB/gadget attach var, reçete yok | Mobil dinamik analiz başlanabilir olur | M | P2 |
+| ✅ Syscall matrisi + CreateFileW/RegSet | KAPANDI (v0.10.0): ntdll numara eşleme + erişim profilleri | Derin rapor | S | — |
+| ✅ Tek-çağrı davranış koşusu | KAPANDI (v0.10.0): spawn+trace+capture, zorunlu timeout, crash dürüstlüğü | Tek çağrıda profil | M | — |
+| ✅ PCAP + TLS keylog | KAPANDI (v0.10.0): akış birleştirme + keylog çözme; çözülemeyen `sifreli` | C2 trafiği okunur | M | — |
+| ✅ Android dinamik reçetesi | KAPANDI (v0.10.0): 5 adımlı üretim + kuru-doğrulama; eksik araç işaretli | Mobil başlangıç | M | — |
 | Sembolik yürütme (angr/Triton, WSL) | Yok | VMProtect sınıfında tek gerçek yol | L | P3 |
 | Fuzzing harness (AFL++ WSL) | Yok | Hedef parser'larda crash bulma | L | P3 |
 
@@ -104,36 +107,33 @@
 
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
-| Kalıcı worker + sonuç cache'ini canlıya bağlama | `probeCache` vb. facade modülleri ölü kod; her çağrı spawn | Repo taraması ve tekrar sorular hızlanır | M | P1 |
-| Paralel repo tarama kuyruğu (4'lü) | Tek dosya akışı | CI entegrasyonu açılır (ROADMAP-NEXT'ten taşındı) | M | P2 |
-| Şema bütçesini ölçüp zorlama (13KB iddiası) | Compact modüller ölü, bütçe ölçülmüyor | İddia gerçek olur; tools/list gecikmesi düşer | S | P2 |
-| Büyük dosyada kısmi/streaming okuma | Tam dosya belleğe alınıyor (ör. CLR kontrolü) | GB'lık imajlarda OOM biter | M | P2 |
+| ✅ Worker cache canlı bağlama | KAPANDI (v0.10.0): reposcan yolu sayaç-kanıtlı; ölü silme ertelendi (test bağlılığı) | Hızlı tekrar | M | — |
+| ✅ Paralel tarama (4'lü havuz) | KAPANDI (v0.10.0): sıralı birleştirme + iptal + hata izolasyonu | CI entegrasyonu | M | — |
+| ✅ Şema bütçesi | KAPANDI (v0.10.0): ölçülü eşikler (200KB/110KB/600B) | Şişme biter | S | — |
+| ✅ Streaming okuma | KAPANDI (v0.10.0): 64KB tampon + iptalde durma | OOM biter | M | — |
 
 ## H) Test ve kalite
 
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
-| Golden korpus (provider başına 5 gerçek binary + hash) | AÇIK: fixture'lar minimal (mini_branch/mini_pe); DEX golden APK kabul testi de bu kapının parçasıdır ve tamamlanmadı | Regresyon erken yakalanır | M | P1 |
-| Canlı kulvar için self-hosted Windows runner | AÇIK: Frida/debug testleri CI'da koşmuyor; Frida canlı VM onayı bu kapıya bağlıdır ve tamamlanmadı | En riskli yüzey sürekli doğrulanır | M | P1 |
-| Parser fuzz'ı (PE/ELF/WASM/DWARF) CI smoke | Yok | Sessiz yanlış/çökme sınıfları yakalanır | M | P2 |
-| HTTP e2e'yi CI varsayılanına alma | e2e canlı kulvarda | Transport regresyonu görünür olur | S | P2 |
-| Performans bütçeleri (tools/list, açılış) | Ölçüm yok | Yavaşlama sessizce birikmez | S | P3 |
+| ◐ Golden korpus manifesti | KISMEN (v0.10.0): HASHES + normalize doğrulayıcı; repo-içi DEX fixture yok | Regresyon erken yakalanır | M | P1 |
+| Self-hosted Windows runner | Frida/debug testleri CI'da koşmuyor | En riskli yüzey sürekli doğrulanır | M | P0 |
+| ✅ Parser fuzz CI smoke | KAPANDI (v0.10.0): deterministik mutasyon, crash/hang=0 | Sessiz sınıflar yakalanır | M | — |
+| ✅ HTTP e2e varsayılan kümede | KAPANDI (v0.10.0): LIVE'dan çıkarıldı, flake yok | Transport regresyonu görünür | S | — |
+| ✅ Performans bütçeleri | KAPANDI (v0.10.0): ölçülü eşikler, medyan yöntemi | Birikme biter | S | — |
 
 ## I) Dokümantasyon ve topluluk
 
 | Öneri | Bugün ne var / boşluk | Etki | Efor | Öncelik |
 |---|---|---|---|---|
-| ✅ Otomatik araç referansı (tools/list → docs) | KAPANDI (v0.9.0): [`TOOLS.md`](TOOLS.md) derlenmiş sunucunun gerçek yüzeyinden üretiliyor (171 araç + 2 resource + 3 prompt, araç başına `outputSchema`/annotations durumu) | 171 aracın güncel kataloğu | S | — |
+| ✅ Otomatik araç referansı | KAPANDI (v0.10.0): [`TOOLS.md`](TOOLS.md) gerçek yüzeyden (191 araç + 2 resource + 3 prompt) | Güncel katalog | S | — |
 | Örnek oturumlar (asciinema/GIF) README'de | Görsel kanıt yok | İlk 10 saniyede ikna (yıldız dönüşümü) | S | P1 |
-| GitHub Pages docs sitesi | docs/ dağınık (20+ dosya) | Aranabilir, linklenebilir doküman | M | P2 |
-| Örnek prompt kütüphanesi | Yok | Kullanıcı ilk değeri dakikalar içinde alır | S | P2 |
+| ◐ Docs sitesi | ÜRETİLDİ (v0.10.0): 7 statik sayfa + 0 kırık link; Pages deployu yok | Aranabilir doküman | M | P2 |
+| ✅ Prompt kütüphanesi | KAPANDI (v0.10.0): `docs/PROMPTS.md` (10 prompt, örnek çağrılı) | İlk değer dakikalar içinde | S | — |
 | good-first-issue + CONTRIBUTING genişletme | Tek paragraf | Katkı hunisi açılır | S | P3 |
 
 ---
 
-**Önerilen sıra (açık kalanlar):** Frida canlı VM onayı → self-hosted Windows runner →
-kalıcı DEX korpusu (repo içi fixture) → P2 dağıtım kolaylığı (`setup` sihirbazı,
-`doctor --fix`, SEA exe, paket yöneticileri, SBOM) → analiz derinliği (Mach-O,
-IL2CPP, binary diff, PCAP/TLS) → P3 araştırma (LLDB, TTD, angr/Triton, fuzzing).
-npm + Registry + DEX kabulü + golden korpus + şema kapsamı + progress v0.8.1'de kapandı.
+**Önerilen sıra (açık kalanlar):** Frida canlı VM → runner → DEX korpusu → trusted publisher → örnek oturumlar → Pages deployu → ölü facade silme → P3 araştırma.
+v0.10.0'da kapananlar: I/J/K dalgalarının tamamı (yukarıda ✅ işaretliler).
 
